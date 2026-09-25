@@ -1,25 +1,43 @@
-# Wheels Off — endless-road concept test
+# Wheels Off: skate slice
 
-A zero-asset Three.js + react-three-fiber concept test in the style of *Wheels Off*:
-a cel-shaded kid runs down an endless, recycling road while a damped third-person
-camera trails behind. No models, textures, or HDRIs required — runs on `npm run dev`.
-
-## What's here
-
-- **`src/game/GameCanvas.tsx`** — the `<Canvas>`: gradient sky (`<color>` + fog), lights,
-  the road, the runner, and the damped `FollowCam`.
-- **`src/world/Road.tsx`** — endless road: a pool of segments recycled ahead of the runner
-  as it advances (buildings + sidewalks flow past).
-- **`src/player/Runner.tsx`** — toon-shaded capsule kid that auto-runs forward with a simple
-  run cycle; exposes its group ref for the camera + road.
-- **`src/look/ToonMaterial.tsx` / `gradientMap.ts`** — cel shading: `meshToonMaterial` + a
-  procedural banded gradient map. Ink outlines via drei `<Outlines>`.
+A zero-asset Three.js + react-three-fiber skateboarding game in a hand-drawn anime look:
+a kid skates through an endless small Japanese town, carving down streets, taking corners
+and ollieing over road junk. No models, textures or HDRIs. Everything is procedural, and
+it runs on `npm run dev`.
 
 ## Controls
 
-- Auto-runs forward continuously.
-- **A / D** (or ←/→): strafe across the road.
-- **W / S** (or ↑/↓): speed up / slow down.
+- **W / ↑** push (speed up), **S / ↓** brake
+- **A / D** (or ←/→) carve across the lane. Hold toward a side street as you reach an
+  intersection to turn into it (arrows at the bottom show which turns exist).
+- **Space** ollie. Clearing obstacles builds a combo, and hitting one is a wipeout that resets it.
+
+## How it's built
+
+- **`src/game/sim.ts`**: the skate sim as plain mutable state, stepped once per frame with
+  no React. It rides street centerlines plus a lateral carve. Turns follow a true
+  quarter-circle arc through the intersection, so position and heading never snap. The arc
+  swings wide enough to clear the curb. It also handles ollie physics (buffered jump),
+  obstacle clear/hit, and scoring.
+- **`src/game/GameCanvas.tsx`**: canvas, lights, and a camera anchor that trails the skater's
+  position and heading on damped springs. The world is moved and rotated so the anchor sits
+  at the origin, and the chase camera widens with speed and rolls into carves.
+- **`src/world/streetGen.ts`**: the town as a deterministic function of street seeds:
+  side-streets, lots (houses, apartments, shops, offices, block walls), props, obstacles,
+  street names.
+- **`src/world/Block.tsx`, `parts.tsx`, `ObstacleView.tsx`**: one memoized component per
+  street block (keyed `seed:k`). Only new blocks mount and nothing re-renders, and every
+  mesh shares unit geometries and cached materials.
+- **`src/look/`**: the look.
+  - `materials.ts` holds the toon materials plus a vertex patch that bends the world into a
+    small planet. Facade UVs come from the scaled object position, so one unit box tiles
+    windows at a fixed world size.
+  - `textures.ts` draws the facades, signs, 止まれ road text and vending machines on canvas.
+  - `Sky.tsx` is the painted sky.
+  - `PostFX.tsx` is one full-screen pass for the fisheye lens, the ink lines (from depth
+    discontinuities and color steps) and the vignette.
+- **`src/player/Skater.tsx`**: the procedural kid. Sideways stance, push cycle, carve lean,
+  ollie tuck and board pop, landing squash, wipeout wobble, blob shadow.
 
 ## Run
 
@@ -36,15 +54,20 @@ npm run typecheck   # tsc -b --noEmit
 npm run build       # tsc -b && vite build
 ```
 
-## Gotcha worth knowing
+In dev, `window.__sim` exposes the live sim state for poking at from the console.
 
-A `useFrame(cb, priority)` with **priority > 0 disables r3f's automatic rendering** (it expects
-you to call `gl.render` yourself). Using it just to order the camera after the player silently
-blanks the whole canvas. Keep camera/movement callbacks at the default priority; same-priority
-`useFrame`s already run in mount order.
+## Gotchas worth knowing
+
+- `PostFX` renders from a `useFrame(cb, 1)`. Any priority > 0 **disables r3f's automatic
+  rendering**, which is why that callback calls `gl.render` itself. Everything else stays at
+  the default priority, where same-priority callbacks run in mount order. That is why
+  `SimDriver` is mounted before `World`.
+- Long flat meshes must be tessellated or the curvature patch leaves them as straight chords.
+  An untessellated road sags below the ground plane and the ground pokes through.
+- The canvas is `flat` (no tone mapping): ACES washes out the flat anime palette.
 
 ## Next steps
 
-1. Swap the capsule for a rigged GLTF toon character with a real run animation.
-2. Stronger cel look (more directional contrast / outline weight), curves + slopes in the road.
-3. Then: real hand-painted assets, audio, and the wider world.
+1. Sound: board roll, pop, landing, ambient town.
+2. Grindable curbs and rails, manuals, a trick-and-score loop beyond ollies.
+3. Pedestrians and cyclists, day/evening palettes, mobile touch controls.

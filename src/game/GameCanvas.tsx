@@ -1,167 +1,192 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useRef, useState } from 'react'
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { CityPath } from '../world/CityPath'
-import type { SceneDesc, StreetDesc } from '../world/CityPath'
-import { Runner } from '../player/Runner'
-import { useKeyboard } from '../player/useKeyboard'
-import { navShared } from '../player/navShared'
-import { branchLeft, branchRight, childSeed, widthForSeed } from '../world/streetGen'
-import { AHEAD, BASE_SPEED, BEHIND, BLOCK, BRANCH_DEPTH, DIR, TURN_RATE } from '../world/worldConfig'
+import { BlockView } from '../world/Block'
+import type { BlockDesc } from '../world/Block'
+import { Skater } from '../player/Skater'
+import { input, installInput } from '../player/input'
+import { Sky } from '../look/Sky'
+import { PostFX } from '../look/PostFX'
+import { toonMat } from '../look/materials'
+import { hasBranch, streetName } from '../world/streetGen'
+import { AHEAD, BEHIND, BLOCK, BRANCH_DEPTH, DIR } from '../world/worldConfig'
+import { childStreet, sim, stepSim, upcomingTurn } from './sim'
+import type { Street } from './sim'
+import { useHud } from './hudStore'
 
-const SKY = '#bcd9cf'
-const HALF_PI = Math.PI / 2
+const HORIZON = '#c9ece3'
+const damp = (a: number, b: number, lambda: number, dt: number) => a + (b - a) * (1 - Math.exp(-lambda * dt))
 function wrap(a: number): number {
   while (a > Math.PI) a -= 2 * Math.PI
   while (a < -Math.PI) a += 2 * Math.PI
   return a
 }
 
-type Seg = { seed: number; ox: number; oz: number; dir: number; width: number; minK: number }
-type Prev = Seg & { fromK: number; takenLeft: boolean }
+/** Smoothed camera anchor in world space: trails the skater's position and heading. */
+const anchor = { x: sim.px, z: sim.pz, yaw: sim.heading }
 
-function pushStreet(out: StreetDesc[], s: Seg, kMin: number, kMax: number) {
-  out.push({ key: `s${s.seed}`, seed: s.seed, ox: s.ox, oz: s.oz, dir: s.dir, width: s.width, kMin, kMax })
+function desc(s: Street, k: number): BlockDesc {
+  const f = DIR[s.dir]
+  return {
+    key: `${s.seed}:${k}`,
+    seed: s.seed,
+    k,
+    ix: s.ox + f[0] * k * BLOCK,
+    iz: s.oz + f[1] * k * BLOCK,
+    dir: s.dir,
+    width: s.width,
+    u0: s.u0,
+  }
 }
-function pushBranches(out: StreetDesc[], s: Seg, kFrom: number, kTo: number, skipK: number, skipLeft: boolean) {
-  const sd = DIR[s.dir]
-  for (let k = Math.max(1, kFrom); k <= kTo; k++) {
-    const ix = s.ox + sd[0] * k * BLOCK
-    const iz = s.oz + sd[1] * k * BLOCK
-    for (const left of [true, false]) {
-      if (skipK === k && skipLeft === left) continue
-      if (!(left ? branchLeft(s.seed, k) : branchRight(s.seed, k))) continue
-      const seed = childSeed(s.seed, k, left)
-      out.push({ key: `s${seed}`, seed, ox: ix, oz: iz, dir: (s.dir + (left ? 3 : 1)) % 4, width: widthForSeed(seed), kMin: 0, kMax: BRANCH_DEPTH })
+
+/** Blocks of a street plus short stubs of its side-streets. */
+function addStreet(out: Map<string, BlockDesc>, s: Street, k0: number, k1: number, near: number, skip?: { k: number; side: number }) {
+  for (let k = Math.max(k0, s.minK); k <= k1; k++) {
+    const d = desc(s, k)
+    out.set(d.key, d)
+  }
+  for (let i = Math.max(k0 + 1, 1); i <= k1; i++) {
+    for (const side of [-1, 1]) {
+      if (skip && skip.k === i && skip.side === side) continue
+      if (!hasBranch(s.seed, i, side)) continue
+      const c = childStreet(s, i, side)
+      const depth = i <= near ? BRANCH_DEPTH : 1
+      for (let j = 0; j < depth; j++) {
+        const d = desc(c, j)
+        out.set(d.key, d)
+      }
     }
   }
 }
 
-/** The whole visible world, rebuilt each block: current street + its side-streets,
- *  plus the street you just came from + its side-streets. Bounded (~a dozen streets),
- *  so nothing accumulates. Keyed by seed, so the street you turned off keeps its
- *  identity and doesn't remount. */
-function buildScene(cur: Seg, prev: Prev | null, kc: number, px: number, pz: number): SceneDesc {
-  const out: StreetDesc[] = []
-  const cMin = Math.max(cur.minK, kc - BEHIND)
-  const cMax = kc + AHEAD
-  pushStreet(out, cur, cMin, cMax)
-  pushBranches(out, cur, cMin, cMax, -999, false)
-  if (prev) {
-    pushStreet(out, prev, prev.fromK - BEHIND, prev.fromK + AHEAD)
-    pushBranches(out, prev, prev.fromK - BEHIND, prev.fromK + AHEAD, prev.fromK, prev.takenLeft)
+function buildBlocks(): BlockDesc[] {
+  const out = new Map<string, BlockDesc>()
+  const kc = Math.floor(sim.u / BLOCK)
+  addStreet(out, sim.street, kc - BEHIND, kc + AHEAD, kc + 2)
+  if (sim.prev) {
+    const { street, fromK, side } = sim.prev
+    addStreet(out, street, fromK - 1, fromK + 1, -1, { k: fromK, side })
   }
-  return { streets: out, gx: px, gz: pz }
+  return [...out.values()]
 }
 
-function StaticCam() {
-  const camera = useThree((s) => s.camera)
-  useFrame(() => {
-    camera.position.set(0, 3.0, 7)
-    camera.lookAt(0, 0.6, -6)
+function signature(): string {
+  return `${sim.street.seed}:${Math.floor(sim.u / BLOCK)}:${sim.prev ? `${sim.prev.street.seed}:${sim.prev.fromK}` : ''}`
+}
+
+/** Steps the simulation first each frame, then mirrors what the HUD needs. */
+function SimDriver() {
+  const last = useRef({ t: 0 }).current
+  useFrame((_, dt) => {
+    stepSim(dt)
+    const hud = useHud.getState()
+    const patch: Partial<ReturnType<typeof useHud.getState>> = {}
+    for (const ev of sim.events) {
+      if (ev.kind === 'street') patch.street = { id: sim.time, ...streetName(sim.street.seed) }
+      else patch.toast = { id: sim.time, text: ev.text, kind: ev.kind }
+    }
+    sim.events.length = 0
+    if (input.started && !hud.started) {
+      patch.started = true
+      patch.street = { id: sim.time, ...streetName(sim.street.seed) }
+    }
+    if (sim.score !== hud.score) patch.score = sim.score
+    if (sim.combo !== hud.combo) patch.combo = sim.combo
+    const turns = upcomingTurn()
+    if (JSON.stringify(turns) !== JSON.stringify(hud.turns)) patch.turns = turns
+    if (sim.time - last.t > 0.2) {
+      last.t = sim.time
+      const kmh = Math.round(sim.speed * 3.6)
+      if (kmh !== hud.speed) patch.speed = kmh
+    }
+    if (Object.keys(patch).length) useHud.setState(patch)
   })
   return null
 }
 
+/** Everything in world space, moved so the camera anchor sits at the origin. */
 function World() {
   const group = useRef<THREE.Group>(null!)
-  const keys = useKeyboard()
-  const nav = useRef({
-    cur: { seed: 1, ox: 0, oz: 0, dir: 0, width: widthForSeed(1), minK: -(BEHIND + 1) } as Seg,
-    u: 0,
-    prev: null as Prev | null,
-    vAngle: 0,
-    pending: 0,
-    lastKc: -999,
-  }).current
-  const [scene, setScene] = useState<SceneDesc>(() => buildScene(nav.cur, null, 0, 0, 0))
+  const sky = useRef<THREE.Group>(null!)
+  const ground = useRef<THREE.Mesh>(null!)
+  const sig = useRef(signature())
+  const [blocks, setBlocks] = useState<BlockDesc[]>(buildBlocks)
+  const groundGeo = useMemo(() => new THREE.PlaneGeometry(300, 300, 60, 60).rotateX(-Math.PI / 2), [])
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return
-      const k = e.key.toLowerCase()
-      if (k === 'a' || k === 'arrowleft') nav.pending = -1
-      else if (k === 'd' || k === 'arrowright') nav.pending = 1
+  useFrame((_, dtRaw) => {
+    const dt = Math.min(dtRaw, 1 / 20)
+    anchor.x = damp(anchor.x, sim.px, 7, dt)
+    anchor.z = damp(anchor.z, sim.pz, 7, dt)
+    anchor.yaw += wrap(sim.heading - anchor.yaw) * (1 - Math.exp(-4.5 * dt))
+    const c = Math.cos(anchor.yaw)
+    const s = Math.sin(anchor.yaw)
+    group.current.rotation.y = anchor.yaw
+    group.current.position.set(-(anchor.x * c + anchor.z * s), 0, -(-anchor.x * s + anchor.z * c))
+    sky.current.rotation.y = anchor.yaw
+    ground.current.position.set(anchor.x, -0.2, anchor.z)
+
+    const next = signature()
+    if (next !== sig.current) {
+      sig.current = next
+      startTransition(() => setBlocks(buildBlocks()))
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [nav])
-
-  useFrame((_, dt) => {
-    const d = Math.min(dt, 1 / 30)
-    const prevU = nav.u
-    nav.u += (BASE_SPEED + keys.current.z * 3) * d
-
-    const cur = nav.cur
-    const turning = Math.abs(wrap(cur.dir * HALF_PI - nav.vAngle)) > 0.02
-    let turned = false
-    const kNow = Math.floor(nav.u / BLOCK)
-    if (!turning && kNow > Math.floor(prevU / BLOCK) && nav.pending !== 0) {
-      const k = kNow
-      const left = nav.pending < 0
-      if (left ? branchLeft(cur.seed, k) : branchRight(cur.seed, k)) {
-        const vd = DIR[cur.dir]
-        nav.prev = { ...cur, fromK: k, takenLeft: left }
-        nav.cur = {
-          seed: childSeed(cur.seed, k, left),
-          ox: cur.ox + vd[0] * k * BLOCK,
-          oz: cur.oz + vd[1] * k * BLOCK,
-          dir: (cur.dir + (left ? 3 : 1)) % 4,
-          width: widthForSeed(childSeed(cur.seed, k, left)),
-          minK: 0,
-        }
-        nav.u = 0
-        nav.pending = 0
-        turned = true
-      }
-    }
-
-    // drop the previous street once it's well behind (hidden by the curve)
-    if (nav.prev && nav.u > AHEAD * BLOCK) nav.prev = null
-
-    // cheap every frame: kid pos + fluid-curve sweep + camera transform
-    const c = nav.cur
-    const vd = DIR[c.dir]
-    const px = c.ox + vd[0] * nav.u
-    const pz = c.oz + vd[1] * nav.u
-    const diff = wrap(c.dir * HALF_PI - nav.vAngle)
-    const step = TURN_RATE * d
-    nav.vAngle = Math.abs(diff) <= step ? c.dir * HALF_PI : nav.vAngle + Math.sign(diff) * step
-    navShared.bank = THREE.MathUtils.clamp((diff / HALF_PI) * 0.5, -0.5, 0.5)
-    const cc = Math.cos(nav.vAngle)
-    const ss = Math.sin(nav.vAngle)
-    group.current.rotation.y = nav.vAngle
-    group.current.position.set(-(px * cc + pz * ss), 0, -(-px * ss + pz * cc))
-
-    // rebuild the (bounded) scene only when the block changes or on a turn
-    const kc = Math.floor(nav.u / BLOCK)
-    if (kc === nav.lastKc && !turned) return
-    nav.lastKc = kc
-    setScene(buildScene(nav.cur, nav.prev, kc, px, pz))
   })
 
   return (
-    <group ref={group}>
-      <CityPath scene={scene} />
-    </group>
+    <>
+      <group ref={sky}>
+        <Sky />
+      </group>
+      <group ref={group}>
+        <mesh ref={ground} geometry={groundGeo} material={toonMat('#b9c4b8')} />
+        {blocks.map(({ key, ...b }) => (
+          <BlockView key={key} {...b} />
+        ))}
+        <Skater />
+      </group>
+    </>
   )
 }
 
+/** Chase camera in the anchor's frame: widens with speed, rises on ollies, rolls into carves. */
+function CameraRig() {
+  const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
+  const st = useRef({ fov: 74, y: 0, roll: 0 }).current
+  useFrame((_, dtRaw) => {
+    const dt = Math.min(dtRaw, 1 / 20)
+    st.fov = damp(st.fov, 72 + Math.max(0, sim.speed - 8) * 0.9, 2.5, dt)
+    st.y = damp(st.y, sim.y, 5, dt)
+    st.roll = damp(st.roll, -sim.latVel * 0.012 - sim.turnRate * 0.03, 4, dt)
+    const shake = Math.max(0, 1 - (sim.time - sim.bailT) / 0.4) * 0.06
+    camera.position.set(Math.sin(sim.time * 60) * shake, 2.35 + st.y * 0.4, 5.2)
+    camera.lookAt(0, 1.05 + st.y * 0.3, -6)
+    camera.rotateZ(st.roll)
+    if (Math.abs(camera.fov - st.fov) > 0.01) {
+      camera.fov = st.fov
+      camera.updateProjectionMatrix()
+    }
+  })
+  return null
+}
+
 export default function GameCanvas() {
+  useEffect(installInput, [])
   return (
     <Canvas
       className="game-canvas"
-      camera={{ fov: 70, near: 0.1, far: 400, position: [0, 3, 7] }}
-      dpr={[1, 1.5]}
+      flat
+      gl={{ antialias: false }}
+      camera={{ fov: 74, near: 0.3, far: 420, position: [0, 2.35, 5.2] }}
+      dpr={[1, 1.75]}
     >
-      <color attach="background" args={[SKY]} />
-      <fog attach="fog" args={[SKY, 45, 140]} />
-      <ambientLight intensity={0.55} />
-      <hemisphereLight args={[0xffffff, 0x6b7d76, 0.7]} />
-      <directionalLight position={[6, 12, 4]} intensity={1.0} />
+      <fog attach="fog" args={[HORIZON, 60, 125]} />
+      <ambientLight intensity={0.5} />
+      <hemisphereLight args={['#ffffff', '#7fa39c', 0.75]} />
+      <directionalLight position={[7, 12, 3]} intensity={1.25} />
+      <SimDriver />
       <World />
-      <Runner />
-      <StaticCam />
+      <CameraRig />
+      <PostFX />
     </Canvas>
   )
 }
