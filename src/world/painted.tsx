@@ -3,6 +3,8 @@ import { toonMat } from '../look/materials'
 import { decalPaintMat, paintedDepth, paintedMat, propArt } from '../art/art'
 import { M } from './parts'
 import type { Litter, Lot, PropSpot } from './streetGen'
+import { Tree3D } from './Tree3D'
+import type { TreeKind } from './Tree3D'
 import { CURB, SIDEWALK } from './worldConfig'
 
 type V3 = [number, number, number]
@@ -36,7 +38,6 @@ export function PaintedLot({ lot, half }: { lot: Lot; half: number }) {
   if (lot.kind === 'wall') {
     const tiles = Math.ceil(lot.len / 3.2 - 0.01)
     const wall = propArt('wall-block')
-    const tree = lot.tree ? propArt(lot.tree) : undefined
     return (
       <group>
         {wall &&
@@ -45,7 +46,7 @@ export function PaintedLot({ lot, half }: { lot: Lot; half: number }) {
             const w = Math.min(3.2, lot.a + lot.len - a)
             return <Card key={i} path={wall.image} w={w} h={wall.height} p={at(sd * (front + 0.2), 0, a + w / 2)} rotY={faceRoad(sd)} />
           })}
-        {tree && <Card path={tree.image} w={tree.width} h={tree.height} p={at(sd * (front + 2.2 + lot.r), 0, cu)} cross foliage={tree.foliage} />}
+        {lot.tree && <Tree3D p={at(sd * (front + 2.6 + lot.r), 0, cu)} r={lot.r} kind={lot.tree} />}
       </group>
     )
   }
@@ -85,12 +86,9 @@ export function PropView({ spot, half }: { spot: PropSpot; half: number }) {
   return <Card path={a.image} w={a.width} h={a.height} p={at(s, 0, spot.u)} rotY={faceRoad(spot.side)} cross={a.mode === 'cross'} double />
 }
 
-/** A curbside tree (sakura streets). */
-export function StreetTree({ side, u, half }: { side: number; u: number; half: number }) {
-  const a = propArt('sakura')
-  if (!a) return null
-  // at the back of the sidewalk, so the canopy arches over the pavement, not the road
-  return <Card path={a.image} w={a.width} h={a.height} p={at(side * (half + SIDEWALK - 0.4), CURB, u)} rotY={0.4 * side} cross foliage />
+/** An occasional tree at the back of the sidewalk, its canopy arching over the pavement. */
+export function StreetTree({ side, u, half, kind, r }: { side: number; u: number; half: number; kind: TreeKind; r: number }) {
+  return <Tree3D p={at(side * (half + SIDEWALK - 0.5), CURB, u)} r={r} kind={kind} />
 }
 
 /** Fallen petals lying on the sidewalk or the road. */

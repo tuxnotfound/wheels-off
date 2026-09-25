@@ -8,6 +8,7 @@ import { input, installInput } from '../player/input'
 import { Sky } from '../look/Sky'
 import { PostFX } from '../look/PostFX'
 import { Petals } from '../look/Petals'
+import { setTreeSun } from '../world/Tree3D'
 import { toonMat } from '../look/materials'
 import { FOG, LIGHT, SUN_DIR } from '../look/timeOfDay'
 import { hasBranch, streetName } from '../world/streetGen'
@@ -151,6 +152,7 @@ function World() {
 }
 
 const SHADOW_CENTER = new THREE.Vector3(0, 0, -16) // ahead of the camera, in view space
+const sunDir = new THREE.Vector3()
 
 /**
  * Cel lighting: one hard-edged sun that casts shadows, plus a cool tinted ambient
@@ -175,7 +177,9 @@ function Lights() {
     const s = Math.sin(anchor.yaw)
     target.position.copy(SHADOW_CENTER)
     target.updateMatrixWorld()
-    sun.current.position.set(SUN_DIR.x * c + SUN_DIR.z * s, SUN_DIR.y, -SUN_DIR.x * s + SUN_DIR.z * c).multiplyScalar(90).add(SHADOW_CENTER)
+    sunDir.set(SUN_DIR.x * c + SUN_DIR.z * s, SUN_DIR.y, -SUN_DIR.x * s + SUN_DIR.z * c)
+    setTreeSun(sunDir)
+    sun.current.position.copy(sunDir).multiplyScalar(90).add(SHADOW_CENTER)
   })
   return (
     <>

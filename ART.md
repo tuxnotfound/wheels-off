@@ -51,9 +51,9 @@ Widths between 5 and 10 m work best (a block's frontage is about 20 to 28 m).
 
 Painted art is lit by the scene through the same hard two-tone cel ramp as the 3D parts,
 so the golden-hour sun warms the facades that face it and cast shadows land on them.
-Paint it in neutral daylight colors and let the scene do the sunset. Mark trees and other
-foliage `"foliage": true`: they glow slightly with their own color, so they only dim in
-shade instead of turning purple.
+Paint it in neutral daylight colors and let the scene do the sunset. Mark painted foliage
+(bushes, planters) `"foliage": true`: it glows slightly with its own color, so it only
+dims in shade instead of turning purple.
 
 ## Props and obstacles
 
@@ -67,8 +67,12 @@ Same rules: transparent PNG, drawn straight-on, ground line at the bottom.
 | `wall`  | the block-wall tile (3.2 m)           | repeated along empty frontage       |
 | `decal` | fallen petals (`petals-ground`)       | flat on the pavement or road, seen from above |
 
-`sakura` (a blooming tree) lines about half the streets and stands behind most block
-walls.
+Trees are not painted cards: flat cards looked like cut-outs and turned into a line
+edge-on. They are 3D (`src/world/Tree3D.tsx`): a toon-shaded trunk and branches under a
+canopy of camera-facing blossom clusters. Each cluster is drawn from dozens of tiny
+flowers and lit as a whole from the sun, so the canopy splits pale and warm against rose
+shade. Sakura and green palettes, three shapes, and they are rare on purpose: an
+occasional tree at the back of a sidewalk, and some gardens behind block walls.
 
 Obstacles are **not** painted cards. They get jumped over and knocked flying, and flat
 cards looked like cardboard cut-outs tumbling. They are solid toon-shaded 3D shapes with

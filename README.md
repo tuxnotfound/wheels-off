@@ -29,6 +29,9 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
 - **`src/world/streetGen.ts`**: the town as a deterministic function of street seeds:
   side-streets, lots picked from the building art that fits, walls and trees for the gaps,
   sidewalk props, obstacles, street names.
+- **`src/world/Tree3D.tsx`**: 3D sakura (and green) trees, with toon-shaded branches under
+  a canopy of camera-facing, sun-lit blossom clusters. Three shared shapes, so any number of
+  trees costs three geometries.
 - **`src/world/Block.tsx`, `painted.tsx`, `parts.tsx`, `ObstacleView.tsx`**: one memoized
   component per street block (keyed `seed:k`). Only new blocks mount and nothing
   re-renders. Each building is its painted front as a cut-out card plus a plain 3D body

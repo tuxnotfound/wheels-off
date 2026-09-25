@@ -99,7 +99,7 @@ function Block({ seed, k, ix, iz, dir, width, u0 }: Omit<BlockDesc, 'key'>) {
   // painted buildings, walls, trees, and what stands on the sidewalk
   plan.lots.forEach((lot, i) => els.push(<PaintedLot key={`lot${i}`} lot={lot} half={half} />))
   plan.props.forEach((spot, i) => els.push(<PropView key={`prop${i}`} spot={spot} half={half} />))
-  plan.trees.forEach((t, i) => els.push(<StreetTree key={`tree${i}`} side={t.side} u={t.u} half={half} />))
+  plan.trees.forEach((t, i) => els.push(<StreetTree key={`tree${i}`} side={t.side} u={t.u} half={half} kind={t.kind} r={t.r} />))
   plan.litter.forEach((l, i) => els.push(<LitterView key={`litter${i}`} l={l} />))
 
   // utility poles on one side, clear of openings

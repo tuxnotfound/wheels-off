@@ -2,6 +2,7 @@ import { hash2 } from './hash'
 import { BLOCK, OBST_MAX, OBST_MIN, SIDEWALK } from './worldConfig'
 import { art, propArt } from '../art/art'
 import type { BuildingArt } from '../art/art'
+import type { TreeKind } from './Tree3D'
 
 // Seed-based, path-relative street generation. A "street" is identified by a seed;
 // everything about it (width, where it branches, its buildings, obstacles and the
@@ -102,7 +103,7 @@ export function blockObstacles(seed: number, k: number, width: number): Obstacle
 // ---------- block plan (everything static in one block) ----------
 export type Lot =
   | { kind: 'building'; side: number; a: number; len: number; art: BuildingArt }
-  | { kind: 'wall'; side: number; a: number; len: number; tree: string | null; r: number }
+  | { kind: 'wall'; side: number; a: number; len: number; tree: TreeKind | null; r: number }
 export type PropSpot = { id: string; side: number; u: number }
 /** Fallen petals lying flat: on the sidewalk (y = curb) or the road. */
 export type Litter = { s: number; u: number; onWalk: boolean; rot: number; size: number }
@@ -112,7 +113,7 @@ export type BlockPlan = {
   sides: { side: number; walk: Segment; gapStart: number; gapEnd: number }[]
   lots: Lot[]
   props: PropSpot[]
-  trees: { side: number; u: number }[] // street trees at the curb
+  trees: { side: number; u: number; kind: TreeKind; r: number }[] // occasional sidewalk trees
   litter: Litter[]
   crosswalk: number | null // half-width of the crossing street ahead, or null
   stopText: boolean
@@ -122,7 +123,6 @@ export type BlockPlan = {
 }
 
 export const POLE_U = [5, 21] // utility poles along the pole side of every block
-const TREE_U = [11, 27] // curbside trees on sakura-lined streets
 // (a flat bicycle card reads as a spider edge-on, so it isn't placed until it has real depth)
 const SIDEWALK_PROPS = ['vending-blue', 'vending-red', 'postbox', 'plants']
 
@@ -148,8 +148,7 @@ export function blockPlan(seed: number, k: number, width: number, u0: number): B
   const litter: Litter[] = []
   const propIds = SIDEWALK_PROPS.filter((id) => propArt(id))
   const half = width / 2
-  // about half the streets are lined with sakura on both sidewalks
-  const sakuraStreet = !!propArt('sakura') && h(seed, 0, 700) > 0.5
+
   for (const side of [-1, 1]) {
     const gs = hasBranch(seed, k, side) ? widthForSeed(childSeed(seed, k, side)) / 2 : 0
     const ge = hasBranch(seed, k + 1, side) ? widthForSeed(childSeed(seed, k + 1, side)) / 2 : 0
@@ -157,13 +156,15 @@ export function blockPlan(seed: number, k: number, width: number, u0: number): B
     const start = roadFrom > 0 ? roadFrom : gs
     const walk = { a: start, b: BLOCK - ge }
     sides.push({ side, walk, gapStart: gs, gapEnd: ge })
-    if (sakuraStreet) {
-      for (const tu of TREE_U) {
-        if (tu < walk.a + 1.2 || tu > walk.b - 1.2) continue
-        trees.push({ side, u: tu })
+    // now and then a single tree at the back of the sidewalk, clear of the poles
+    if (h(seed, k, side + 700) > 0.85) {
+      const tu = 8 + h(seed, k, side + 701) * 16
+      const nearPole = side === poleSide && POLE_U.some((p) => Math.abs(p - tu) < 2.5)
+      if (!nearPole && tu > walk.a + 3 && tu < walk.b - 3) {
+        trees.push({ side, u: tu, kind: h(seed, k, side + 702) < 0.85 ? 'sakura' : 'green', r: h(seed, k, side + 703) })
         // petals fallen under it, on the pavement and spilling onto the road
-        litter.push({ s: side * (half + SIDEWALK / 2), u: tu + 0.6, onWalk: true, rot: h(seed, k * 7 + tu, side + 710) * 6.28, size: 2.6 })
-        litter.push({ s: side * (half - 0.9), u: tu + 1.2, onWalk: false, rot: h(seed, k * 7 + tu, side + 711) * 6.28, size: 2.2 })
+        litter.push({ s: side * (half + SIDEWALK / 2), u: tu + 0.6, onWalk: true, rot: h(seed, k, side + 710) * 6.28, size: 2.6 })
+        litter.push({ s: side * (half - 0.9), u: tu + 1.2, onWalk: false, rot: h(seed, k, side + 711) * 6.28, size: 2.2 })
       }
     }
     // buildings keep clear of the corner sidewalks
@@ -182,15 +183,15 @@ export function blockPlan(seed: number, k: number, width: number, u0: number): B
       } else {
         // a stretch of block wall with a tree behind it fills what no building fits
         len = Math.min(room, 3.2 * (1 + Math.floor(r(502) * 2)))
-        // trees behind walls are mostly sakura
-        const tree = r(503) > 0.35 ? (r(509) < 0.7 && propArt('sakura') ? 'sakura' : 'tree') : null
+        // sometimes a garden tree behind the wall, usually a sakura
+        const tree: TreeKind | null = r(503) > 0.86 ? (r(509) < 0.75 ? 'sakura' : 'green') : null
         if (len >= 1) lots.push({ kind: 'wall', side, a: u, len, tree, r: r(504) })
       }
       // something on the sidewalk in front, clear of the poles
       if (propIds.length && r(505) > 0.55 && len > 2) {
         const pu = u + 0.8 + r(506) * (len - 1.6)
         const nearPole = side === poleSide && POLE_U.some((p) => Math.abs(p - pu) < 1.4)
-        const nearTree = sakuraStreet && TREE_U.some((t) => Math.abs(t - pu) < 1.8)
+        const nearTree = trees.some((t) => t.side === side && Math.abs(t.u - pu) < 2)
         if (!nearPole && !nearTree) props.push({ id: pick(propIds, r(507)), side, u: pu })
       }
       u += len + 0.25 + r(508) * 0.6
@@ -198,7 +199,7 @@ export function blockPlan(seed: number, k: number, width: number, u0: number): B
     }
   }
   if (propArt('petals-ground')) {
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
       const lu = roadFrom + 2 + h(seed, k, 720 + i) * (BLOCK - roadFrom - 4)
       litter.push({ s: (h(seed, k, 730 + i) * 2 - 1) * (half - 0.6), u: lu, onWalk: false, rot: h(seed, k, 740 + i) * 6.28, size: 1.4 + h(seed, k, 750 + i) })
     }
