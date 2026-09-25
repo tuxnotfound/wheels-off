@@ -159,7 +159,23 @@
       "image": "props/tree.svg",
       "width": 3.2,
       "height": 4.6,
-      "mode": "cross"
+      "mode": "cross",
+      "foliage": true
+    },
+    {
+      "id": "sakura",
+      "image": "props/sakura.svg",
+      "width": 6.2,
+      "height": 6.6,
+      "mode": "cross",
+      "foliage": true
+    },
+    {
+      "id": "petals-ground",
+      "image": "props/petals-ground.svg",
+      "width": 3,
+      "height": 3,
+      "mode": "decal"
     },
     {
       "id": "vending-blue",

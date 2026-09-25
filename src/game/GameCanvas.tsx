@@ -7,14 +7,15 @@ import { Skater } from '../player/Skater'
 import { input, installInput } from '../player/input'
 import { Sky } from '../look/Sky'
 import { PostFX } from '../look/PostFX'
+import { Petals } from '../look/Petals'
 import { toonMat } from '../look/materials'
+import { FOG, LIGHT, SUN_DIR } from '../look/timeOfDay'
 import { hasBranch, streetName } from '../world/streetGen'
 import { AHEAD, BEHIND, BLOCK, BRANCH_DEPTH, DIR } from '../world/worldConfig'
 import { childStreet, sim, stepSim, upcomingTurn } from './sim'
 import type { Street } from './sim'
 import { useHud } from './hudStore'
 
-const HORIZON = '#c9ece3'
 const damp = (a: number, b: number, lambda: number, dt: number) => a + (b - a) * (1 - Math.exp(-lambda * dt))
 function wrap(a: number): number {
   while (a > Math.PI) a -= 2 * Math.PI
@@ -143,13 +144,12 @@ function World() {
           <BlockView key={key} {...b} />
         ))}
         <Skater />
+        <Petals anchor={anchor} />
       </group>
     </>
   )
 }
 
-// Sun direction in world space (fixed, so each street faces it differently).
-const SUN = new THREE.Vector3(0.75, 1.05, 0.4).normalize()
 const SHADOW_CENTER = new THREE.Vector3(0, 0, -16) // ahead of the camera, in view space
 
 /**
@@ -167,7 +167,7 @@ function Lights() {
     cam.left = cam.bottom = -42
     cam.right = cam.top = 42
     cam.near = 1
-    cam.far = 160
+    cam.far = 220
     cam.updateProjectionMatrix()
   }, [target])
   useFrame(() => {
@@ -175,16 +175,16 @@ function Lights() {
     const s = Math.sin(anchor.yaw)
     target.position.copy(SHADOW_CENTER)
     target.updateMatrixWorld()
-    sun.current.position.set(SUN.x * c + SUN.z * s, SUN.y, -SUN.x * s + SUN.z * c).multiplyScalar(70).add(SHADOW_CENTER)
+    sun.current.position.set(SUN_DIR.x * c + SUN_DIR.z * s, SUN_DIR.y, -SUN_DIR.x * s + SUN_DIR.z * c).multiplyScalar(90).add(SHADOW_CENTER)
   })
   return (
     <>
       <primitive object={target} />
-      <ambientLight color="#b4c4e6" intensity={2.4} />
+      <ambientLight color={LIGHT.ambient} intensity={LIGHT.ambientIntensity} />
       <directionalLight
         ref={sun}
-        intensity={1.1}
-        color="#ffeccc"
+        intensity={LIGHT.sunIntensity}
+        color={LIGHT.sun}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-bias={-0.0004}
@@ -226,7 +226,7 @@ export default function GameCanvas() {
       camera={{ fov: 74, near: 0.3, far: 420, position: [0, 3.0, 7.6] }}
       dpr={[1, 1.75]}
     >
-      <fog attach="fog" args={[HORIZON, 60, 125]} />
+      <fog attach="fog" args={[FOG.color, FOG.near, FOG.far]} />
       <Lights />
       <SimDriver />
       <World />

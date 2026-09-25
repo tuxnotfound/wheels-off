@@ -41,9 +41,12 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
   - `materials.ts` holds the toon materials plus a vertex patch that bends the world into a
     small planet. `curvedDepth` applies the same bend in the shadow pass.
   - `textures.ts` draws the 止まれ road text and overpass sign on canvas.
-  - `Sky.tsx` is the painted sky.
+  - `timeOfDay.ts` is the one palette for the time of day (golden hour): sun direction and
+    color, tinted shade, sky, fog, and the color grade. `Sky.tsx` paints the sky from it.
+  - `Petals.tsx` is the falling sakura: 900 petals in one draw call, animated entirely in
+    the vertex shader and wrapped in a box that follows the camera anchor.
   - `PostFX.tsx` is one full-screen pass for the fisheye lens, the ink lines (from depth
-    discontinuities and color steps) and the vignette.
+    discontinuities and color steps), the golden-hour grade and the vignette.
 - **`src/player/`**: the skater.
   - `pose.ts` turns the sim into one pose per frame (sideways stance, push cycle, carve
     lean, ollie tuck and board pop, landing squash, wipeout wobble).

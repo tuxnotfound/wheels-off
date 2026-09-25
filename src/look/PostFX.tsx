@@ -1,6 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
+import { GRADE } from './timeOfDay'
 
 // One full-screen pass over the rendered scene:
 //  - fisheye (barrel) lens, the wide-angle look of the reference shots
@@ -18,7 +19,8 @@ const frag = /* glsl */ `
   uniform sampler2D tDepth;
   uniform vec2 uRes;
   uniform float uNear, uFar, uBarrel, uThick;
-  uniform vec3 uInk;
+  uniform vec3 uInk, uGradeShadow, uGradeHigh;
+  uniform float uGrade;
   varying vec2 vUv;
 
   float invZ(vec2 uv) {
@@ -58,8 +60,13 @@ const frag = /* glsl */ `
     ink *= 1.0 - smoothstep(55.0, 110.0, 1.0 / nearest);
     col = mix(col, uInk, ink * 0.9);
 
+    // time-of-day grade: tint by brightness, violet in the darks, gold in the lights
+    float L = lum(col);
+    vec3 tint = mix(uGradeShadow, uGradeHigh, smoothstep(0.05, 0.6, L));
+    col = mix(col, col * tint * 1.15, uGrade);
+
     vec2 v = vUv - 0.5;
-    col *= 1.0 - dot(v, v) * 0.35;
+    col *= 1.0 - dot(v, v) * 0.45;
     gl_FragColor = vec4(col, 1.0);
     #include <colorspace_fragment>
   }
@@ -86,7 +93,10 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
         uFar: { value: 100 },
         uBarrel: { value: barrel },
         uThick: { value: thickness },
-        uInk: { value: new THREE.Color('#263230') },
+        uInk: { value: new THREE.Color('#2c2733') },
+        uGradeShadow: { value: new THREE.Color(GRADE.shadow) },
+        uGradeHigh: { value: new THREE.Color(GRADE.highlight) },
+        uGrade: { value: GRADE.strength },
       },
     })
     const quad = new THREE.Scene()

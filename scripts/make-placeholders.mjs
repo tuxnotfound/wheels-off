@@ -228,6 +228,46 @@ function main() {
     for (const [cx, cy, r, c] of [[W * 0.5, H * 0.3, 120, '#7fae6e'], [W * 0.3, H * 0.4, 90, '#6a9c5e'], [W * 0.7, H * 0.38, 95, '#93bf7c'], [W * 0.5, H * 0.15, 80, '#93bf7c']])
       s += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${c}" stroke="${INK}" stroke-width="3.5"/>`
     return s
+  }, { foliage: true })
+  // sakura in full bloom: dark trunk and branches, clustered pink canopy with painted
+  // shade on the undersides and pale highlights on top
+  prop('sakura', 6.2, 6.6, 'cross', (W, H) => {
+    // gently leaning trunk that forks into branches under a wide dome of blossom
+    let s = poly([[W / 2 - 26, H], [W / 2 + 24, H], [W / 2 + 8, H * 0.62], [W / 2 + 22, H * 0.5], [W / 2 - 4, H * 0.5], [W / 2 - 16, H * 0.62]], '#5b4640', 3.5)
+    s += `<path d="M${W / 2 + 6},${H} L${W / 2 + 4},${H * 0.64}" stroke="#7a5f55" stroke-width="10" fill="none"/>`
+    for (const [x2, y2] of [[W * 0.16, H * 0.42], [W * 0.84, H * 0.4], [W * 0.5, H * 0.2], [W * 0.3, H * 0.3], [W * 0.7, H * 0.28]])
+      s += stroke([[W / 2 + 6, H * 0.52], [(W / 2 + x2) / 2 + j(14), (H * 0.52 + y2) / 2 - 10], [x2, y2]], 10)
+    const puffs = []
+    for (let i = 0; i < 46; i++) {
+      const a = rnd() * Math.PI
+      const rho = Math.pow(rnd(), 0.55)
+      const r = 50 + rnd() * 42
+      let x = W / 2 + Math.cos(a) * rho * (W / 2 - 60)
+      let y = H * 0.4 - Math.sin(a) * rho * H * 0.27
+      x = Math.min(W - r - 6, Math.max(r + 6, x))
+      y = Math.max(r + 6, y)
+      puffs.push([x, y, r])
+    }
+    // a scalloped underside so the canopy doesn't end in a straight line
+    for (let i = 0; i < 9; i++) puffs.push([W * (0.12 + i * 0.095), H * 0.44 + j(12), 42 + rnd() * 16])
+    puffs.sort((p, q) => p[1] - q[1])
+    for (const [cx, cy, r] of puffs) s += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="#f4b6c8" stroke="${INK}" stroke-width="3"/>`
+    for (const [cx, cy, r] of puffs) s += `<circle cx="${cx.toFixed(1)}" cy="${(cy + r * 0.32).toFixed(1)}" r="${(r * 0.74).toFixed(1)}" fill="#e38fac"/>`
+    for (const [cx, cy, r] of puffs) s += `<circle cx="${(cx - r * 0.08).toFixed(1)}" cy="${(cy - r * 0.14).toFixed(1)}" r="${(r * 0.72).toFixed(1)}" fill="#f7c3d2"/>`
+    for (const [cx, cy, r] of puffs.slice(0, 16)) s += `<circle cx="${(cx - r * 0.22).toFixed(1)}" cy="${(cy - r * 0.32).toFixed(1)}" r="${(r * 0.3).toFixed(1)}" fill="#fde6ec"/>`
+    return s
+  }, { foliage: true })
+  // fallen petals, seen from above (a ground decal)
+  prop('petals-ground', 3, 3, 'decal', (W, H) => {
+    let s = ''
+    for (let i = 0; i < 70; i++) {
+      const r = Math.pow(rnd(), 0.7) * W * 0.48
+      const a = rnd() * Math.PI * 2
+      const x = W / 2 + Math.cos(a) * r
+      const y = H / 2 + Math.sin(a) * r
+      s += `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${8 + rnd() * 5}" ry="${5 + rnd() * 3}" fill="${rnd() < 0.3 ? '#fde6ec' : '#f4b6c8'}" transform="rotate(${(rnd() * 180).toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})"/>`
+    }
+    return s
   })
   prop('vending-blue', 0.95, 1.85, 'box', (W, H) => {
     let s = rect(2, 2, W - 4, H - 4, '#3f7fc4', 4) + rect(14, 20, W - 28, H * 0.5, '#f5f7f2', 3)

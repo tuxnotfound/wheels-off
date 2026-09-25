@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { patchCurve } from '../look/materials'
+import { celRamp } from '../look/gradientMap'
 
 // The painted-art pipeline. public/art/manifest.json lists every painted image
 // with its real-world size; the street generator lays lots out from it and the
@@ -23,7 +24,9 @@ export type PropArt = {
   height: number
   // card: one upright plane facing the street; cross: two crossed planes (reads
   // from any angle); box: a solid box with the image on the front; wall: a tile
-  mode: 'card' | 'cross' | 'box' | 'wall'
+  // decal: flat on the ground
+  mode: 'card' | 'cross' | 'box' | 'wall' | 'decal'
+  foliage?: boolean // keep its painted color in shade (no purple canopies)
   depth?: number
   color?: string
 }
@@ -70,20 +73,46 @@ export function propArt(id: string): PropArt | undefined {
 const mats = new Map<string, THREE.Material>()
 
 /**
- * Painted surfaces are unlit: the art already carries its shading, and lighting it
- * again would muddy the painted colors. Alpha-tested, fogged, curved like the world.
+ * Painted surfaces keep their own painted shading, and also take the scene's light
+ * through the same hard two-tone cel ramp as everything else: sun-facing art gets the
+ * warm light, the rest falls into the tinted shade, and cast shadows land on facades.
+ * Alpha-tested, fogged, curved like the world.
  */
-export function paintedMat(path: string, doubleSided = false): THREE.MeshBasicMaterial {
-  const key = `${path}:${doubleSided}`
-  let m = mats.get(key) as THREE.MeshBasicMaterial | undefined
+export function paintedMat(path: string, doubleSided = false, foliage = false): THREE.MeshToonMaterial {
+  const key = `${path}:${doubleSided}:${foliage}`
+  let m = mats.get(key) as THREE.MeshToonMaterial | undefined
   if (!m) {
-    m = new THREE.MeshBasicMaterial({
+    m = new THREE.MeshToonMaterial({
       map: textures.get(path),
+      gradientMap: celRamp(),
       alphaTest: 0.5,
       side: doubleSided ? THREE.DoubleSide : THREE.FrontSide,
     })
+    if (foliage) {
+      // blossom glows a little with its own color, so shade only dims it, and the
+      // two planes of a crossed tree don't split into pink and purple halves
+      m.emissiveMap = m.map
+      m.emissive = new THREE.Color('#ffffff')
+      m.emissiveIntensity = 0.5
+    }
     m.onBeforeCompile = patchCurve
-    m.customProgramCacheKey = () => 'basic-curve'
+    m.customProgramCacheKey = () => 'toon-curve'
+    mats.set(key, m)
+  }
+  return m
+}
+
+/** Painted art lying flat on a surface (fallen petals): pulled toward the camera so it never z-fights. */
+export function decalPaintMat(path: string): THREE.MeshToonMaterial {
+  const key = `decal:${path}`
+  let m = mats.get(key) as THREE.MeshToonMaterial | undefined
+  if (!m) {
+    m = paintedMat(path).clone()
+    m.polygonOffset = true
+    m.polygonOffsetFactor = -2
+    m.polygonOffsetUnits = -6
+    m.onBeforeCompile = patchCurve
+    m.customProgramCacheKey = () => 'toon-curve'
     mats.set(key, m)
   }
   return m

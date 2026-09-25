@@ -1,20 +1,20 @@
-import { BOX, PANEL, PRISM } from '../look/geom'
+import { BOX, FLAT, PANEL, PRISM } from '../look/geom'
 import { toonMat } from '../look/materials'
-import { paintedDepth, paintedMat, propArt } from '../art/art'
+import { decalPaintMat, paintedDepth, paintedMat, propArt } from '../art/art'
 import { M } from './parts'
-import type { Lot, PropSpot } from './streetGen'
-import { SIDEWALK } from './worldConfig'
+import type { Litter, Lot, PropSpot } from './streetGen'
+import { CURB, SIDEWALK } from './worldConfig'
 
 type V3 = [number, number, number]
 // Block-local frame: +x is the right of the street, -z is "forward" (u grows).
 const at = (s: number, y: number, u: number): V3 => [s, y, -u]
 
 /** A painted cut-out standing on the ground. rotY turns it; cross adds a second plane at 90°. */
-export function Card({ path, w, h, p, rotY = 0, cross = false, double = false }: { path: string; w: number; h: number; p: V3; rotY?: number; cross?: boolean; double?: boolean }) {
-  const mat = paintedMat(path, double || cross)
+export function Card({ path, w, h, p, rotY = 0, cross = false, double = false, foliage = false }: { path: string; w: number; h: number; p: V3; rotY?: number; cross?: boolean; double?: boolean; foliage?: boolean }) {
+  const mat = paintedMat(path, double || cross, foliage)
   const depth = paintedDepth(path)
   const plane = (ry: number) => (
-    <mesh geometry={PANEL} material={mat} position={[0, h / 2, 0]} rotation={[0, ry, 0]} scale={[w, h, 1]} castShadow customDepthMaterial={depth} />
+    <mesh geometry={PANEL} material={mat} position={[0, h / 2, 0]} rotation={[0, ry, 0]} scale={[w, h, 1]} castShadow receiveShadow customDepthMaterial={depth} />
   )
   return (
     <group position={p} rotation={[0, rotY, 0]}>
@@ -36,7 +36,7 @@ export function PaintedLot({ lot, half }: { lot: Lot; half: number }) {
   if (lot.kind === 'wall') {
     const tiles = Math.ceil(lot.len / 3.2 - 0.01)
     const wall = propArt('wall-block')
-    const tree = propArt('tree')
+    const tree = lot.tree ? propArt(lot.tree) : undefined
     return (
       <group>
         {wall &&
@@ -45,7 +45,7 @@ export function PaintedLot({ lot, half }: { lot: Lot; half: number }) {
             const w = Math.min(3.2, lot.a + lot.len - a)
             return <Card key={i} path={wall.image} w={w} h={wall.height} p={at(sd * (front + 0.2), 0, a + w / 2)} rotY={faceRoad(sd)} />
           })}
-        {tree && lot.tree && <Card path={tree.image} w={tree.width} h={tree.height} p={at(sd * (front + 2.2 + lot.r), 0, cu)} cross />}
+        {tree && <Card path={tree.image} w={tree.width} h={tree.height} p={at(sd * (front + 2.2 + lot.r), 0, cu)} cross foliage={tree.foliage} />}
       </group>
     )
   }
@@ -83,4 +83,28 @@ export function PropView({ spot, half }: { spot: PropSpot; half: number }) {
     )
   }
   return <Card path={a.image} w={a.width} h={a.height} p={at(s, 0, spot.u)} rotY={faceRoad(spot.side)} cross={a.mode === 'cross'} double />
+}
+
+/** A curbside tree (sakura streets). */
+export function StreetTree({ side, u, half }: { side: number; u: number; half: number }) {
+  const a = propArt('sakura')
+  if (!a) return null
+  // at the back of the sidewalk, so the canopy arches over the pavement, not the road
+  return <Card path={a.image} w={a.width} h={a.height} p={at(side * (half + SIDEWALK - 0.4), CURB, u)} rotY={0.4 * side} cross foliage />
+}
+
+/** Fallen petals lying on the sidewalk or the road. */
+export function LitterView({ l }: { l: Litter }) {
+  const a = propArt('petals-ground')
+  if (!a) return null
+  return (
+    <mesh
+      geometry={FLAT}
+      material={decalPaintMat(a.image)}
+      position={at(l.s, l.onWalk ? CURB : 0, l.u)}
+      rotation={[0, l.rot, 0]}
+      scale={[l.size, 1, l.size]}
+      receiveShadow
+    />
+  )
 }

@@ -47,6 +47,14 @@ Anime background art, the look of the reference shots:
 
 Widths between 5 and 10 m work best (a block's frontage is about 20 to 28 m).
 
+## Lighting on painted art
+
+Painted art is lit by the scene through the same hard two-tone cel ramp as the 3D parts,
+so the golden-hour sun warms the facades that face it and cast shadows land on them.
+Paint it in neutral daylight colors and let the scene do the sunset. Mark trees and other
+foliage `"foliage": true`: they glow slightly with their own color, so they only dim in
+shade instead of turning purple.
+
 ## Props and obstacles
 
 Same rules: transparent PNG, drawn straight-on, ground line at the bottom.
@@ -57,6 +65,10 @@ Same rules: transparent PNG, drawn straight-on, ground line at the bottom.
 | `cross` | trees, post box                        | two crossed planes (reads from any angle) |
 | `box`   | vending machines                      | solid box with the image on the front (`depth`, `color`) |
 | `wall`  | the block-wall tile (3.2 m)           | repeated along empty frontage       |
+| `decal` | fallen petals (`petals-ground`)       | flat on the pavement or road, seen from above |
+
+`sakura` (a blooming tree) lines about half the streets and stands behind most block
+walls.
 
 Obstacles are **not** painted cards. They get jumped over and knocked flying, and flat
 cards looked like cardboard cut-outs tumbling. They are solid toon-shaded 3D shapes with

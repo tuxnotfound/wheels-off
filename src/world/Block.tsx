@@ -5,7 +5,7 @@ import { BOX, CYL, FLAT, PANEL } from '../look/geom'
 import { decalMat, lineMat, paintMat } from '../look/materials'
 import { roadTextTex, signTex } from '../look/textures'
 import { KeiTruck, M, StopSign, UtilityPole } from './parts'
-import { PaintedLot, PropView } from './painted'
+import { LitterView, PaintedLot, PropView, StreetTree } from './painted'
 import { ObstacleView } from './ObstacleView'
 import { blockObstacles, blockPlan, h, POLE_U } from './streetGen'
 import type { BlockPlan } from './streetGen'
@@ -22,7 +22,7 @@ export type BlockDesc = {
   u0: number
 }
 
-const ROAD = '#71898a'
+const ROAD = '#86959a'
 const WALK = '#c3cbc4'
 const PAINT = '#f1f1ea'
 const WIRE_Y = [7.45, 7.45, 6.9]
@@ -99,6 +99,8 @@ function Block({ seed, k, ix, iz, dir, width, u0 }: Omit<BlockDesc, 'key'>) {
   // painted buildings, walls, trees, and what stands on the sidewalk
   plan.lots.forEach((lot, i) => els.push(<PaintedLot key={`lot${i}`} lot={lot} half={half} />))
   plan.props.forEach((spot, i) => els.push(<PropView key={`prop${i}`} spot={spot} half={half} />))
+  plan.trees.forEach((t, i) => els.push(<StreetTree key={`tree${i}`} side={t.side} u={t.u} half={half} />))
+  plan.litter.forEach((l, i) => els.push(<LitterView key={`litter${i}`} l={l} />))
 
   // utility poles on one side, clear of openings
   const ps = plan.sides.find((x) => x.side === plan.poleSide)!
