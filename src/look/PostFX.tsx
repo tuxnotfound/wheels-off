@@ -65,7 +65,7 @@ const frag = /* glsl */ `
   }
 `
 
-export function PostFX({ barrel = 0.22, thickness = 1.6 }: { barrel?: number; thickness?: number }) {
+export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; thickness?: number }) {
   const gl = useThree((s) => s.gl)
   const size = useThree((s) => s.size)
   const dpr = useThree((s) => s.viewport.dpr)

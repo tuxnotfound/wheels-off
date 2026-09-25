@@ -149,7 +149,7 @@ function World() {
 }
 
 // Sun direction in world space (fixed, so each street faces it differently).
-const SUN = new THREE.Vector3(0.55, 1, 0.3).normalize()
+const SUN = new THREE.Vector3(0.75, 1.05, 0.4).normalize()
 const SHADOW_CENTER = new THREE.Vector3(0, 0, -16) // ahead of the camera, in view space
 
 /**
@@ -180,11 +180,11 @@ function Lights() {
   return (
     <>
       <primitive object={target} />
-      <ambientLight color="#b9cdf2" intensity={2.35} />
+      <ambientLight color="#a3b6ea" intensity={2.35} />
       <directionalLight
         ref={sun}
-        intensity={0.8}
-        color="#fff6e6"
+        intensity={1.3}
+        color="#ffeccc"
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-bias={-0.0004}
