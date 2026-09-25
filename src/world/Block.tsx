@@ -4,9 +4,10 @@ import * as THREE from 'three'
 import { BOX, CYL, FLAT, PANEL } from '../look/geom'
 import { decalMat, lineMat, paintMat } from '../look/materials'
 import { roadTextTex, signTex } from '../look/textures'
-import { KeiTruck, LotView, M, Mailbox, StopSign, UtilityPole } from './parts'
+import { KeiTruck, M, StopSign, UtilityPole } from './parts'
+import { PaintedLot, PropView } from './painted'
 import { ObstacleView } from './ObstacleView'
-import { blockObstacles, blockPlan, h } from './streetGen'
+import { blockObstacles, blockPlan, h, POLE_U } from './streetGen'
 import type { BlockPlan } from './streetGen'
 import { BLOCK, CURB, SIDEWALK } from './worldConfig'
 
@@ -24,7 +25,6 @@ export type BlockDesc = {
 const ROAD = '#71898a'
 const WALK = '#c3cbc4'
 const PAINT = '#f1f1ea'
-const POLES = [5, 21]
 const WIRE_Y = [7.45, 7.45, 6.9]
 const WIRE_S = [-0.72, 0.72, 0]
 
@@ -34,8 +34,8 @@ function useWires(plan: BlockPlan, half: number): THREE.LineSegments {
     const pts: number[] = []
     const s0 = plan.poleSide * (half + 0.4)
     const spans: [number, number][] = [
-      [POLES[0], POLES[1]],
-      [POLES[1], BLOCK + POLES[0]],
+      [POLE_U[0], POLE_U[1]],
+      [POLE_U[1], BLOCK + POLE_U[0]],
     ]
     for (const [a, b] of spans) {
       for (let w = 0; w < 3; w++) {
@@ -96,19 +96,19 @@ function Block({ seed, k, ix, iz, dir, width, u0 }: Omit<BlockDesc, 'key'>) {
     els.push(<StopSign key="stop" s={-(half + 0.7)} u={BLOCK - plan.crosswalk - 3.2} />)
   }
 
-  // buildings, walls, trees, shop fronts
-  plan.lots.forEach((lot, i) => els.push(<LotView key={`lot${i}`} lot={lot} half={half} />))
+  // painted buildings, walls, trees, and what stands on the sidewalk
+  plan.lots.forEach((lot, i) => els.push(<PaintedLot key={`lot${i}`} lot={lot} half={half} />))
+  plan.props.forEach((spot, i) => els.push(<PropView key={`prop${i}`} spot={spot} half={half} />))
 
   // utility poles on one side, clear of openings
   const ps = plan.sides.find((x) => x.side === plan.poleSide)!
-  POLES.forEach((u, i) => {
+  POLE_U.forEach((u, i) => {
     if (u < ps.walk.a + 0.6 || u > ps.walk.b - 0.6) return
     els.push(<UtilityPole key={`pole${i}`} s={plan.poleSide * (half + 0.4)} u={u} transformer={h(seed, k, 700 + i) > 0.6} />)
   })
   els.push(<primitive key="wires" object={wires} />)
 
   if (plan.truck) els.push(<KeiTruck key="truck" s={plan.truck.side * (half + 0.2)} u={plan.truck.u} />)
-  if (plan.mailbox) els.push(<Mailbox key="mail" s={plan.mailbox.side * (half + 0.55)} u={plan.mailbox.u} />)
 
   if (plan.overpass) {
     const uc = 16

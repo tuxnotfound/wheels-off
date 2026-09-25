@@ -1,6 +1,7 @@
 import { hash2 } from './hash'
-import { BAY_W, BLOCK, OBST_MAX, OBST_MIN, SIDEWALK } from './worldConfig'
-import type { FacadeStyle } from '../look/textures'
+import { BLOCK, OBST_MAX, OBST_MIN, SIDEWALK } from './worldConfig'
+import { art, propArt } from '../art/art'
+import type { BuildingArt } from '../art/art'
 
 // Seed-based, path-relative street generation. A "street" is identified by a seed;
 // everything about it (width, where it branches, its buildings, obstacles and the
@@ -99,46 +100,45 @@ export function blockObstacles(seed: number, k: number, width: number): Obstacle
 }
 
 // ---------- block plan (everything static in one block) ----------
-export type LotKind = 'apt' | 'house' | 'shop' | 'office' | 'wall'
-export type Lot = {
-  kind: LotKind
-  side: number
-  a: number // start u' within the block
-  len: number
-  depth: number
-  floors: number
-  wall: string
-  roof: string
-  style: FacadeStyle
-  r: number // spare randomness for details
-  r2: number
-  sign?: { word: string; color: string; vertical: boolean }
-  vending?: string
-  tank?: boolean
-}
+export type Lot =
+  | { kind: 'building'; side: number; a: number; len: number; art: BuildingArt }
+  | { kind: 'wall'; side: number; a: number; len: number; tree: boolean; r: number }
+export type PropSpot = { id: string; side: number; u: number }
 export type Segment = { a: number; b: number }
 export type BlockPlan = {
   roadFrom: number
   sides: { side: number; walk: Segment; gapStart: number; gapEnd: number }[]
   lots: Lot[]
+  props: PropSpot[]
   crosswalk: number | null // half-width of the crossing street ahead, or null
   stopText: boolean
   poleSide: number
   overpass: boolean
   truck: { side: number; u: number } | null
-  mailbox: { side: number; u: number } | null
 }
 
-const WALLS = ['#ece7d8', '#f1e6cf', '#e8bfb0', '#a9cbb8', '#8cc2b8', '#d8c7a6', '#cfd2c9', '#f3efe6', '#b8d3cf']
-const ROOFS = ['#6e5f5a', '#5e7b7a', '#9b5a4a', '#7a8a86', '#4f6664']
-const VENDING = ['#3f7fc4', '#d24a3c', '#e9ece6']
-const SIGN_WORDS = ['ラーメン', '喫茶', '薬局', '本屋', 'コンビニ', '花屋', 'パン', '銭湯', '床屋', 'たばこ', '食堂', '酒']
-const SIGN_COLORS = ['#e8b64a', '#d9533f', '#f3efe2', '#5aa6a0', '#e58da0', '#4b7fbf']
+export const POLE_U = [5, 21] // utility poles along the pole side of every block
+const SIDEWALK_PROPS = ['vending-blue', 'vending-red', 'postbox', 'bicycle', 'plants']
+
+/** A building whose art fits in the room left, starting from a hashed pick. */
+function fitBuilding(r: number, room: number): BuildingArt | null {
+  const list = art.buildings
+  if (!list.length) return null
+  const i0 = Math.floor(r * list.length)
+  for (let i = 0; i < list.length; i++) {
+    const b = list[(i0 + i) % list.length]
+    if (b.width <= room) return b
+  }
+  return null
+}
 
 export function blockPlan(seed: number, k: number, width: number, u0: number): BlockPlan {
   const roadFrom = k === 0 && u0 > 0 ? u0 : 0
+  const poleSide = h(seed, 0, 601) > 0.5 ? 1 : -1
   const sides: BlockPlan['sides'] = []
   const lots: Lot[] = []
+  const props: PropSpot[] = []
+  const propIds = SIDEWALK_PROPS.filter((id) => propArt(id))
   for (const side of [-1, 1]) {
     const gs = hasBranch(seed, k, side) ? widthForSeed(childSeed(seed, k, side)) / 2 : 0
     const ge = hasBranch(seed, k + 1, side) ? widthForSeed(childSeed(seed, k + 1, side)) / 2 : 0
@@ -152,67 +152,41 @@ export function blockPlan(seed: number, k: number, width: number, u0: number): B
     let u = la
     let i = 0
     while (u < lb - 1) {
-      const r = h(seed, k * 31 + i, side * 7 + 501)
-      const r2 = h(seed, k * 31 + i, side * 7 + 502)
-      let kind: LotKind = r < 0.3 ? 'house' : r < 0.55 ? 'apt' : r < 0.78 ? 'shop' : r < 0.88 ? 'office' : 'wall'
-      let bays = 2 + Math.floor(r2 * 2.5)
-      if (kind === 'office') bays += 1
-      let len = bays * BAY_W
-      if (u + len > lb) {
-        const fit = Math.floor((lb - u) / BAY_W)
-        if (fit >= 2) len = fit * BAY_W
-        else {
-          kind = 'wall'
-          len = lb - u
-        }
+      const r = (salt: number) => h(seed, k * 31 + i, side * 7 + salt)
+      const room = lb - u
+      const b = r(500) < 0.85 ? fitBuilding(r(501), room) : null
+      let len: number
+      if (b) {
+        len = b.width
+        lots.push({ kind: 'building', side, a: u, len, art: b })
+      } else {
+        // a stretch of block wall with a tree behind it fills what no building fits
+        len = Math.min(room, 3.2 * (1 + Math.floor(r(502) * 2)))
+        if (len >= 1) lots.push({ kind: 'wall', side, a: u, len, tree: r(503) > 0.35, r: r(504) })
       }
-      if (kind === 'wall') len = Math.min(len, lb - u)
-      const rf = h(seed, k * 31 + i, side * 7 + 503)
-      const floors =
-        kind === 'house' ? 2 : kind === 'shop' ? 2 + Math.floor(rf * 2) : kind === 'apt' ? 3 + Math.floor(rf * 3) : kind === 'office' ? 4 + Math.floor(rf * 3) : 0
-      const lot: Lot = {
-        kind,
-        side,
-        a: u,
-        len,
-        depth: (2 + Math.floor(rf * 2)) * BAY_W,
-        floors,
-        wall: pick(WALLS, h(seed, k * 31 + i, side * 7 + 504)),
-        roof: pick(ROOFS, h(seed, k * 31 + i, side * 7 + 505)),
-        style: kind === 'house' ? 'house' : kind === 'office' ? 'office' : kind === 'wall' ? 'block' : 'apt',
-        r: h(seed, k * 31 + i, side * 7 + 506),
-        r2: h(seed, k * 31 + i, side * 7 + 507),
+      // something on the sidewalk in front, clear of the poles
+      if (propIds.length && r(505) > 0.55 && len > 2) {
+        const pu = u + 0.8 + r(506) * (len - 1.6)
+        const nearPole = side === poleSide && POLE_U.some((p) => Math.abs(p - pu) < 1.4)
+        if (!nearPole) props.push({ id: pick(propIds, r(507)), side, u: pu })
       }
-      if (kind === 'shop') {
-        lot.sign = {
-          word: pick(SIGN_WORDS, lot.r),
-          color: pick(SIGN_COLORS, lot.r2),
-          vertical: lot.r2 > 0.55,
-        }
-      }
-      if ((kind === 'shop' || kind === 'wall' || kind === 'apt') && h(seed, k * 31 + i, side * 7 + 508) > 0.6 && len > 3) {
-        lot.vending = pick(VENDING, h(seed, k * 31 + i, side * 7 + 509))
-      }
-      if (kind === 'apt' || kind === 'office') lot.tank = h(seed, k * 31 + i, side * 7 + 510) > 0.55
-      lots.push(lot)
-      u += len + 0.3 + h(seed, k * 31 + i, side * 7 + 511) * 0.9
+      u += len + 0.25 + r(508) * 0.6
       i++
     }
   }
   const aheadL = hasBranch(seed, k + 1, -1) ? widthForSeed(childSeed(seed, k + 1, -1)) / 2 : 0
   const aheadR = hasBranch(seed, k + 1, 1) ? widthForSeed(childSeed(seed, k + 1, 1)) / 2 : 0
   const cross = Math.max(aheadL, aheadR)
-  const poleSide = h(seed, 0, 601) > 0.5 ? 1 : -1
   const truckR = h(seed, k, 611)
   return {
     roadFrom,
     sides,
     lots,
+    props,
     crosswalk: cross > 0 ? cross : null,
     stopText: cross > 0 && h(seed, k, 602) > 0.55,
     poleSide,
     overpass: width >= 6 && h(seed, k, 603) > 0.86,
     truck: width >= 7 && truckR > 0.6 ? { side: -poleSide, u: 11 + h(seed, k, 612) * 8 } : null,
-    mailbox: h(seed, k, 621) > 0.7 ? { side: h(seed, k, 622) > 0.5 ? 1 : -1, u: 9 + h(seed, k, 623) * 12 } : null,
   }
 }

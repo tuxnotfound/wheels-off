@@ -7,8 +7,6 @@ export const BRANCH_DEPTH = 2 // blocks of a side-street rendered before you tak
 export const TURN_R = 6 // centerline radius of the arc carved through an intersection
 export const SIDEWALK = 2.2 // sidewalk width
 export const CURB = 0.16 // sidewalk height
-export const FLOOR_H = 3 // storey height (facade tile height)
-export const BAY_W = 3.2 // window bay width (facade tile width)
 // Obstacles only live in the straight middle of a block, clear of the turn arcs.
 export const OBST_MIN = TURN_R + 4
 export const OBST_MAX = BLOCK - TURN_R - 4

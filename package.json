@@ -13,6 +13,7 @@
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
+    "@pixiv/three-vrm": "3.5.5",
     "@react-three/drei": "10.7.7",
     "@react-three/fiber": "9.6.1",
     "@rive-app/react-canvas": "4.29.1",

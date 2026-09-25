@@ -53,7 +53,7 @@ const frag = /* glsl */ `
     float g = abs(lum(cl) - lum(cr)) + abs(lum(cd) - lum(cu));
     float colorEdge = smoothstep(0.32, 0.5, g) * solid;
 
-    float ink = max(depthEdge, colorEdge * 0.75);
+    float ink = max(depthEdge, colorEdge * 0.35);
     // thin the ink out in the distance so far blocks don't turn to scribble
     ink *= 1.0 - smoothstep(55.0, 110.0, 1.0 / nearest);
     col = mix(col, uInk, ink * 0.9);

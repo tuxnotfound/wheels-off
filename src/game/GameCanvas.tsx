@@ -180,10 +180,10 @@ function Lights() {
   return (
     <>
       <primitive object={target} />
-      <ambientLight color="#a3b6ea" intensity={2.35} />
+      <ambientLight color="#b4c4e6" intensity={2.4} />
       <directionalLight
         ref={sun}
-        intensity={1.3}
+        intensity={1.1}
         color="#ffeccc"
         castShadow
         shadow-mapSize={[2048, 2048]}

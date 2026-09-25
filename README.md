@@ -1,9 +1,10 @@
 # Wheels Off: skate slice
 
-A zero-asset Three.js + react-three-fiber skateboarding game in a hand-drawn anime look:
-a kid skates through an endless small Japanese town, carving down streets, taking corners
-and ollieing over road junk. No models, textures or HDRIs. Everything is procedural, and
-it runs on `npm run dev`.
+A Three.js + react-three-fiber skateboarding game in an anime look: a kid skates through
+an endless small Japanese town, carving down streets, taking corners and ollieing over
+road junk. The town is painted 2D art (facades, props, obstacles) mapped onto simple 3D
+shapes, and the character is a VRM model (VRoid Studio). The art in the repo is generated
+placeholder art. **See [ART.md](ART.md) for how to replace it and add a character.**
 
 ## Controls
 
@@ -22,25 +23,34 @@ it runs on `npm run dev`.
 - **`src/game/GameCanvas.tsx`**: canvas, lights, and a camera anchor that trails the skater's
   position and heading on damped springs. The world is moved and rotated so the anchor sits
   at the origin, and the chase camera widens with speed and rolls into carves.
+- **`src/art/art.ts`**: the art pipeline. It loads `public/art/manifest.json`, preloads
+  every image before the game boots, and provides unlit painted materials (the art carries
+  its own shading) plus a shadow-pass material that respects cut-out silhouettes.
 - **`src/world/streetGen.ts`**: the town as a deterministic function of street seeds:
-  side-streets, lots (houses, apartments, shops, offices, block walls), props, obstacles,
-  street names.
-- **`src/world/Block.tsx`, `parts.tsx`, `ObstacleView.tsx`**: one memoized component per
-  street block (keyed `seed:k`). Only new blocks mount and nothing re-renders, and every
-  mesh shares unit geometries and cached materials.
+  side-streets, lots picked from the building art that fits, walls and trees for the gaps,
+  sidewalk props, obstacles, street names.
+- **`src/world/Block.tsx`, `painted.tsx`, `parts.tsx`, `ObstacleView.tsx`**: one memoized
+  component per street block (keyed `seed:k`). Only new blocks mount and nothing
+  re-renders. Each building is its painted front as a cut-out card plus a plain 3D body
+  behind it. Props and obstacles are cards or crossed cards. Road, sidewalks, paint, poles
+  and wires stay 3D.
 - **`src/look/`**: the look.
   - Cel shading: `gradientMap.ts` is a hard two-tone ramp (lit or shade, no gradient).
     Shade gets no direct light, so a cool tinted ambient alone colors it. One sun casts
     shadows, and its shadow frustum follows the view (`Lights` in `GameCanvas.tsx`).
   - `materials.ts` holds the toon materials plus a vertex patch that bends the world into a
-    small planet. `curvedDepth` applies the same bend in the shadow pass. Facade UVs come from the scaled object position, so one unit box tiles
-    windows at a fixed world size.
-  - `textures.ts` draws the facades, signs, 止まれ road text and vending machines on canvas.
+    small planet. `curvedDepth` applies the same bend in the shadow pass.
+  - `textures.ts` draws the 止まれ road text and overpass sign on canvas.
   - `Sky.tsx` is the painted sky.
   - `PostFX.tsx` is one full-screen pass for the fisheye lens, the ink lines (from depth
     discontinuities and color steps) and the vignette.
-- **`src/player/Skater.tsx`**: the procedural kid. Sideways stance, push cycle, carve lean,
-  ollie tuck and board pop, landing squash, wipeout wobble.
+- **`src/player/`**: the skater.
+  - `pose.ts` turns the sim into one pose per frame (sideways stance, push cycle, carve
+    lean, ollie tuck and board pop, landing squash, wipeout wobble).
+  - `Skater.tsx` places the board and hands the pose to a rider.
+  - `VrmRider.tsx` retargets the pose onto a VRM's humanoid bones and runs its spring
+    bones. `ProceduralRider.tsx` is the code-built fallback kid.
+- **`scripts/make-placeholders.mjs`**: regenerates the placeholder SVG art and manifest.
 
 ## Run
 
@@ -58,6 +68,7 @@ npm run build       # tsc -b && vite build
 ```
 
 In dev, `window.__sim` exposes the live sim state for poking at from the console.
+Open `/?vrm=<file under public/art/>` to try a VRM character without editing the manifest.
 
 ## Gotchas worth knowing
 
@@ -68,6 +79,9 @@ In dev, `window.__sim` exposes the live sim state for poking at from the console
 - Long flat meshes must be tessellated or the curvature patch leaves them as straight chords.
   An untessellated road sags below the ground plane and the ground pokes through.
 - The canvas is `flat` (no tone mapping): ACES washes out the flat anime palette.
+- Riders bind their pose function in a `useLayoutEffect`. React detaches refs during the
+  commit, but passive effect cleanups run later, so a frame can land in between and call
+  an unmounted rider's apply.
 - Every shadow caster needs `customDepthMaterial = curvedDepth`. The stock depth material
   renders the world unbent, and shadows then slide away from their objects with distance.
 
