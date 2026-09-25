@@ -20,6 +20,12 @@ export const AD_SIZE: Record<AdFormat, [number, number]> = {
   van: [2.5, 1.0],
 }
 
+/** Billboards turn this far (radians) from facing along the street, toward the road. */
+export const BILLBOARD_YAW = 0.5
+/** Billboard frame width (face + frame) and how deep its back braces reach behind the face. */
+export const BILLBOARD_FRAME_W = 9.9
+export const BILLBOARD_BRACE = 1.3
+
 export type Creative = {
   id: string
   advertiser: string

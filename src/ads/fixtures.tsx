@@ -4,7 +4,7 @@ import type * as THREE from 'three'
 import { CYL } from '../look/geom'
 import { M } from '../world/parts'
 import { AdSlot } from './AdSlot'
-import { AD_SIZE } from './ads'
+import { AD_SIZE, BILLBOARD_YAW } from './ads'
 
 // The physical structures that carry ads. All in block-local coords: +x is the right
 // of the street, -z is forward (u grows), so a face with +Z normal faces oncoming riders.
@@ -23,7 +23,7 @@ export function RooftopBillboard({ s, u, roofY, side, r, slot, scale }: { s: num
   const [w, h] = AD_SIZE.billboard
   const legH = 0.8
   return (
-    <group position={at(s, roofY, u)} rotation={[0, -side * 0.5, 0]} scale={scale}>
+    <group position={at(s, roofY, u)} rotation={[0, -side * BILLBOARD_YAW, 0]} scale={scale}>
       {[-w * 0.36, 0, w * 0.36].map((x) => (
         <group key={x}>
           <M c={STEEL} p={[x, legH / 2, -0.3]} s={[0.16, legH, 0.16]} />

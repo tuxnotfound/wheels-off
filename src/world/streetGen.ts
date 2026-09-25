@@ -1,6 +1,7 @@
 import { hash2 } from './hash'
 import { BLOCK, OBST_MAX, OBST_MIN, SIDEWALK } from './worldConfig'
 import { art, propArt } from '../art/art'
+import { BILLBOARD_BRACE, BILLBOARD_FRAME_W, BILLBOARD_YAW } from '../ads/ads'
 import type { BuildingArt } from '../art/art'
 import type { TreeKind } from './Tree3D'
 import { VEHICLE_LEN } from './vehicles'
@@ -144,6 +145,29 @@ function weighted<T>(list: [T, number][], r: number): T {
 }
 const SHOP_FRONT = /^(shop|konbini|shokudo)/
 
+/**
+ * A billboard's footprint at scale 1 around its anchor, as lateral distance from the road
+ * (lat, positive away from it) and distance along the street (u). Its local X runs along
+ * the face, local Z from the back braces (-BRACE) to the front of the catwalk (+0.45).
+ */
+function billboardFootprint(side: number) {
+  const yaw = -side * BILLBOARD_YAW
+  const c = Math.cos(yaw)
+  const sn = Math.sin(yaw)
+  let latMin = Infinity, latMax = -Infinity, uMin = Infinity, uMax = -Infinity
+  for (const x of [-BILLBOARD_FRAME_W / 2, BILLBOARD_FRAME_W / 2]) {
+    for (const z of [-BILLBOARD_BRACE, 0.45]) {
+      const lat = side * (x * c + z * sn)
+      const u = -(-x * sn + z * c) // world z = -u
+      latMin = Math.min(latMin, lat)
+      latMax = Math.max(latMax, lat)
+      uMin = Math.min(uMin, u)
+      uMax = Math.max(uMax, u)
+    }
+  }
+  return { latMin, latMax, uMin, uMax }
+}
+
 export const POLE_U = [5, 21] // utility poles along the pole side of every block
 // (a flat bicycle card reads as a spider edge-on, so it isn't placed until it has real depth)
 const SIDEWALK_PROPS = ['vending-blue', 'vending-red', 'postbox', 'plants']
@@ -260,8 +284,14 @@ function makePlan(seed: number, k: number, width: number, u0: number): BlockPlan
         lots.push({ kind: 'building', side, a: u, len, art: b })
         // a billboard at the street edge of a low flat roof (3 storeys at most), where
         // riders can actually read it: tall roofs put it above the top of the frame
+        // It faces oncoming riders, so its width runs across the lot (from the facade toward
+        // the back), turned toward the road. Size and place it from its turned footprint so
+        // all of it (face, legs, braces, catwalk) stands on this roof.
         if (b.roofShape !== 'gable' && b.bodyHeight <= 9.5 && len >= 6.4) {
-          billboardSpots.push({ s: side * (front + 1.3), u: u + len / 2, roofY: b.bodyHeight, side, r: r(521), scale: Math.min(1, (len + 0.6) / 9.6) })
+          const f = billboardFootprint(side)
+          const scale = Math.min(1, (len - 0.6) / (f.uMax - f.uMin), (b.depth - 0.8) / (f.latMax - f.latMin))
+          const back = 0.4 - f.latMin * scale // nearest point 0.4 m behind the facade line
+          billboardSpots.push({ s: side * (front + back), u: u + len / 2 - ((f.uMax + f.uMin) / 2) * scale, roofY: b.bodyHeight, side, r: r(521), scale })
         }
         // nobori flags out in front of shops
         if (SHOP_FRONT.test(b.id) && r(522) > 0.3) {
