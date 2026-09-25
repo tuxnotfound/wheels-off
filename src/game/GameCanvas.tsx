@@ -228,7 +228,7 @@ export default function GameCanvas() {
       shadows="percentage"
       gl={{ antialias: false }}
       camera={{ fov: 74, near: 0.3, far: 420, position: [0, 3.0, 7.6] }}
-      dpr={[1, 1.75]}
+      dpr={[1, 2]}
     >
       <fog attach="fog" args={[FOG.color, FOG.near, FOG.far]} />
       <Lights />
