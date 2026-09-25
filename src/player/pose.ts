@@ -53,7 +53,10 @@ export function stepPose(st: PoseState, dt: number): Pose {
   st.bend = damp(st.bend, bend, sim.grounded ? 16 : 10, dt)
 
   // pushing: square up, kick the back foot along the ground
-  st.push = damp(st.push, sim.pushing ? 1 : 0, 6, dt)
+  // Start every push from the top of the kick, so a single coasting push reads as one clean
+  // stroke rather than whatever phase the last one happened to stop at. Quick in, slow out.
+  if (sim.pushing && st.push < 0.05) st.pushPhase = 0
+  st.push = damp(st.push, sim.pushing ? 1 : 0, sim.pushing ? 12 : 6, dt)
   if (st.push > 0.01) st.pushPhase += dt * 1.5
   const ph = Math.sin(st.pushPhase * Math.PI * 2)
   const b = st.bend

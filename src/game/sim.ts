@@ -41,6 +41,11 @@ const BOARD_HALF = 0.45
 const BODY_HALF = 0.3
 const BAIL_TIME = 0.9
 
+// One coasting push lasts about one kick cycle, with an uneven gap between them so the
+// rhythm never reads as a metronome.
+const IDLE_PUSH = 0.75
+const idleGap = () => 2.6 + Math.random() * 3.0
+
 const damp = (a: number, b: number, lambda: number, dt: number) => a + (b - a) * (1 - Math.exp(-lambda * dt))
 
 const START: Street = { seed: 1, ox: 0, oz: 0, dir: 0, width: widthForSeed(1), minK: -1, u0: 0 }
@@ -67,6 +72,8 @@ export const sim = {
   heading: 0,
   turnRate: 0, // signed yaw rate along the path (rad/s), for leaning
   pushing: false,
+  idlePushT: -10, // time the current coasting push started
+  nextIdleT: 2.5, // time the next one is due
   // scoring
   score: 0,
   combo: 0,
@@ -150,7 +157,19 @@ export function stepSim(dtRaw: number) {
     if (bailing) target = MIN_SPEED
     const rate = target > sim.speed ? (sim.grounded ? 0.9 : 0) : input.z < 0 ? 2.2 : 0.5
     sim.speed = damp(sim.speed, target, rate, dt)
-    sim.pushing = sim.grounded && !bailing && (input.z > 0 || sim.speed < CRUISE - 1.5)
+    // Coasting: a real skater tops the speed up every few seconds instead of gliding
+    // forever on one kick. Purely cosmetic (cruise holds itself), but without it the
+    // rider is frozen mid-glide whenever no key is down.
+    const coasting = sim.grounded && !bailing && input.z === 0
+    if (!coasting) {
+      sim.idlePushT = -10
+      sim.nextIdleT = sim.time + idleGap()
+    } else if (sim.time >= sim.nextIdleT) {
+      sim.idlePushT = sim.time
+      sim.nextIdleT = sim.time + IDLE_PUSH + idleGap()
+    }
+    const idlePush = sim.time - sim.idlePushT < IDLE_PUSH
+    sim.pushing = sim.grounded && !bailing && (input.z > 0 || sim.speed < CRUISE - 1.5 || idlePush)
   }
 
   // --- lateral carve, softly held inside the lane ---

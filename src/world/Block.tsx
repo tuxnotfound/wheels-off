@@ -4,7 +4,9 @@ import * as THREE from 'three'
 import { BOX, CYL, FLAT, PANEL } from '../look/geom'
 import { decalMat, lineMat, paintMat } from '../look/materials'
 import { roadTextTex, signTex } from '../look/textures'
-import { KeiTruck, M, StopSign, UtilityPole } from './parts'
+import { M, StopSign, UtilityPole } from './parts'
+import { Vehicle } from './vehicles'
+import { Nobori, RooftopBillboard, StreetBanner, WallPoster } from '../ads/fixtures'
 import { LitterView, PaintedLot, PropView, StreetTree } from './painted'
 import { ObstacleView } from './ObstacleView'
 import { blockObstacles, blockPlan, h, POLE_U } from './streetGen'
@@ -110,7 +112,13 @@ function Block({ seed, k, ix, iz, dir, width, u0 }: Omit<BlockDesc, 'key'>) {
   })
   els.push(<primitive key="wires" object={wires} />)
 
-  if (plan.truck) els.push(<KeiTruck key="truck" s={plan.truck.side * (half + 0.2)} u={plan.truck.u} />)
+  // parked vehicles and bikes, and the ad fixtures (slot ids are stable per block)
+  const id = `${seed}:${k}`
+  plan.vehicles.forEach((v, i) => els.push(<Vehicle key={`veh${i}`} spot={v} slot={`${id}:van${i}`} />))
+  plan.billboards.forEach((b, i) => els.push(<RooftopBillboard key={`bb${i}`} {...b} slot={`${id}:billboard${i}`} />))
+  if (plan.banner) els.push(<StreetBanner key="banner" u={plan.banner.u} half={half} r={plan.banner.r} slot={`${id}:banner`} />)
+  plan.nobori.forEach((n, i) => els.push(<Nobori key={`nobori${i}`} {...n} slot={`${id}:nobori${i}`} />))
+  plan.posters.forEach((p, i) => els.push(<WallPoster key={`poster${i}`} {...p} slot={`${id}:poster${i}`} />))
 
   if (plan.overpass) {
     const uc = 16

@@ -1,0 +1,166 @@
+{
+  "note": "Placeholder campaign from scripts/make-ads.mjs. All brands are fictional. See ADS.md.",
+  "creatives": [
+    {
+      "id": "billboard-sakura-soda",
+      "advertiser": "Sakura Soda (fictional)",
+      "format": "billboard",
+      "image": "ads/billboard-sakura-soda.svg",
+      "weight": 1
+    },
+    {
+      "id": "billboard-kumo-coffee",
+      "advertiser": "Kumo Coffee (fictional)",
+      "format": "billboard",
+      "image": "ads/billboard-kumo-coffee.svg",
+      "weight": 1
+    },
+    {
+      "id": "billboard-wheels-off-skate",
+      "advertiser": "Wheels Off (house ad)",
+      "format": "billboard",
+      "image": "ads/billboard-wheels-off-skate.svg",
+      "weight": 1
+    },
+    {
+      "id": "billboard-ad-space",
+      "advertiser": "Available",
+      "format": "billboard",
+      "image": "ads/billboard-ad-space.svg",
+      "weight": 0.6
+    },
+    {
+      "id": "banner-haru-matsuri",
+      "advertiser": "Town festival (house ad)",
+      "format": "banner",
+      "image": "ads/banner-haru-matsuri.svg",
+      "weight": 1
+    },
+    {
+      "id": "banner-sakura-soda",
+      "advertiser": "Sakura Soda (fictional)",
+      "format": "banner",
+      "image": "ads/banner-sakura-soda.svg",
+      "weight": 1
+    },
+    {
+      "id": "banner-spring-sale",
+      "advertiser": "Shotengai sale (house ad)",
+      "format": "banner",
+      "image": "ads/banner-spring-sale.svg",
+      "weight": 1
+    },
+    {
+      "id": "banner-ad-space",
+      "advertiser": "Available",
+      "format": "banner",
+      "image": "ads/banner-ad-space.svg",
+      "weight": 0.6
+    },
+    {
+      "id": "poster-nekomi-ramen",
+      "advertiser": "Nekomi Ramen (fictional)",
+      "format": "poster",
+      "image": "ads/poster-nekomi-ramen.svg",
+      "weight": 1
+    },
+    {
+      "id": "poster-kumo-coffee",
+      "advertiser": "Kumo Coffee (fictional)",
+      "format": "poster",
+      "image": "ads/poster-kumo-coffee.svg",
+      "weight": 1
+    },
+    {
+      "id": "poster-wheels-off-skate",
+      "advertiser": "Wheels Off (house ad)",
+      "format": "poster",
+      "image": "ads/poster-wheels-off-skate.svg",
+      "weight": 1
+    },
+    {
+      "id": "poster-sakura-soda",
+      "advertiser": "Sakura Soda (fictional)",
+      "format": "poster",
+      "image": "ads/poster-sakura-soda.svg",
+      "weight": 1
+    },
+    {
+      "id": "poster-haru-matsuri",
+      "advertiser": "Town festival (house ad)",
+      "format": "poster",
+      "image": "ads/poster-haru-matsuri.svg",
+      "weight": 1
+    },
+    {
+      "id": "poster-ad-space",
+      "advertiser": "Available",
+      "format": "poster",
+      "image": "ads/poster-ad-space.svg",
+      "weight": 0.6
+    },
+    {
+      "id": "nobori-nekomi-ramen",
+      "advertiser": "Nekomi Ramen (fictional)",
+      "format": "nobori",
+      "image": "ads/nobori-nekomi-ramen.svg",
+      "weight": 1
+    },
+    {
+      "id": "nobori-sakura-soda",
+      "advertiser": "Sakura Soda (fictional)",
+      "format": "nobori",
+      "image": "ads/nobori-sakura-soda.svg",
+      "weight": 1
+    },
+    {
+      "id": "nobori-kumo-coffee",
+      "advertiser": "Kumo Coffee (fictional)",
+      "format": "nobori",
+      "image": "ads/nobori-kumo-coffee.svg",
+      "weight": 1
+    },
+    {
+      "id": "nobori-spring-sale",
+      "advertiser": "Shotengai sale (house ad)",
+      "format": "nobori",
+      "image": "ads/nobori-spring-sale.svg",
+      "weight": 1
+    },
+    {
+      "id": "nobori-ad-space",
+      "advertiser": "Available",
+      "format": "nobori",
+      "image": "ads/nobori-ad-space.svg",
+      "weight": 0.6
+    },
+    {
+      "id": "van-sakura-soda",
+      "advertiser": "Sakura Soda (fictional)",
+      "format": "van",
+      "image": "ads/van-sakura-soda.svg",
+      "weight": 1
+    },
+    {
+      "id": "van-nekomi-ramen",
+      "advertiser": "Nekomi Ramen (fictional)",
+      "format": "van",
+      "image": "ads/van-nekomi-ramen.svg",
+      "weight": 1
+    },
+    {
+      "id": "van-kumo-coffee",
+      "advertiser": "Kumo Coffee (fictional)",
+      "format": "van",
+      "image": "ads/van-kumo-coffee.svg",
+      "weight": 1
+    },
+    {
+      "id": "van-wheels-off-skate",
+      "advertiser": "Wheels Off (house ad)",
+      "format": "van",
+      "image": "ads/van-wheels-off-skate.svg",
+      "weight": 1
+    }
+  ]
+}

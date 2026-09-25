@@ -3,6 +3,8 @@ import { BLOCK, OBST_MAX, OBST_MIN, SIDEWALK } from './worldConfig'
 import { art, propArt } from '../art/art'
 import type { BuildingArt } from '../art/art'
 import type { TreeKind } from './Tree3D'
+import { VEHICLE_LEN } from './vehicles'
+import type { VehicleKind } from './vehicles'
 
 // Seed-based, path-relative street generation. A "street" is identified by a seed;
 // everything about it (width, where it branches, its buildings, obstacles and the
@@ -119,8 +121,28 @@ export type BlockPlan = {
   stopText: boolean
   poleSide: number
   overpass: boolean
-  truck: { side: number; u: number } | null
+  vehicles: VehicleSpot[]
+  billboards: { s: number; u: number; roofY: number; side: number; r: number }[]
+  banner: { u: number; r: number } | null // strung across the street
+  nobori: { s: number; u: number; side: number; r: number }[]
+  posters: { s: number; u: number; side: number; r: number }[]
 }
+export type VehicleSpot = { kind: VehicleKind; side: number; s: number; u: number; r: number; flip: boolean; curb: boolean }
+
+const ROAD_VEHICLES: [VehicleKind, number][] = [
+  ['kei-car', 0.45],
+  ['kei-truck', 0.3],
+  ['van', 0.25],
+]
+function weighted<T>(list: [T, number][], r: number): T {
+  let x = r
+  for (const [v, w] of list) {
+    x -= w
+    if (x < 0) return v
+  }
+  return list[list.length - 1][0]
+}
+const SHOP_FRONT = /^(shop|konbini|shokudo)/
 
 export const POLE_U = [5, 21] // utility poles along the pole side of every block
 // (a flat bicycle card reads as a spider edge-on, so it isn't placed until it has real depth)
@@ -139,6 +161,17 @@ function fitBuilding(r: number, room: number): BuildingArt | null {
 }
 
 export function blockPlan(seed: number, k: number, width: number, u0: number): BlockPlan {
+  const key = `${seed}:${k}:${width}:${u0}`
+  const hit = planCache.get(key)
+  if (hit) return hit
+  const plan = makePlan(seed, k, width, u0)
+  if (planCache.size > 400) planCache.clear()
+  planCache.set(key, plan)
+  return plan
+}
+const planCache = new Map<string, BlockPlan>()
+
+function makePlan(seed: number, k: number, width: number, u0: number): BlockPlan {
   const roadFrom = k === 0 && u0 > 0 ? u0 : 0
   const poleSide = h(seed, 0, 601) > 0.5 ? 1 : -1
   const sides: BlockPlan['sides'] = []
@@ -146,8 +179,37 @@ export function blockPlan(seed: number, k: number, width: number, u0: number): B
   const props: PropSpot[] = []
   const trees: BlockPlan['trees'] = []
   const litter: Litter[] = []
+  const vehicles: VehicleSpot[] = []
+  const billboards: BlockPlan['billboards'] = []
+  const nobori: BlockPlan['nobori'] = []
+  const posters: BlockPlan['posters'] = []
   const propIds = SIDEWALK_PROPS.filter((id) => propArt(id))
   const half = width / 2
+  const front = half + SIDEWALK + 0.3 // where facades stand
+
+  const aheadL = hasBranch(seed, k + 1, -1) ? widthForSeed(childSeed(seed, k + 1, -1)) / 2 : 0
+  const aheadR = hasBranch(seed, k + 1, 1) ? widthForSeed(childSeed(seed, k + 1, 1)) / 2 : 0
+  const cross = Math.max(aheadL, aheadR)
+  const overpass = width >= 6 && h(seed, k, 603) > 0.86
+
+  // what already stands on each sidewalk, as [from, to] spans along u, so nothing overlaps
+  const taken: Record<number, [number, number][]> = { [-1]: [], [1]: [] }
+  const free = (side: number, a: number, b: number) => taken[side].every(([x, y]) => b < x || a > y)
+  const take = (side: number, a: number, b: number) => taken[side].push([a, b])
+  for (const p of POLE_U) take(poleSide, p - 0.7, p + 0.7)
+  if (cross) take(-1, BLOCK - cross - 4, BLOCK)
+  if (overpass) take(-poleSide, 9.5, 18.5)
+
+  // a banner strung over the street now and then (never under the footbridge)
+  let banner: BlockPlan['banner'] = null
+  if (!overpass && width >= 6 && h(seed, k, 800) > 0.7) {
+    const bu = 9 + h(seed, k, 801) * 8
+    if (free(-1, bu - 0.6, bu + 0.6) && free(1, bu - 0.6, bu + 0.6)) {
+      banner = { u: bu, r: h(seed, k, 802) }
+      take(-1, bu - 0.6, bu + 0.6)
+      take(1, bu - 0.6, bu + 0.6)
+    }
+  }
 
   for (const side of [-1, 1]) {
     const gs = hasBranch(seed, k, side) ? widthForSeed(childSeed(seed, k, side)) / 2 : 0
@@ -156,15 +218,30 @@ export function blockPlan(seed: number, k: number, width: number, u0: number): B
     const start = roadFrom > 0 ? roadFrom : gs
     const walk = { a: start, b: BLOCK - ge }
     sides.push({ side, walk, gapStart: gs, gapEnd: ge })
-    // now and then a single tree at the back of the sidewalk, clear of the poles
+    // now and then a single tree at the back of the sidewalk
     if (h(seed, k, side + 700) > 0.85) {
       const tu = 8 + h(seed, k, side + 701) * 16
-      const nearPole = side === poleSide && POLE_U.some((p) => Math.abs(p - tu) < 2.5)
-      if (!nearPole && tu > walk.a + 3 && tu < walk.b - 3) {
+      if (free(side, tu - 1.5, tu + 1.5) && tu > walk.a + 3 && tu < walk.b - 3) {
+        take(side, tu - 1.5, tu + 1.5)
         trees.push({ side, u: tu, kind: h(seed, k, side + 702) < 0.85 ? 'sakura' : 'green', r: h(seed, k, side + 703) })
         // petals fallen under it, on the pavement and spilling onto the road
         litter.push({ s: side * (half + SIDEWALK / 2), u: tu + 0.6, onWalk: true, rot: h(seed, k, side + 710) * 6.28, size: 2.6 })
         litter.push({ s: side * (half - 0.9), u: tu + 1.2, onWalk: false, rot: h(seed, k, side + 711) * 6.28, size: 2.2 })
+      }
+    }
+    // parked cars, half up on the curb on the side without poles
+    if (side === -poleSide && width >= 6) {
+      const n = width >= 7 ? Math.floor(h(seed, k, side + 810) * 2.6) : h(seed, k, side + 810) > 0.65 ? 1 : 0
+      for (let i = 0; i < n; i++) {
+        const kind = weighted(ROAD_VEHICLES, h(seed, k * 5 + i, side + 811))
+        const len = VEHICLE_LEN[kind]
+        const hiEnd = Math.min(walk.b - 1.5, cross ? BLOCK - cross - 4 : BLOCK) - len / 2
+        const lo = walk.a + 1.5 + len / 2
+        if (hiEnd <= lo) break
+        const vu = lo + h(seed, k * 5 + i, side + 812) * (hiEnd - lo)
+        if (!free(side, vu - len / 2 - 0.5, vu + len / 2 + 0.5)) continue
+        take(side, vu - len / 2 - 0.5, vu + len / 2 + 0.5)
+        vehicles.push({ kind, side, s: side * (half + 0.35), u: vu, r: h(seed, k * 5 + i, side + 813), flip: h(seed, k * 5 + i, side + 814) > 0.6, curb: true })
       }
     }
     // buildings keep clear of the corner sidewalks
@@ -180,19 +257,49 @@ export function blockPlan(seed: number, k: number, width: number, u0: number): B
       if (b) {
         len = b.width
         lots.push({ kind: 'building', side, a: u, len, art: b })
+        // a billboard on a tall flat roof
+        if (b.roofShape !== 'gable' && b.bodyHeight >= 9 && len >= 6.4 && r(520) > 0.55) {
+          billboards.push({ s: side * (front + b.depth * 0.55), u: u + len / 2, roofY: b.bodyHeight, side, r: r(521) })
+        }
+        // nobori flags out in front of shops
+        if (SHOP_FRONT.test(b.id) && r(522) > 0.3) {
+          const count = 2 + (r(523) > 0.5 ? 1 : 0)
+          for (let j = 0; j < count; j++) {
+            const nu = u + 0.7 + j * 1.2
+            if (nu > u + len - 0.4 || !free(side, nu - 0.4, nu + 0.4)) continue
+            take(side, nu - 0.4, nu + 0.4)
+            nobori.push({ s: side * (half + 0.35), u: nu, side, r: h(seed, k * 31 + i * 3 + j, side + 830) })
+          }
+        }
+        // a scooter or a bicycle left outside
+        if (r(524) > 0.7) {
+          const bu = u + len - 1.3
+          if (free(side, bu - 1, bu + 1)) {
+            take(side, bu - 1, bu + 1)
+            vehicles.push({ kind: r(525) < 0.45 ? 'scooter' : 'bicycle', side, s: side * (half + 0.95), u: bu, r: r(526), flip: r(527) > 0.5, curb: false })
+          }
+        }
       } else {
-        // a stretch of block wall with a tree behind it fills what no building fits
+        // a stretch of block wall fills what no building fits
         len = Math.min(room, 3.2 * (1 + Math.floor(r(502) * 2)))
         // sometimes a garden tree behind the wall, usually a sakura
         const tree: TreeKind | null = r(503) > 0.86 ? (r(509) < 0.75 ? 'sakura' : 'green') : null
         if (len >= 1) lots.push({ kind: 'wall', side, a: u, len, tree, r: r(504) })
+        // posters pasted on the wall, one per tile
+        if (len >= 3.2 && r(528) > 0.4) {
+          const tiles = Math.min(2, Math.floor(len / 3.2))
+          for (let j = 0; j < tiles; j++) {
+            posters.push({ s: side * (front + 0.2 - 0.185), u: u + 1.6 + j * 3.2, side, r: h(seed, k * 31 + i * 3 + j, side + 840) })
+          }
+        }
       }
-      // something on the sidewalk in front, clear of the poles
+      // something on the sidewalk in front
       if (propIds.length && r(505) > 0.55 && len > 2) {
         const pu = u + 0.8 + r(506) * (len - 1.6)
-        const nearPole = side === poleSide && POLE_U.some((p) => Math.abs(p - pu) < 1.4)
-        const nearTree = trees.some((t) => t.side === side && Math.abs(t.u - pu) < 2)
-        if (!nearPole && !nearTree) props.push({ id: pick(propIds, r(507)), side, u: pu })
+        if (free(side, pu - 0.7, pu + 0.7)) {
+          take(side, pu - 0.7, pu + 0.7)
+          props.push({ id: pick(propIds, r(507)), side, u: pu })
+        }
       }
       u += len + 0.25 + r(508) * 0.6
       i++
@@ -204,10 +311,6 @@ export function blockPlan(seed: number, k: number, width: number, u0: number): B
       litter.push({ s: (h(seed, k, 730 + i) * 2 - 1) * (half - 0.6), u: lu, onWalk: false, rot: h(seed, k, 740 + i) * 6.28, size: 1.4 + h(seed, k, 750 + i) })
     }
   }
-  const aheadL = hasBranch(seed, k + 1, -1) ? widthForSeed(childSeed(seed, k + 1, -1)) / 2 : 0
-  const aheadR = hasBranch(seed, k + 1, 1) ? widthForSeed(childSeed(seed, k + 1, 1)) / 2 : 0
-  const cross = Math.max(aheadL, aheadR)
-  const truckR = h(seed, k, 611)
   return {
     roadFrom,
     sides,
@@ -218,7 +321,11 @@ export function blockPlan(seed: number, k: number, width: number, u0: number): B
     crosswalk: cross > 0 ? cross : null,
     stopText: cross > 0 && h(seed, k, 602) > 0.55,
     poleSide,
-    overpass: width >= 6 && h(seed, k, 603) > 0.86,
-    truck: width >= 7 && truckR > 0.6 ? { side: -poleSide, u: 11 + h(seed, k, 612) * 8 } : null,
+    overpass,
+    vehicles,
+    billboards,
+    banner,
+    nobori,
+    posters,
   }
 }

@@ -12,8 +12,8 @@ type V3 = [number, number, number]
 const at = (s: number, y: number, u: number): V3 => [s, y, -u]
 
 /** A painted cut-out standing on the ground. rotY turns it; cross adds a second plane at 90°. */
-export function Card({ path, w, h, p, rotY = 0, cross = false, double = false, foliage = false }: { path: string; w: number; h: number; p: V3; rotY?: number; cross?: boolean; double?: boolean; foliage?: boolean }) {
-  const mat = paintedMat(path, double || cross, foliage)
+export function Card({ path, w, h, p, rotY = 0, cross = false, double = false, glow = false }: { path: string; w: number; h: number; p: V3; rotY?: number; cross?: boolean; double?: boolean; glow?: boolean }) {
+  const mat = paintedMat(path, double || cross, glow)
   const depth = paintedDepth(path)
   const plane = (ry: number) => (
     <mesh geometry={PANEL} material={mat} position={[0, h / 2, 0]} rotation={[0, ry, 0]} scale={[w, h, 1]} castShadow receiveShadow customDepthMaterial={depth} />

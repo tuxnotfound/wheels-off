@@ -52,7 +52,7 @@ Widths between 5 and 10 m work best (a block's frontage is about 20 to 28 m).
 Painted art is lit by the scene through the same hard two-tone cel ramp as the 3D parts,
 so the golden-hour sun warms the facades that face it and cast shadows land on them.
 Paint it in neutral daylight colors and let the scene do the sunset. Mark painted foliage
-(bushes, planters) `"foliage": true`: it glows slightly with its own color, so it only
+(bushes, planters) `"glow": true`: it glows slightly with its own color, so it only
 dims in shade instead of turning purple.
 
 ## Props and obstacles

@@ -16,6 +16,7 @@ import { AHEAD, BEHIND, BLOCK, BRANCH_DEPTH, DIR } from '../world/worldConfig'
 import { childStreet, sim, stepSim, upcomingTurn } from './sim'
 import type { Street } from './sim'
 import { useHud } from './hudStore'
+import { tickAds } from '../ads/ads'
 
 const damp = (a: number, b: number, lambda: number, dt: number) => a + (b - a) * (1 - Math.exp(-lambda * dt))
 function wrap(a: number): number {
@@ -79,8 +80,9 @@ function signature(): string {
 /** Steps the simulation first each frame, then mirrors what the HUD needs. */
 function SimDriver() {
   const last = useRef({ t: 0 }).current
-  useFrame((_, dt) => {
+  useFrame(({ camera }, dt) => {
     stepSim(dt)
+    tickAds(camera, Math.min(dt, 1 / 20))
     const hud = useHud.getState()
     const patch: Partial<ReturnType<typeof useHud.getState>> = {}
     for (const ev of sim.events) {

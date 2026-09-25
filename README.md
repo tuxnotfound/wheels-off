@@ -29,6 +29,11 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
 - **`src/world/streetGen.ts`**: the town as a deterministic function of street seeds:
   side-streets, lots picked from the building art that fits, walls and trees for the gaps,
   sidewalk props, obstacles, street names.
+- **`src/ads/`**: advertising. Slots (rooftop billboards, over-street banners, wall posters,
+  nobori flags, van sides) are filled from `public/art/ads.json`, and impressions are
+  counted and dispatched as `wheelsoff:ad-impression` events. **See [ADS.md](ADS.md).**
+- **`src/world/vehicles.tsx`**: parked kei trucks, kei cars, delivery vans (with ad sides),
+  scooters and bicycles. Rounded toon bodies, detailed down to yellow kei plates.
 - **`src/world/Tree3D.tsx`**: 3D sakura (and green) trees, with toon-shaded branches under
   a canopy of camera-facing, sun-lit blossom clusters. Three shared shapes, so any number of
   trees costs three geometries.
@@ -49,14 +54,18 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
   - `Petals.tsx` is the falling sakura: 900 petals in one draw call, animated entirely in
     the vertex shader and wrapped in a box that follows the camera anchor.
   - `PostFX.tsx` is one full-screen pass for the fisheye lens, the ink lines (from depth
-    discontinuities and color steps), the golden-hour grade and the vignette.
+    discontinuities and color steps), the golden-hour grade and the vignette. The scene is
+    rendered supersampled (up to 1.75x, within a pixel budget that drops on slow frames)
+    and filtered down here, and ink weight tapers with distance so far objects stay clean.
 - **`src/player/`**: the skater.
-  - `pose.ts` turns the sim into one pose per frame (sideways stance, push cycle, carve
+  - `pose.ts` turns the sim into one pose per frame (including an occasional kick while
+    coasting with no keys held) (sideways stance, push cycle, carve
     lean, ollie tuck and board pop, landing squash, wipeout wobble).
   - `Skater.tsx` places the board and hands the pose to a rider.
   - `VrmRider.tsx` retargets the pose onto a VRM's humanoid bones and runs its spring
     bones. `ProceduralRider.tsx` is the code-built fallback kid.
 - **`scripts/make-placeholders.mjs`**: regenerates the placeholder SVG art and manifest.
+  **`scripts/make-ads.mjs`** regenerates the placeholder ad campaign (all brands fictional).
 
 ## Run
 

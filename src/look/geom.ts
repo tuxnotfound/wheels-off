@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 
 // Shared unit geometries. Meshes scale them instead of allocating their own, so
 // blocks can mount and unmount without creating or leaking GPU buffers.
@@ -7,6 +8,10 @@ import * as THREE from 'three'
 export const BOX = new THREE.BoxGeometry(1, 1, 1, 3, 1, 12)
 /** Unit box for small props. */
 export const SMALL_BOX = new THREE.BoxGeometry(1, 1, 1)
+/** Unit box with softened edges (vehicle bodies). Radius scales with the mesh. */
+export const RBOX = new RoundedBoxGeometry(1, 1, 1, 3, 0.1)
+/** Thin ring of diameter 1 in the XY plane (bicycle wheels). */
+export const RING = new THREE.TorusGeometry(0.47, 0.045, 6, 24)
 /** Unit cylinder (radius 0.5, height 1), centered. */
 export const CYL = new THREE.CylinderGeometry(0.5, 0.5, 1, 14)
 /** Unit cone (radius 0.5, height 1), centered. */
