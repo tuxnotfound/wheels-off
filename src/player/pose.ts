@@ -14,6 +14,7 @@ export type Pose = {
   bodyYaw: number // sideways stance <-> squared up for a push
   headYaw: number // head turned to look down the street
   frontBend: number // front leg: thigh +a, knee -2a, foot +a keeps the foot flat
+  spread: number // legs apart along the board (radians each side), 0 while pushing
   backThigh: number
   backShin: number
   backFoot: number
@@ -45,7 +46,7 @@ export function stepPose(st: PoseState, dt: number): Pose {
   st.yaw = damp(st.yaw, Math.atan2(sim.latVel, Math.max(sim.speed, 2)) * 0.9, 10, dt)
 
   // crouch: ride low, tuck in the air, squash on landing
-  let bend = input.started ? 0.42 + Math.min(sim.speed / 17, 1) * 0.1 : 0.18
+  let bend = input.started ? 0.55 + Math.min(sim.speed / 17, 1) * 0.12 : 0.22
   if (!sim.grounded) bend = sinceJump < 0.08 ? 0.3 : 1.0
   if (sinceLand < 0.5) bend += 0.55 * Math.exp(-sinceLand * 9)
   if (bailing) bend = 0.8
@@ -59,7 +60,7 @@ export function stepPose(st: PoseState, dt: number): Pose {
   const bodyYaw = THREE.MathUtils.lerp(STANCE_YAW, PUSH_YAW, st.push)
 
   // arms: out for balance, up in the air, swinging on a push, flailing on a wipeout
-  let out = 0.95 + Math.sin(t * 1.7) * 0.06
+  let out = 0.75 + Math.sin(t * 1.7) * 0.06
   if (!sim.grounded) out = 1.5
   if (bailing) out = 1.3 + Math.sin(t * 24) * 0.6
   out = THREE.MathUtils.lerp(out, 0.25, st.push)
@@ -80,6 +81,7 @@ export function stepPose(st: PoseState, dt: number): Pose {
     bodyYaw,
     headYaw: -bodyYaw * 0.85,
     frontBend: b + st.push * 0.25,
+    spread: 0.2 * (1 - st.push),
     backThigh: THREE.MathUtils.lerp(b, 0.15 + ph * 0.75, st.push),
     backShin: THREE.MathUtils.lerp(-2 * b, -0.25 - Math.max(0, ph) * 0.7, st.push),
     backFoot: THREE.MathUtils.lerp(b, 0.1, st.push),

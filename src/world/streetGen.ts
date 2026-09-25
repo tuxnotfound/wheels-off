@@ -118,7 +118,8 @@ export type BlockPlan = {
 }
 
 export const POLE_U = [5, 21] // utility poles along the pole side of every block
-const SIDEWALK_PROPS = ['vending-blue', 'vending-red', 'postbox', 'bicycle', 'plants']
+// (a flat bicycle card reads as a spider edge-on, so it isn't placed until it has real depth)
+const SIDEWALK_PROPS = ['vending-blue', 'vending-red', 'postbox', 'plants']
 
 /** A building whose art fits in the room left, starting from a hashed pick. */
 function fitBuilding(r: number, room: number): BuildingArt | null {

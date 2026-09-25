@@ -53,14 +53,20 @@ Same rules: transparent PNG, drawn straight-on, ground line at the bottom.
 
 | mode    | use for                               | how it's shown                     |
 |---------|---------------------------------------|------------------------------------|
-| `card`  | bicycle, plant pots, cone rows, barriers | one upright plane facing the street |
-| `cross` | trees, cones, post box, bin bags       | two crossed planes (reads from any angle) |
+| `card`  | plant pots, anything viewed mostly face-on | one upright plane facing the street |
+| `cross` | trees, post box                        | two crossed planes (reads from any angle) |
 | `box`   | vending machines                      | solid box with the image on the front (`depth`, `color`) |
 | `wall`  | the block-wall tile (3.2 m)           | repeated along empty frontage       |
 
-Obstacle ids are fixed because gameplay keys off them: `ob-cone`, `ob-cones`,
-`ob-barrier`, `ob-boxes`, `ob-bags`. Keep their sizes close to the hitboxes in
-`src/world/streetGen.ts` (`OBST_SIZE`) so what you see is what you jump.
+Obstacles are **not** painted cards. They get jumped over and knocked flying, and flat
+cards looked like cardboard cut-outs tumbling. They are solid toon-shaded 3D shapes with
+hand-drawn textures, built in `src/world/ObstacleView.tsx` (cone, cone row, barricade,
+cardboard boxes, bin bags). Their sizes match the hitboxes in `src/world/streetGen.ts`
+(`OBST_SIZE`).
+
+Cards seen edge-on from the street turn into thin scribbles (a bicycle card looked like a
+spider). Anything that stands along the street and is thin from the side needs a `box`
+or a real model instead.
 
 ## Generating with an image model
 
@@ -82,6 +88,11 @@ real-world width for the manifest. Generated text on signs is usually garbled, s
 over it or keep signs blank.
 
 ## Character: VRM
+
+The default `public/art/character.vrm` is pixiv's VRM sample model
+(`VRM1_Constraint_Twist_Sample`, © pixiv Inc.). Its embedded licence is the VRM Public
+License 1.0 with redistribution, modification and corporate commercial use allowed and
+no credit required. It is a stand-in until the game has its own kid:
 
 1. Make the kid in [VRoid Studio](https://vroid.com/en/studio) (free): short black bob,
    white shirt, wide black culottes, teal sneakers, and a red messenger bag if you can

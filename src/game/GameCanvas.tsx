@@ -204,8 +204,8 @@ function CameraRig() {
     st.y = damp(st.y, sim.y, 5, dt)
     st.roll = damp(st.roll, -sim.latVel * 0.012 - sim.turnRate * 0.03, 4, dt)
     const shake = Math.max(0, 1 - (sim.time - sim.bailT) / 0.4) * 0.06
-    camera.position.set(Math.sin(sim.time * 60) * shake, 2.35 + st.y * 0.4, 5.2)
-    camera.lookAt(0, 1.05 + st.y * 0.3, -6)
+    camera.position.set(Math.sin(sim.time * 60) * shake, 3.0 + st.y * 0.4, 7.6)
+    camera.lookAt(0, 1.1 + st.y * 0.3, -7)
     camera.rotateZ(st.roll)
     if (Math.abs(camera.fov - st.fov) > 0.01) {
       camera.fov = st.fov
@@ -223,7 +223,7 @@ export default function GameCanvas() {
       flat
       shadows="percentage"
       gl={{ antialias: false }}
-      camera={{ fov: 74, near: 0.3, far: 420, position: [0, 2.35, 5.2] }}
+      camera={{ fov: 74, near: 0.3, far: 420, position: [0, 3.0, 7.6] }}
       dpr={[1, 1.75]}
     >
       <fog attach="fog" args={[HORIZON, 60, 125]} />

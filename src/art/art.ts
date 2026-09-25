@@ -56,6 +56,13 @@ export async function loadArt(base = '/art/'): Promise<ArtManifest> {
   return m
 }
 
+/** Character to ride: `?vrm=<path under /art/>` overrides the manifest's `character`. */
+export function characterUrl(): string | null {
+  const q = new URLSearchParams(window.location.search).get('vrm')
+  const path = q ?? art.character
+  return path ? `/art/${path}` : null
+}
+
 export function propArt(id: string): PropArt | undefined {
   return props.get(id)
 }

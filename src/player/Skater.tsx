@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import type * as THREE from 'three'
 import { CYL } from '../look/geom'
 import { curvedDepth } from '../look/materials'
-import { art } from '../art/art'
+import { characterUrl } from '../art/art'
 import { sim } from '../game/sim'
 import { createPoseState, stepPose } from './pose'
 import type { Pose } from './pose'
@@ -16,13 +16,6 @@ const WHEELS = '#6cc7b5'
 export type ApplyPose = (p: Pose, dt: number) => void
 /** A rider registers how it applies the per-frame pose; the skater drives it. */
 export type RiderProps = { bind: (apply: ApplyPose | null) => void }
-
-/** Character to ride: `?vrm=<path under /art/>` overrides the manifest's `character`. */
-function characterUrl(): string | null {
-  const q = new URLSearchParams(window.location.search).get('vrm')
-  const path = q ?? art.character
-  return path ? `/art/${path}` : null
-}
 
 /**
  * The kid on a skateboard, placed in world space from the sim. The pose (stance,

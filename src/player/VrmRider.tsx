@@ -54,15 +54,17 @@ function buildRig(vrm: VRM): Rig {
  */
 function applyPose(r: Rig, p: Pose, dt: number, blink: { t: number }) {
   const b = r.bone
-  const drop = r.legLen * (1 - Math.cos(p.frontBend)) + p.hipDrop / r.scale
+  const drop = r.legLen * (1 - Math.cos(p.frontBend) * Math.cos(p.spread)) + p.hipDrop / r.scale
   b('hips')!.position.set(r.hipsRest.x, r.hipsRest.y - drop, r.hipsRest.z)
   // front foot is the kid's left (regular stance)
-  b('leftUpperLeg')?.rotation.set(-p.frontBend, 0, 0)
+  // legs spread along the board (abduction about Z), knees bent in that plane,
+  // feet rolled back flat onto the deck
+  b('leftUpperLeg')?.rotation.set(-p.frontBend, 0, p.spread)
   b('leftLowerLeg')?.rotation.set(2 * p.frontBend, 0, 0)
-  b('leftFoot')?.rotation.set(-p.frontBend, 0, 0)
-  b('rightUpperLeg')?.rotation.set(-p.backThigh, 0, 0)
+  b('leftFoot')?.rotation.set(-p.frontBend, 0, -p.spread)
+  b('rightUpperLeg')?.rotation.set(-p.backThigh, 0, -p.spread)
   b('rightLowerLeg')?.rotation.set(-p.backShin, 0, 0)
-  b('rightFoot')?.rotation.set(-p.backFoot, 0, 0)
+  b('rightFoot')?.rotation.set(-p.backFoot, 0, p.spread)
   b('spine')?.rotation.set(-p.torsoLean * 0.55, 0, 0)
   b('chest')?.rotation.set(-p.torsoLean * 0.45, 0, 0)
   b('neck')?.rotation.set(0, p.headYaw * 0.4, 0)
@@ -73,6 +75,8 @@ function applyPose(r: Rig, p: Pose, dt: number, blink: { t: number }) {
   b('rightUpperArm')?.rotation.set(p.armSwing, 0, lower)
   b('leftLowerArm')?.rotation.set(0, p.elbow, 0)
   b('rightLowerArm')?.rotation.set(0, -p.elbow, 0)
+  b('leftHand')?.rotation.set(0, 0, 0.25)
+  b('rightHand')?.rotation.set(0, 0, -0.25)
 
   // blink every few seconds
   blink.t -= dt
@@ -84,31 +88,54 @@ function applyPose(r: Rig, p: Pose, dt: number, blink: { t: number }) {
   r.vrm.update(dt)
 }
 
-/** A VRoid / VRM character on the board. Shows the procedural kid until it loads (or if it fails). */
-export function VrmRider({ url, bind }: RiderProps & { url: string }) {
-  const [rig, setRig] = useState<Rig | null>(null)
-  const rider = useRef<THREE.Group>(null!)
-  const body = useRef<THREE.Group>(null!)
+const rigs = new Map<string, Promise<Rig | null>>()
+const ready = new Map<string, Rig | null>() // settled loads, readable synchronously
 
-  useEffect(() => {
-    let dead = false
-    let loaded: VRM | null = null
+/**
+ * Load (once) and rig a VRM. Called at boot, so the 10 MB parse never lands mid-ride;
+ * cached, so remounts (and StrictMode's double effects) reuse the same rigged model.
+ */
+export function loadRig(url: string): Promise<Rig | null> {
+  let p = rigs.get(url)
+  if (!p) {
     const loader = new GLTFLoader()
     loader.register((parser) => new VRMLoaderPlugin(parser))
-    loader
+    p = loader
       .loadAsync(url)
       .then((gltf) => {
         const vrm = gltf.userData.vrm as VRM | undefined
         if (!vrm) throw new Error('not a VRM file')
         VRMUtils.removeUnnecessaryVertices(gltf.scene)
         VRMUtils.combineSkeletons(gltf.scene)
-        loaded = vrm
-        if (!dead) setRig(buildRig(vrm))
+        return buildRig(vrm)
       })
-      .catch((e) => console.warn(`[wheels-off] character ${url} not loaded, using the procedural kid:`, e))
+      .then((r) => {
+        ready.set(url, r)
+        return r
+      })
+      .catch((e) => {
+        console.warn(`[wheels-off] character ${url} not loaded, using the procedural kid:`, e)
+        ready.set(url, null)
+        return null
+      })
+    rigs.set(url, p)
+  }
+  return p
+}
+
+/** A VRoid / VRM character on the board. Shows the procedural kid until it loads (or if it fails). */
+export function VrmRider({ url, bind }: RiderProps & { url: string }) {
+  const [rig, setRig] = useState<Rig | null>(() => ready.get(url) ?? null)
+  const rider = useRef<THREE.Group>(null!)
+  const body = useRef<THREE.Group>(null!)
+
+  useEffect(() => {
+    let dead = false
+    loadRig(url).then((r) => {
+      if (!dead && r) setRig(r)
+    })
     return () => {
       dead = true
-      if (loaded) VRMUtils.deepDispose(loaded.scene)
     }
   }, [url])
 

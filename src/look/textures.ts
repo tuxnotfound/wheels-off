@@ -63,3 +63,50 @@ export function roadTextTex(word: string): THREE.CanvasTexture {
     ;[...word].forEach((ch, i) => g.fillText(ch, 64, 64 + i * 124))
   })
 }
+
+/** Yellow/black hazard stripes with an inked border. */
+export function hazardTex(): THREE.CanvasTexture {
+  return make('hazard', 256, 64, (g) => {
+    g.fillStyle = '#f2c230'
+    g.fillRect(0, 0, 256, 64)
+    g.fillStyle = '#26282b'
+    for (let x = -64; x < 320; x += 64) {
+      g.beginPath()
+      g.moveTo(x, 64)
+      g.lineTo(x + 32, 64)
+      g.lineTo(x + 64, 0)
+      g.lineTo(x + 32, 0)
+      g.fill()
+    }
+    g.lineWidth = 6
+    g.strokeStyle = INK
+    g.strokeRect(3, 3, 250, 58)
+  })
+}
+
+/** Cardboard: a tape strip, a shipping label, a "this way up" mark, inked. */
+export function cardboardTex(): THREE.CanvasTexture {
+  return make('cardboard', 128, 128, (g) => {
+    g.fillStyle = '#c9a36f'
+    g.fillRect(0, 0, 128, 128)
+    g.fillStyle = '#d9b784'
+    g.fillRect(52, 0, 24, 128)
+    g.strokeStyle = 'rgba(43,54,52,0.55)'
+    g.lineWidth = 2
+    g.strokeRect(52, -2, 24, 132)
+    box(g, 12, 70, 34, 24, '#f4f3ea', 2)
+    g.fillStyle = INK
+    for (let i = 0; i < 3; i++) g.fillRect(16, 75 + i * 6, 24 - i * 6, 2)
+    g.strokeStyle = INK
+    g.lineWidth = 3
+    g.beginPath()
+    g.moveTo(96, 40)
+    g.lineTo(96, 18)
+    g.moveTo(88, 26)
+    g.lineTo(96, 16)
+    g.lineTo(104, 26)
+    g.stroke()
+    g.lineWidth = 5
+    g.strokeRect(2, 2, 124, 124)
+  })
+}
