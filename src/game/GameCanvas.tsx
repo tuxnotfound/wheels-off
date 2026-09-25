@@ -138,12 +138,58 @@ function World() {
         <Sky />
       </group>
       <group ref={group}>
-        <mesh ref={ground} geometry={groundGeo} material={toonMat('#b9c4b8')} />
+        <mesh ref={ground} geometry={groundGeo} material={toonMat('#b9c4b8')} receiveShadow />
         {blocks.map(({ key, ...b }) => (
           <BlockView key={key} {...b} />
         ))}
         <Skater />
       </group>
+    </>
+  )
+}
+
+// Sun direction in world space (fixed, so each street faces it differently).
+const SUN = new THREE.Vector3(0.55, 1, 0.3).normalize()
+const SHADOW_CENTER = new THREE.Vector3(0, 0, -16) // ahead of the camera, in view space
+
+/**
+ * Cel lighting: one hard-edged sun that casts shadows, plus a cool tinted ambient
+ * that alone colors everything in shade (lit/shade is a two-tone split, no gradient).
+ * The shadow frustum stays over what the camera sees; the sun turns with the world.
+ */
+function Lights() {
+  const sun = useRef<THREE.DirectionalLight>(null!)
+  const target = useMemo(() => new THREE.Object3D(), [])
+  useEffect(() => {
+    const l = sun.current
+    l.target = target
+    const cam = l.shadow.camera
+    cam.left = cam.bottom = -42
+    cam.right = cam.top = 42
+    cam.near = 1
+    cam.far = 160
+    cam.updateProjectionMatrix()
+  }, [target])
+  useFrame(() => {
+    const c = Math.cos(anchor.yaw)
+    const s = Math.sin(anchor.yaw)
+    target.position.copy(SHADOW_CENTER)
+    target.updateMatrixWorld()
+    sun.current.position.set(SUN.x * c + SUN.z * s, SUN.y, -SUN.x * s + SUN.z * c).multiplyScalar(70).add(SHADOW_CENTER)
+  })
+  return (
+    <>
+      <primitive object={target} />
+      <ambientLight color="#b9cdf2" intensity={2.35} />
+      <directionalLight
+        ref={sun}
+        intensity={0.8}
+        color="#fff6e6"
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.05}
+      />
     </>
   )
 }
@@ -175,14 +221,13 @@ export default function GameCanvas() {
     <Canvas
       className="game-canvas"
       flat
+      shadows="percentage"
       gl={{ antialias: false }}
       camera={{ fov: 74, near: 0.3, far: 420, position: [0, 2.35, 5.2] }}
       dpr={[1, 1.75]}
     >
       <fog attach="fog" args={[HORIZON, 60, 125]} />
-      <ambientLight intensity={0.5} />
-      <hemisphereLight args={['#ffffff', '#7fa39c', 0.75]} />
-      <directionalLight position={[7, 12, 3]} intensity={1.25} />
+      <Lights />
       <SimDriver />
       <World />
       <CameraRig />

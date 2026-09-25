@@ -1,30 +1,21 @@
 import * as THREE from 'three'
 
-const cache = new Map<number, THREE.DataTexture>()
+let ramp: THREE.DataTexture | null = null
 
 /**
- * Zero-asset toon ramp: an N-band luminance gradient as a DataTexture.
- * NearestFilter on BOTH min and mag is mandatory — otherwise the cel bands
- * interpolate to smooth shading and the hand-drawn look collapses.
+ * Hard two-tone cel ramp, looked up at dot(N,L)*0.5+0.5. Faces are either lit or
+ * in shade, with the terminator pushed toward the light (dot(N,L) > 0.25) so
+ * grazing faces fall into shade for a bolder graphic split. The shade band gets
+ * no direct light at all; its color comes from the tinted ambient light.
+ * NearestFilter is mandatory, or the bands blur back into smooth shading.
  */
-export function makeToonGradient(bands = 3): THREE.DataTexture {
-  const hit = cache.get(bands)
-  if (hit) return hit
-
-  // Lift the darkest band off 0 so shadowed faces read as soft shade, not black.
-  const lo = 128
-  const data = new Uint8Array(bands)
-  for (let i = 0; i < bands; i++) {
-    const tn = bands === 1 ? 1 : i / (bands - 1)
-    data[i] = Math.round(lo + (255 - lo) * tn)
-  }
-
-  const tex = new THREE.DataTexture(data, bands, 1, THREE.RedFormat, THREE.UnsignedByteType)
-  tex.minFilter = THREE.NearestFilter
-  tex.magFilter = THREE.NearestFilter
-  tex.generateMipmaps = false
-  tex.needsUpdate = true
-
-  cache.set(bands, tex)
-  return tex
+export function celRamp(): THREE.DataTexture {
+  if (ramp) return ramp
+  const data = new Uint8Array([0, 0, 0, 0, 0, 255, 255, 255])
+  ramp = new THREE.DataTexture(data, data.length, 1, THREE.RedFormat, THREE.UnsignedByteType)
+  ramp.minFilter = THREE.NearestFilter
+  ramp.magFilter = THREE.NearestFilter
+  ramp.generateMipmaps = false
+  ramp.needsUpdate = true
+  return ramp
 }

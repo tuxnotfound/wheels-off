@@ -51,7 +51,7 @@ const frag = /* glsl */ `
     vec3 cl = texture2D(tColor, uv - vec2(o.x, 0.0)).rgb, cr = texture2D(tColor, uv + vec2(o.x, 0.0)).rgb;
     vec3 cd = texture2D(tColor, uv - vec2(0.0, o.y)).rgb, cu = texture2D(tColor, uv + vec2(0.0, o.y)).rgb;
     float g = abs(lum(cl) - lum(cr)) + abs(lum(cd) - lum(cu));
-    float colorEdge = smoothstep(0.2, 0.34, g) * solid;
+    float colorEdge = smoothstep(0.32, 0.5, g) * solid;
 
     float ink = max(depthEdge, colorEdge * 0.75);
     // thin the ink out in the distance so far blocks don't turn to scribble
@@ -65,7 +65,7 @@ const frag = /* glsl */ `
   }
 `
 
-export function PostFX({ barrel = 0.22, thickness = 1.25 }: { barrel?: number; thickness?: number }) {
+export function PostFX({ barrel = 0.22, thickness = 1.6 }: { barrel?: number; thickness?: number }) {
   const gl = useThree((s) => s.gl)
   const size = useThree((s) => s.size)
   const dpr = useThree((s) => s.viewport.dpr)

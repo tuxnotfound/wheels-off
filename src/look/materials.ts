@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { makeToonGradient } from './gradientMap'
+import { celRamp } from './gradientMap'
 import { BAY_W, CURVE, FLOOR_H } from '../world/worldConfig'
 
 // Curve the world down with distance from the origin (the camera anchor), so flat
@@ -51,7 +51,7 @@ function cached<T extends THREE.Material>(key: string, make: () => T): T {
 /** Shared curved toon material for a color (created once, reused everywhere). */
 export function toonMat(color: string, doubleSided = false): THREE.MeshToonMaterial {
   return cached(`toon:${color}:${doubleSided}`, () => {
-    const m = new THREE.MeshToonMaterial({ color, gradientMap: makeToonGradient(3), side: doubleSided ? THREE.DoubleSide : THREE.FrontSide })
+    const m = new THREE.MeshToonMaterial({ color, gradientMap: celRamp(), side: doubleSided ? THREE.DoubleSide : THREE.FrontSide })
     m.onBeforeCompile = patchCurve
     m.customProgramCacheKey = () => 'toon-curve'
     return m
@@ -61,7 +61,7 @@ export function toonMat(color: string, doubleSided = false): THREE.MeshToonMater
 /** Curved toon material with a texture in the regular UVs (signs, panels, decals). */
 export function decalMat(key: string, map: THREE.Texture, transparent = false): THREE.MeshToonMaterial {
   return cached(`decal:${key}`, () => {
-    const m = new THREE.MeshToonMaterial({ map, gradientMap: makeToonGradient(3) })
+    const m = new THREE.MeshToonMaterial({ map, gradientMap: celRamp() })
     if (transparent) {
       m.alphaTest = 0.5
       m.polygonOffset = true
@@ -90,7 +90,7 @@ export function paintMat(color: string): THREE.MeshToonMaterial {
 /** Wall material with a tiled facade texture on the sides and a plain roof, for the unit BOX. */
 export function facadeMats(wall: string, roof: string, map: THREE.Texture, style: string): THREE.Material[] {
   const side = cached(`facade:${wall}:${style}`, () => {
-    const m = new THREE.MeshToonMaterial({ color: wall, map, gradientMap: makeToonGradient(3) })
+    const m = new THREE.MeshToonMaterial({ color: wall, map, gradientMap: celRamp() })
     m.onBeforeCompile = patchFacade
     m.customProgramCacheKey = () => 'toon-curve-facade'
     return m
@@ -118,3 +118,14 @@ export function lineMat(color: string): THREE.LineBasicMaterial {
     return m
   })
 }
+
+/**
+ * Shadow-pass depth material with the same planet bend, so cast shadows land where
+ * the curved geometry actually is. Without it they slide away with distance.
+ */
+export const curvedDepth = (() => {
+  const m = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking })
+  m.onBeforeCompile = patchCurve
+  m.customProgramCacheKey = () => 'depth-curve'
+  return m
+})()

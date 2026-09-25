@@ -1,8 +1,8 @@
 import { useFrame } from '@react-three/fiber'
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { CYL, SMALL_BOX } from '../look/geom'
-import { basicMat, toonMat } from '../look/materials'
+import { curvedDepth, toonMat } from '../look/materials'
 import { input } from './input'
 import { sim } from '../game/sim'
 
@@ -88,10 +88,19 @@ export function Skater() {
   const armR = useRef<THREE.Group>(null!)
   const foreL = useRef<THREE.Group>(null!)
   const foreR = useRef<THREE.Group>(null!)
-  const shadow = useRef<THREE.Mesh>(null!)
   const legF = useRef<LegRefs | null>(null) // front leg (kid's left)
   const legB = useRef<LegRefs | null>(null) // back leg (kid's right)
   const st = useRef({ bend: 0.2, push: 0, pushPhase: 0, roll: 0, yaw: 0, pitch: 0 }).current
+
+  // every part casts a (curved) cel shadow and receives the town's
+  useEffect(() => {
+    root.current.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh) {
+        o.castShadow = o.receiveShadow = true
+        o.customDepthMaterial = curvedDepth
+      }
+    })
+  }, [])
 
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 1 / 20)
@@ -106,10 +115,6 @@ export function Skater() {
     st.yaw = damp(st.yaw, carve, 10, dt)
     root.current.position.set(sim.px, sim.y, sim.pz)
     root.current.rotation.y = -sim.heading - st.yaw
-    shadow.current.position.set(sim.px, 0.03, sim.pz)
-    shadow.current.rotation.set(-Math.PI / 2, 0, -sim.heading - st.yaw)
-    const sh = 1 / (1 + sim.y * 0.7)
-    shadow.current.scale.set(0.75 * sh, 1.15 * sh, 1)
 
     // --- crouch: ride low, tuck in the air, squash on landing ---
     let bend = input.started ? 0.42 + Math.min(sim.speed / 17, 1) * 0.1 : 0.18
@@ -170,9 +175,6 @@ export function Skater() {
 
   return (
     <>
-      <mesh ref={shadow} material={basicMat('#2c4744', 0.28)} renderOrder={1}>
-        <circleGeometry args={[0.5, 24]} />
-      </mesh>
       <group ref={root}>
         <group ref={board}>
           <Part c={DECK} p={[0, 0.135, 0]} s={[0.25, 0.035, 0.84]} />

@@ -29,15 +29,18 @@ it runs on `npm run dev`.
   street block (keyed `seed:k`). Only new blocks mount and nothing re-renders, and every
   mesh shares unit geometries and cached materials.
 - **`src/look/`**: the look.
+  - Cel shading: `gradientMap.ts` is a hard two-tone ramp (lit or shade, no gradient).
+    Shade gets no direct light, so a cool tinted ambient alone colors it. One sun casts
+    shadows, and its shadow frustum follows the view (`Lights` in `GameCanvas.tsx`).
   - `materials.ts` holds the toon materials plus a vertex patch that bends the world into a
-    small planet. Facade UVs come from the scaled object position, so one unit box tiles
+    small planet. `curvedDepth` applies the same bend in the shadow pass. Facade UVs come from the scaled object position, so one unit box tiles
     windows at a fixed world size.
   - `textures.ts` draws the facades, signs, 止まれ road text and vending machines on canvas.
   - `Sky.tsx` is the painted sky.
   - `PostFX.tsx` is one full-screen pass for the fisheye lens, the ink lines (from depth
     discontinuities and color steps) and the vignette.
 - **`src/player/Skater.tsx`**: the procedural kid. Sideways stance, push cycle, carve lean,
-  ollie tuck and board pop, landing squash, wipeout wobble, blob shadow.
+  ollie tuck and board pop, landing squash, wipeout wobble.
 
 ## Run
 
@@ -65,6 +68,8 @@ In dev, `window.__sim` exposes the live sim state for poking at from the console
 - Long flat meshes must be tessellated or the curvature patch leaves them as straight chords.
   An untessellated road sags below the ground plane and the ground pokes through.
 - The canvas is `flat` (no tone mapping): ACES washes out the flat anime palette.
+- Every shadow caster needs `customDepthMaterial = curvedDepth`. The stock depth material
+  renders the world unbent, and shadows then slide away from their objects with distance.
 
 ## Next steps
 

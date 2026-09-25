@@ -1,6 +1,6 @@
 import type * as THREE from 'three'
-import { BLOB, BOX, CYL, HALF_CYL, PANEL, PRISM, SMALL_BOX, TRI } from '../look/geom'
-import { decalMat, facadeMats, toonMat } from '../look/materials'
+import { BLOB, BOX, CYL, FLAT, HALF_CYL, PANEL, PRISM, SMALL_BOX, TRI } from '../look/geom'
+import { curvedDepth, decalMat, facadeMats, toonMat } from '../look/materials'
 import { facadeTex, glassTex, shutterTex, signTex, vendingTex } from '../look/textures'
 import { FLOOR_H, SIDEWALK } from './worldConfig'
 import type { Lot } from './streetGen'
@@ -23,7 +23,20 @@ export function M({
   s: V3
   r?: V3
 }) {
-  return <mesh geometry={g} material={m ?? toonMat(c!)} position={p} scale={s} rotation={r} />
+  // flat pieces (road, paint, decals) only receive shadows
+  const cast = g !== FLAT && g !== PANEL
+  return (
+    <mesh
+      geometry={g}
+      material={m ?? toonMat(c!)}
+      position={p}
+      scale={s}
+      rotation={r}
+      castShadow={cast}
+      receiveShadow
+      customDepthMaterial={cast ? curvedDepth : undefined}
+    />
+  )
 }
 
 // Block-local frame: +x is the right of the street, -z is "forward" (u grows).
