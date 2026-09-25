@@ -114,4 +114,4 @@ export function tickAds(camera: THREE.Camera, dt: number) {
   }
 }
 
-if (import.meta.env.DEV) (window as unknown as { __ads: typeof adStats }).__ads = adStats
+if (import.meta.env.DEV) Object.assign(window, { __ads: adStats, __adSlots: tracked })

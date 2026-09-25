@@ -204,6 +204,8 @@ function Lights() {
 function CameraRig() {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const st = useRef({ fov: 74, y: 0, roll: 0 }).current
+  // dev-only handle for test scripts (ad readability probes)
+  if (import.meta.env.DEV) Object.assign(window, { __camera: camera })
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 1 / 20)
     st.fov = damp(st.fov, 72 + Math.max(0, sim.speed - 8) * 0.9, 2.5, dt)

@@ -14,29 +14,35 @@ const at = (s: number, y: number, u: number): V3 => [s, y, -u]
 const STEEL = '#6f7876'
 const STEEL_DARK = '#4d5553'
 
-/** Rooftop billboard on a steel frame, angled toward the road so riders read it on approach. */
-export function RooftopBillboard({ s, u, roofY, side, r, slot }: { s: number; u: number; roofY: number; side: number; r: number; slot: string }) {
+/**
+ * Rooftop billboard on a short steel frame at the street edge of a low roof, angled toward
+ * oncoming riders and tipped slightly down to them, so it is read head-on from the road.
+ * `scale` fits it to the building it stands on.
+ */
+export function RooftopBillboard({ s, u, roofY, side, r, slot, scale }: { s: number; u: number; roofY: number; side: number; r: number; slot: string; scale: number }) {
   const [w, h] = AD_SIZE.billboard
-  const legH = 1.3
+  const legH = 0.8
   return (
-    <group position={at(s, roofY, u)} rotation={[0, -side * 0.55, 0]}>
+    <group position={at(s, roofY, u)} rotation={[0, -side * 0.5, 0]} scale={scale}>
       {[-w * 0.36, 0, w * 0.36].map((x) => (
         <group key={x}>
-          <M c={STEEL} p={[x, legH / 2, -0.4]} s={[0.16, legH, 0.16]} />
-          <M c={STEEL} p={[x, (legH + h) / 2, -0.9]} s={[0.12, legH + h, 0.12]} r={[-0.22, 0, 0]} />
+          <M c={STEEL} p={[x, legH / 2, -0.3]} s={[0.16, legH, 0.16]} />
+          <M c={STEEL} p={[x, (legH + h) / 2, -0.85]} s={[0.12, legH + h, 0.12]} r={[-0.22, 0, 0]} />
         </group>
       ))}
-      {/* catwalk and the frame the face is mounted on */}
-      <M c={STEEL_DARK} p={[0, legH - 0.05, 0.1]} s={[w + 0.4, 0.08, 0.7]} />
-      <M c={STEEL} p={[0, legH + h / 2, -0.12]} s={[w + 0.3, h + 0.3, 0.18]} />
-      <AdSlot format="billboard" r={r} slot={slot} p={[0, legH + h / 2, 0.0]} />
-      {/* two lamps on arms over the face */}
-      {[-w * 0.25, w * 0.25].map((x) => (
-        <group key={x}>
-          <M c={STEEL_DARK} p={[x, legH + h + 0.2, 0.35]} s={[0.05, 0.05, 0.8]} />
-          <M c="#e9ece6" p={[x, legH + h + 0.16, 0.72]} s={[0.36, 0.1, 0.2]} />
-        </group>
-      ))}
+      <group position={[0, legH, 0]} rotation={[0.08, 0, 0]}>
+        {/* catwalk, and the frame the face is mounted on */}
+        <M c={STEEL_DARK} p={[0, -0.05, 0.15]} s={[w + 0.4, 0.08, 0.6]} />
+        <M c={STEEL} p={[0, h / 2, -0.12]} s={[w + 0.3, h + 0.3, 0.18]} />
+        <AdSlot format="billboard" r={r} slot={slot} p={[0, h / 2, 0]} />
+        {/* two lamps on arms over the face */}
+        {[-w * 0.25, w * 0.25].map((x) => (
+          <group key={x}>
+            <M c={STEEL_DARK} p={[x, h + 0.2, 0.35]} s={[0.05, 0.05, 0.8]} />
+            <M c="#e9ece6" p={[x, h + 0.16, 0.72]} s={[0.36, 0.1, 0.2]} />
+          </group>
+        ))}
+      </group>
     </group>
   )
 }

@@ -122,7 +122,7 @@ export type BlockPlan = {
   poleSide: number
   overpass: boolean
   vehicles: VehicleSpot[]
-  billboards: { s: number; u: number; roofY: number; side: number; r: number }[]
+  billboards: { s: number; u: number; roofY: number; side: number; r: number; scale: number }[]
   banner: { u: number; r: number } | null // strung across the street
   nobori: { s: number; u: number; side: number; r: number }[]
   posters: { s: number; u: number; side: number; r: number }[]
@@ -181,6 +181,7 @@ function makePlan(seed: number, k: number, width: number, u0: number): BlockPlan
   const litter: Litter[] = []
   const vehicles: VehicleSpot[] = []
   const billboards: BlockPlan['billboards'] = []
+  const billboardSpots: BlockPlan['billboards'] = [] // roofs that could carry one
   const nobori: BlockPlan['nobori'] = []
   const posters: BlockPlan['posters'] = []
   const propIds = SIDEWALK_PROPS.filter((id) => propArt(id))
@@ -257,9 +258,10 @@ function makePlan(seed: number, k: number, width: number, u0: number): BlockPlan
       if (b) {
         len = b.width
         lots.push({ kind: 'building', side, a: u, len, art: b })
-        // a billboard on a tall flat roof
-        if (b.roofShape !== 'gable' && b.bodyHeight >= 9 && len >= 6.4 && r(520) > 0.55) {
-          billboards.push({ s: side * (front + b.depth * 0.55), u: u + len / 2, roofY: b.bodyHeight, side, r: r(521) })
+        // a billboard at the street edge of a low flat roof (3 storeys at most), where
+        // riders can actually read it: tall roofs put it above the top of the frame
+        if (b.roofShape !== 'gable' && b.bodyHeight <= 9.5 && len >= 6.4) {
+          billboardSpots.push({ s: side * (front + 1.3), u: u + len / 2, roofY: b.bodyHeight, side, r: r(521), scale: Math.min(1, (len + 0.6) / 9.6) })
         }
         // nobori flags out in front of shops
         if (SHOP_FRONT.test(b.id) && r(522) > 0.3) {
@@ -305,6 +307,8 @@ function makePlan(seed: number, k: number, width: number, u0: number): BlockPlan
       i++
     }
   }
+  // one billboard on about half the blocks, so each has the skyline to itself
+  if (billboardSpots.length && h(seed, k, 850) < 0.5) billboards.push(billboardSpots[Math.floor(h(seed, k, 851) * billboardSpots.length)])
   if (propArt('petals-ground')) {
     for (let i = 0; i < 2; i++) {
       const lu = roadFrom + 2 + h(seed, k, 720 + i) * (BLOCK - roadFrom - 4)

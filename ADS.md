@@ -14,13 +14,14 @@ fictional**, plus house ads (the game's own skate shop, a festival, a sale) and 
 
 | format      | size (m)    | aspect | where it appears                                   | counted within |
 |-------------|-------------|--------|----------------------------------------------------|----------------|
-| `billboard` | 9.6 x 3.2   | 3:1    | on tall flat roofs, angled toward oncoming riders  | 70 m           |
+| `billboard` | 9.6 x 3.2   | 3:1    | street edge of low roofs, angled and tipped toward oncoming riders | 70 m |
 | `banner`    | 6.4 x 1.0   | 32:5   | strung over the road between two posts (both faces) | 45 m           |
 | `poster`    | 1.0 x 1.4   | 5:7    | pasted on block walls, facing the road             | 18 m           |
 | `nobori`    | 0.6 x 1.8   | 1:3    | shop flags at the sidewalk edge, 2 or 3 per shop (both faces) | 18 m |
 | `van`       | 2.5 x 1.0   | 5:2    | both sides of parked delivery vans                 | 25 m           |
 
-Sizes live in `AD_SIZE` in `src/ads/ads.ts`. Creatives must match the aspect ratio: they
+A billboard on a narrow building is shown scaled down to the roof (a 6.4 m shop gets one
+about 7.3 m wide), keeping its 3:1 shape. Sizes live in `AD_SIZE` in `src/ads/ads.ts`. Creatives must match the aspect ratio: they
 are shown at the format's size, so a wrong ratio stretches them.
 
 **Image spec:** PNG or SVG, about 180 px per meter (a billboard is 1728 x 576). Keep text
@@ -53,7 +54,11 @@ block, so a given corner keeps the same ad while you ride past it.
 `src/world/streetGen.ts` decides placement per block, avoiding everything else on the
 sidewalk:
 
-- Billboards go on flat-roofed buildings at least 9 m tall, on about 45% of them.
+- Billboards: about half the blocks get one, on a low flat roof (3 storeys or less:
+  shops, konbini, the shokudō, low apartments). It stands at the street edge of the roof,
+  angled about 30° toward oncoming riders and tipped slightly down, scaled to the
+  building's width. Tall roofs are deliberately excluded: from the rider's camera, a
+  billboard on a 12 to 15 m roof stays above the frame until it's too small to read.
 - A street banner hangs on roughly 30% of blocks on streets 6 m or wider, never under a
   footbridge.
 - Nobori stand outside about 70% of shops, konbini and shokudō.
