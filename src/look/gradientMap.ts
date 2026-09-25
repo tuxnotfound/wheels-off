@@ -11,8 +11,13 @@ export function makeToonGradient(bands = 3): THREE.DataTexture {
   const hit = cache.get(bands)
   if (hit) return hit
 
+  // Lift the darkest band off 0 so shadowed faces read as soft shade, not black.
+  const lo = 128
   const data = new Uint8Array(bands)
-  for (let i = 0; i < bands; i++) data[i] = Math.round(((i + 1) / bands) * 255)
+  for (let i = 0; i < bands; i++) {
+    const tn = bands === 1 ? 1 : i / (bands - 1)
+    data[i] = Math.round(lo + (255 - lo) * tn)
+  }
 
   const tex = new THREE.DataTexture(data, bands, 1, THREE.RedFormat, THREE.UnsignedByteType)
   tex.minFilter = THREE.NearestFilter

@@ -1,10 +1,10 @@
 import * as THREE from 'three'
-import { useMemo } from 'react'
 import { makeToonGradient } from './gradientMap'
 import { CURVE } from '../world/worldConfig'
 
-// Bend the world down with horizontal distance from the origin (the character),
-// so flat geometry reads as the surface of a small planet.
+// Curve the world down with distance from the origin (the character) — same patch
+// as ToonMaterial, but here materials are shared (cached by color) so the whole
+// city draws with a handful of material objects instead of one per mesh.
 function patchCurve(shader: THREE.WebGLProgramParametersWithUniforms) {
   shader.uniforms.uCurve = { value: CURVE }
   shader.vertexShader = shader.vertexShader
@@ -25,19 +25,16 @@ function patchCurve(shader: THREE.WebGLProgramParametersWithUniforms) {
     )
 }
 
-type Props = {
-  color?: THREE.ColorRepresentation
-  bands?: number
-}
+const cache = new Map<string, THREE.MeshToonMaterial>()
 
-/** Cel material + planet curvature. One shared program (cache key) across all uses. */
-export function ToonMaterial({ color = '#7fa99b', bands = 3 }: Props) {
-  const gradientMap = useMemo(() => makeToonGradient(bands), [bands])
-  const material = useMemo(() => {
-    const m = new THREE.MeshToonMaterial({ color, gradientMap })
+/** Shared curved toon material for a color (created once, reused everywhere). */
+export function toonMat(color: string): THREE.MeshToonMaterial {
+  let m = cache.get(color)
+  if (!m) {
+    m = new THREE.MeshToonMaterial({ color, gradientMap: makeToonGradient(3) })
     m.onBeforeCompile = patchCurve
     m.customProgramCacheKey = () => 'toon-curve'
-    return m
-  }, [color, gradientMap])
-  return <primitive object={material} attach="material" />
+    cache.set(color, m)
+  }
+  return m
 }
