@@ -31,11 +31,17 @@ const frag = /* glsl */ `
   }
   float lum(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
 
+  // The rider's pixels carry alpha 0 (materials.ts markRider); the sky never writes depth.
+  float riderAt(vec2 p) {
+    return (1.0 - texture2D(tColor, p).a) * step(texture2D(tDepth, p).x, 0.99999);
+  }
+
   // Ink at one sample point. The line weight tapers with distance, full up close and
   // a hairline far away, so distant cones and poles aren't swallowed by their outlines.
-  float inkAt(vec2 uv) {
+  // On the rider it is finer still and skips color steps: a leg is a few pixels wide.
+  float inkAt(vec2 uv, float rider) {
     float c = invZ(uv);
-    float w = uThick * clamp(14.0 * c, 0.3, 1.0); // c = 1/distance
+    float w = uThick * clamp(14.0 * c, 0.3, 1.0) * mix(1.0, 0.5, rider); // c = 1/distance
     vec2 o = w / uOut;
     float l = invZ(uv - vec2(o.x, 0.0)), r = invZ(uv + vec2(o.x, 0.0));
     float dn = invZ(uv - vec2(0.0, o.y)), up = invZ(uv + vec2(0.0, o.y));
@@ -48,7 +54,7 @@ const frag = /* glsl */ `
     vec3 cl = texture2D(tColor, uv - vec2(o.x, 0.0)).rgb, cr = texture2D(tColor, uv + vec2(o.x, 0.0)).rgb;
     vec3 cd = texture2D(tColor, uv - vec2(0.0, o.y)).rgb, cu = texture2D(tColor, uv + vec2(0.0, o.y)).rgb;
     float g = abs(lum(cl) - lum(cr)) + abs(lum(cd) - lum(cu));
-    float colorEdge = smoothstep(0.32, 0.5, g) * solid;
+    float colorEdge = smoothstep(0.32, 0.5, g) * solid * (1.0 - rider);
 
     // fade the ink into the haze with distance
     return max(depthEdge, colorEdge * 0.35) * (1.0 - smoothstep(60.0, 115.0, 1.0 / nearest));
@@ -72,7 +78,10 @@ const frag = /* glsl */ `
     vec2 t0 = vec2(0.125, 0.375) * px, t1 = vec2(-0.375, 0.125) * px;
     vec2 t2 = -t0, t3 = -t1;
     vec3 col = (texture2D(tColor, uv + t0).rgb + texture2D(tColor, uv + t1).rgb + texture2D(tColor, uv + t2).rgb + texture2D(tColor, uv + t3).rgb) * 0.25;
-    float ink = (inkAt(uv + t0) + inkAt(uv + t1) + inkAt(uv + t2) + inkAt(uv + t3)) * 0.25;
+    // rider mask, grown by a line width so its outline is fine on both sides of the silhouette
+    vec2 ro = uThick / uOut;
+    float rider = max(riderAt(uv), max(max(riderAt(uv + vec2(ro.x, 0.0)), riderAt(uv - vec2(ro.x, 0.0))), max(riderAt(uv + vec2(0.0, ro.y)), riderAt(uv - vec2(0.0, ro.y)))));
+    float ink = (inkAt(uv + t0, rider) + inkAt(uv + t1, rider) + inkAt(uv + t2, rider) + inkAt(uv + t3, rider)) * 0.25;
     col = mix(col, uInk, ink * 0.9);
 
     // time-of-day grade: tint by brightness, violet in the darks, gold in the lights

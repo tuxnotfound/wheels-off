@@ -72,6 +72,37 @@ export function paintMat(color: string): THREE.MeshToonMaterial {
   })
 }
 
+// The rider (character and board) writes alpha 0 into the scene target; everything else
+// writes 1. The ink pass reads it to draw the rider with finer lines: at chase distance a
+// leg is only a few pixels wide, and full-weight ink would swallow it.
+const RIDER_ALPHA = '\n#ifdef OPAQUE\n  gl_FragColor.a = 0.0;\n#endif\n'
+
+/** Marks an opaque material's pixels as the rider. Chains onto the material's own shader hooks. */
+export function markRider(m: THREE.Material) {
+  if (m.userData.rider) return
+  m.userData.rider = true
+  const prevCompile = m.onBeforeCompile
+  const prevKey = m.customProgramCacheKey
+  m.onBeforeCompile = (shader, renderer) => {
+    prevCompile.call(m, shader, renderer)
+    const fs = shader.fragmentShader
+    const end = fs.lastIndexOf('}') // main() is last; its final write to gl_FragColor comes before this
+    shader.fragmentShader = fs.slice(0, end) + RIDER_ALPHA + fs.slice(end)
+  }
+  m.customProgramCacheKey = () => `${prevKey.call(m)}|rider`
+}
+
+/** Curved toon material for the rider's own parts (board, headwear). */
+export function riderMat(color: string, doubleSided = false): THREE.MeshToonMaterial {
+  return cached(`rider:${color}:${doubleSided}`, () => {
+    const m = new THREE.MeshToonMaterial({ color, gradientMap: celRamp(), side: doubleSided ? THREE.DoubleSide : THREE.FrontSide })
+    m.onBeforeCompile = patchCurve
+    m.customProgramCacheKey = () => 'toon-curve'
+    markRider(m)
+    return m
+  })
+}
+
 export function lineMat(color: string): THREE.LineBasicMaterial {
   return cached(`line:${color}`, () => {
     const m = new THREE.LineBasicMaterial({ color })
