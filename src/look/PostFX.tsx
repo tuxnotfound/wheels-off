@@ -3,11 +3,12 @@ import { useCallback, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { GRADE } from './timeOfDay'
 
-// One full-screen pass over the rendered scene:
+// The scene renders with MSAA, then one full-screen pass over it:
 //  - fisheye (barrel) lens, the wide-angle look of the reference shots
 //  - supersampled downsample (the scene is rendered above screen resolution)
 //  - ink lines from depth (silhouettes + creases) and from color steps, weighted by distance
 //  - a soft vignette
+// and a final FXAA pass to the screen.
 // Silhouettes/creases: the depth buffer is affine in 1/z, so its Laplacian is ~0
 // on any flat surface and spikes on edges and folds.
 const vert = /* glsl */ `
@@ -86,6 +87,33 @@ const frag = /* glsl */ `
   }
 `
 
+// FXAA over the finished frame, which also smooths the ink lines (MSAA can't reach those,
+// they're drawn from the resolved depth). Edges are found on gamma-ish luma.
+const fxaaFrag = /* glsl */ `
+  uniform sampler2D tSrc;
+  uniform vec2 uRcp;
+  varying vec2 vUv;
+  float luma(vec3 c) { return sqrt(dot(c, vec3(0.299, 0.587, 0.114))); }
+  vec3 tap(vec2 o) { return texture2D(tSrc, vUv + o * uRcp).rgb; }
+  void main() {
+    vec3 m = tap(vec2(0.0));
+    float lNW = luma(tap(vec2(-1.0, -1.0))), lNE = luma(tap(vec2(1.0, -1.0)));
+    float lSW = luma(tap(vec2(-1.0, 1.0))), lSE = luma(tap(vec2(1.0, 1.0)));
+    float lM = luma(m);
+    float lMin = min(lM, min(min(lNW, lNE), min(lSW, lSE)));
+    float lMax = max(lM, max(max(lNW, lNE), max(lSW, lSE)));
+    vec2 dir = vec2(-((lNW + lNE) - (lSW + lSE)), (lNW + lSW) - (lNE + lSE));
+    float reduce = max((lNW + lNE + lSW + lSE) * (0.25 / 8.0), 1.0 / 128.0);
+    dir = clamp(dir / (min(abs(dir.x), abs(dir.y)) + reduce), -8.0, 8.0);
+    vec3 a = 0.5 * (tap(dir * (1.0 / 3.0 - 0.5)) + tap(dir * (2.0 / 3.0 - 0.5)));
+    vec3 b = a * 0.5 + 0.25 * (tap(dir * -0.5) + tap(dir * 0.5));
+    float lB = luma(b);
+    vec3 col = (lB < lMin || lB > lMax) ? a : b;
+    gl_FragColor = vec4(col, 1.0);
+    #include <colorspace_fragment>
+  }
+`
+
 const SS_MAX = 1.75 // at most 1.75x the drawing buffer per axis
 const SS_BUDGET = 7.5e6 // pixels rendered per frame at best
 const SS_MIN_BUDGET = 1.5e6
@@ -95,9 +123,11 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
   const size = useThree((s) => s.size)
   const dpr = useThree((s) => s.viewport.dpr)
 
-  const { target, quad, cam, mat } = useMemo(() => {
-    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType })
+  const { target, mid, quad, fxaa, cam, mat, fxaaMat } = useMemo(() => {
+    // MSAA smooths geometry edges; three resolves the depth texture for the ink pass
+    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 })
     target.depthTexture = new THREE.DepthTexture(1, 1, THREE.FloatType)
+    const mid = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false })
     const mat = new THREE.ShaderMaterial({
       vertexShader: vert,
       fragmentShader: frag,
@@ -117,10 +147,20 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
         uGrade: { value: GRADE.strength },
       },
     })
+    const fxaaMat = new THREE.ShaderMaterial({
+      vertexShader: vert,
+      fragmentShader: fxaaFrag,
+      depthTest: false,
+      depthWrite: false,
+      uniforms: { tSrc: { value: mid.texture }, uRcp: { value: new THREE.Vector2(1, 1) } },
+    })
+    const plane = new THREE.PlaneGeometry(2, 2)
     const quad = new THREE.Scene()
-    quad.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat))
+    quad.add(new THREE.Mesh(plane, mat))
+    const fxaa = new THREE.Scene()
+    fxaa.add(new THREE.Mesh(plane, fxaaMat))
     const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
-    return { target, quad, cam, mat }
+    return { target, mid, quad, fxaa, cam, mat, fxaaMat }
   }, [barrel, thickness])
 
   // Render the scene above screen resolution (supersampling) within a pixel budget, and
@@ -130,12 +170,20 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
     const v = gl.getDrawingBufferSize(quality.v)
     const ss = THREE.MathUtils.clamp(Math.sqrt(quality.budget / (v.x * v.y)), 1, SS_MAX)
     target.setSize(Math.round(v.x * ss), Math.round(v.y * ss))
+    mid.setSize(v.x, v.y)
     mat.uniforms.uOut.value.copy(v)
     mat.uniforms.uThick.value = thickness * Math.max(1, dpr)
-  }, [gl, dpr, target, mat, thickness, quality])
+    fxaaMat.uniforms.uRcp.value.set(1 / v.x, 1 / v.y)
+  }, [gl, dpr, target, mid, mat, fxaaMat, thickness, quality])
   useEffect(resize, [resize, size])
 
-  useEffect(() => () => target.dispose(), [target])
+  useEffect(
+    () => () => {
+      target.dispose()
+      mid.dispose()
+    },
+    [target, mid],
+  )
 
   // priority 1: this callback owns rendering (r3f stops auto-rendering)
   useFrame(({ scene, camera }, dt) => {
@@ -151,8 +199,10 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
     mat.uniforms.uFar.value = pc.far
     gl.setRenderTarget(target)
     gl.render(scene, camera)
-    gl.setRenderTarget(null)
+    gl.setRenderTarget(mid)
     gl.render(quad, cam)
+    gl.setRenderTarget(null)
+    gl.render(fxaa, cam)
   }, 1)
 
   return null
