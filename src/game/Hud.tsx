@@ -11,7 +11,7 @@ export function Hud() {
           <ul className="keys">
             <li><kbd>W</kbd> push <kbd>S</kbd> brake</li>
             <li><kbd>A</kbd><kbd>D</kbd> carve · hold into a side street to turn</li>
-            <li><kbd>Space</kbd> ollie over the junk</li>
+            <li><kbd>Space</kbd> ollie over the junk · tap twice to kickflip</li>
           </ul>
           <p className="title-card__go">press any key to roll</p>
         </div>

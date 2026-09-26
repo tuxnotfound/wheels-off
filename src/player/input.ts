@@ -3,6 +3,7 @@ export const input = {
   x: 0, // -1 left .. 1 right
   z: 0, // 1 push, -1 brake
   jumpBuffer: 0, // seconds left on a buffered jump press
+  flipBuffer: 0, // seconds left on a second, quick jump press (kickflip)
   steerSide: 0, // last steer key pressed
   steerBuffer: 0, // seconds left on that press (turn intent survives a tap)
   started: false,
@@ -20,6 +21,9 @@ function recompute() {
   input.z = (has(UP) ? 1 : 0) - (has(DOWN) ? 1 : 0)
 }
 
+const DOUBLE_TAP_MS = 320
+let lastSpace = -1e9
+
 let installed = false
 export function installInput() {
   if (installed) return
@@ -30,7 +34,16 @@ export function installInput() {
     input.started = true
     if (e.repeat) return
     held.add(k)
-    if (k === ' ') input.jumpBuffer = 0.15
+    if (k === ' ') {
+      const now = performance.now()
+      if (now - lastSpace < DOUBLE_TAP_MS) {
+        input.flipBuffer = 0.2
+        lastSpace = -1e9
+      } else {
+        input.jumpBuffer = 0.15
+        lastSpace = now
+      }
+    }
     if (LEFT.includes(k)) {
       input.steerSide = -1
       input.steerBuffer = 0.5

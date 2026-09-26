@@ -119,6 +119,12 @@ no credit required. It is a stand-in until the game has its own kid:
 To try a model without editing the manifest, put it under `public/art/` and open
 `/?vrm=<file>.vrm`. The loader scales any model to the kid's height and drives its
 humanoid bones with the skate animation. Hair and cloth spring bones swing on their own.
+It also restyles every model the same way (constants at the top of
+`src/player/VrmRider.tsx`): chibi proportions (head 1.9x, body 0.8x, chubbier arms and
+legs), long hair strands shortened to the shoulder blades, a knit beanie with
+headphones fitted over the hair's crown, and loose navy pants built from the leg skin in
+place of shorts (a model without a `Bottoms` material keeps what it wears). So a VRoid
+export can keep normal proportions and long hair.
 If the file is missing or broken, the game falls back to the procedural kid and logs a
 warning.
 
