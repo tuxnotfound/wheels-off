@@ -63,6 +63,9 @@ const ROLL_FRICTION = 0.3
 // like cruising, with less rolling loss so a push every few seconds is enough.
 const HOLD_FRICTION = 0.12
 const HOLD_BAND = 2.5 // drop this far under full speed and the power pushes come back
+// Every ollie puts off the next coasting stroke, so a run of ollies with W held would bleed
+// the speed away. Holding full speed, the kid also tops up as soon as it sags this far.
+const HOLD_SAG = 0.4
 // braking drags the back foot: strong at speed, gentle near the end, and it reaches 0
 const BRAKE_K = 0.6
 const BRAKE_MIN = 1.3
@@ -205,7 +208,8 @@ export function stepSim(dtRaw: number) {
     if (!cruising) sim.nextIdleT = sim.time + idleGap()
     const idle = cruising && sim.time >= sim.nextIdleT
     if (idle) sim.nextIdleT = sim.time + idleGap()
-    const want = sim.grounded && !bailing && input.z >= 0 && (powering || sim.speed < CRUISE - 1.5 || idle)
+    const sagging = sim.topSpeed && sim.speed < MAX_SPEED - HOLD_SAG
+    const want = sim.grounded && !bailing && input.z >= 0 && (powering || sim.speed < CRUISE - 1.5 || idle || sagging)
 
     const P = sim.push
     const stage = (next: PushStage, dur = 0) => {
