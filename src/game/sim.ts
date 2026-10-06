@@ -1,6 +1,7 @@
 import { input } from '../player/input'
 import { blockObstacles, childSeed, hasBranch, laneLimit, widthForSeed } from '../world/streetGen'
 import { BLOCK, DIR, TURN_R } from '../world/worldConfig'
+import { STREAK_KMH } from './records'
 
 // The skate simulation: plain mutable state stepped once per frame, no React.
 // The skater rides street centerlines offset by a lateral carve; turning at an
@@ -120,6 +121,7 @@ export const sim = {
   score: 0,
   combo: 0,
   distance: 0,
+  streak: 0, // seconds riding unbroken above STREAK_KMH (as the HUD rounds it)
   hits: new Map<string, number>(), // obstacle id -> time it was hit
   cleared: new Set<string>(),
   events: [] as { kind: 'clear' | 'hit' | 'street'; text: string }[],
@@ -257,6 +259,7 @@ export function stepSim(dtRaw: number) {
       if (sim.speed > CRUISE && input.z === 0) sim.speed = damp(sim.speed, CRUISE, 0.5, dt)
       sim.speed = Math.max(0, sim.speed - (sim.topSpeed ? HOLD_FRICTION : ROLL_FRICTION) * dt)
     }
+    sim.streak = Math.round(sim.speed * 3.6) > STREAK_KMH ? sim.streak + dt : 0
   }
 
   // --- lateral carve, softly held inside the lane ---

@@ -16,6 +16,7 @@ import { AHEAD, BEHIND, BLOCK, BRANCH_DEPTH, DIR } from '../world/worldConfig'
 import { childStreet, sim, stepSim, upcomingTurn } from './sim'
 import type { Street } from './sim'
 import { useHud } from './hudStore'
+import { beatRecords, records, recordsAtLoad } from './records'
 import { tickAds } from '../ads/ads'
 
 const damp = (a: number, b: number, lambda: number, dt: number) => a + (b - a) * (1 - Math.exp(-lambda * dt))
@@ -96,6 +97,18 @@ function SimDriver() {
     }
     if (sim.score !== hud.score) patch.score = sim.score
     if (sim.combo !== hud.combo) patch.combo = sim.combo
+    beatRecords(sim.score, sim.streak, sim.time)
+    const streak = Math.floor(sim.streak * 10) / 10
+    if (streak !== hud.streak) patch.streak = streak
+    const bestStreak = Math.floor(records.streak * 10) / 10
+    if (records.score !== hud.best.score || bestStreak !== hud.best.streak) {
+      patch.best = {
+        score: records.score,
+        streak: bestStreak,
+        newScore: records.score > recordsAtLoad.score,
+        newStreak: records.streak > recordsAtLoad.streak,
+      }
+    }
     const turns = upcomingTurn()
     if (JSON.stringify(turns) !== JSON.stringify(hud.turns)) patch.turns = turns
     if (sim.time - last.t > 0.2) {

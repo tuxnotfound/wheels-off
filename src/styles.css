@@ -111,13 +111,18 @@ kbd {
   top: 16px;
   left: 16px;
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  flex-direction: column;
   background: var(--bubble);
   border: 3px solid var(--ink);
   border-radius: 14px;
   box-shadow: 2px 3px 0 var(--ink);
   padding: 4px 14px;
+}
+
+.hud-score__now {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .hud-score__n {
@@ -133,6 +138,9 @@ kbd {
   position: absolute;
   top: 16px;
   right: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   font-size: 26px;
   background: var(--bubble);
   border: 3px solid var(--ink);
@@ -145,6 +153,38 @@ kbd {
 .hud-speed small {
   font-size: 12px;
   margin-left: 4px;
+}
+
+/* time held over the streak speed, live; lit while it is counting */
+.hud-streak {
+  font-size: 15px;
+  opacity: 0.55;
+}
+
+.hud-streak small {
+  font-size: 10px;
+}
+
+.hud-streak--on {
+  opacity: 1;
+  color: var(--accent);
+}
+
+/* personal record under a live value */
+.hud-pr {
+  font-size: 12px;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-pr small {
+  font-size: 10px;
+  margin: 0 5px 0 0;
+}
+
+.hud-pr--new {
+  opacity: 1;
+  color: var(--accent);
 }
 
 /* location card, like the reference's "MAIN SQUARE" */
