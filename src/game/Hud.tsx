@@ -4,11 +4,35 @@ import { STREAK_KMH } from './records'
 const secs = (s: number) =>
   s < 60 ? `${s.toFixed(1)}s` : `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`
 
-/** The personal record under a live value; once beaten this session it follows the value. */
-function Pr({ value, fresh }: { value: string; fresh: boolean }) {
+/** Lit next to a live value while it is beating its record. */
+function Flame() {
   return (
-    <span className={fresh ? 'hud-pr hud-pr--new' : 'hud-pr'}>
-      <small>{fresh ? 'NEW PR' : 'PR'}</small>
+    <svg className="hud-flame" viewBox="0 0 24 24" aria-label="beating your record">
+      <path
+        className="hud-flame__outer"
+        d="M12 2C13 6 18 8.5 18 14.5a6 6 0 0 1-12 0C6 11.5 7.7 9.6 8.4 7.6 9.7 8.8 10.3 9.9 10.4 11 11.6 8.2 11.1 5 12 2Z"
+      />
+      <path className="hud-flame__inner" d="M12 12.2c.9 1.9 3 3 3 5.2a3 3 0 0 1-6 0c0-1.6 1.1-2.6 1.5-3.8.6.7.9 1.3.9 2 .5-1.1.6-2.2.6-3.4Z" />
+    </svg>
+  )
+}
+
+function Trophy() {
+  return (
+    <svg className="hud-trophy" viewBox="0 0 24 24" aria-hidden="true">
+      <path className="hud-trophy__handles" d="M6.5 5H3.8a2.6 2.6 0 0 0 3.4 4.6M17.5 5h2.7a2.6 2.6 0 0 1-3.4 4.6" />
+      <path className="hud-trophy__cup" d="M6 3h12v5.5a6 6 0 0 1-12 0Z" />
+      <path className="hud-trophy__cup" d="M10.5 14.2h3L13.2 18h-2.4ZM7.5 18h9v3.2h-9Z" />
+    </svg>
+  )
+}
+
+/** The record under a live value: the one the current run has to beat. */
+function Pr({ value }: { value: string }) {
+  return (
+    <span className="hud-pr">
+      <Trophy />
+      <small>PR</small>
       {value}
     </span>
   )
@@ -16,6 +40,8 @@ function Pr({ value, fresh }: { value: string; fresh: boolean }) {
 
 export function Hud() {
   const { started, score, combo, speed, streak, best, turns, toast, street } = useHud()
+  const beatingScore = best.score > 0 && score > best.score
+  const beatingStreak = best.streak > 0 && streak > best.streak
   return (
     <div className="hud">
       {!started && (
@@ -35,9 +61,10 @@ export function Hud() {
           <div className="hud-score">
             <div className="hud-score__now">
               <span className="hud-score__n">{score}</span>
+              {beatingScore && <Flame />}
               {combo > 1 && <span className="hud-score__combo">x{combo}</span>}
             </div>
-            <Pr value={String(best.score)} fresh={best.newScore} />
+            <Pr value={String(best.score)} />
           </div>
           <div className="hud-speed">
             <div>
@@ -46,8 +73,9 @@ export function Hud() {
             </div>
             <span className={streak > 0 ? 'hud-streak hud-streak--on' : 'hud-streak'}>
               <small>over {STREAK_KMH}</small> {secs(streak)}
+              {beatingStreak && <Flame />}
             </span>
-            <Pr value={secs(best.streak)} fresh={best.newStreak} />
+            <Pr value={secs(best.streak)} />
           </div>
         </>
       )}

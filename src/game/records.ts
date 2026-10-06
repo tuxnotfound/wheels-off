@@ -1,4 +1,4 @@
-// Personal records, kept in this browser across sessions: the best score, and the
+// Personal records, kept in this browser across sessions: the best run score, and the
 // longest unbroken time riding above STREAK_KMH. The streak itself is counted in the sim.
 
 export const STREAK_KMH = 58
@@ -18,8 +18,12 @@ function load(): Records {
 }
 
 export const records = load()
-/** The records as they stood when the page loaded, to tell a new PR from an old one. */
-export const recordsAtLoad = { ...records }
+/**
+ * The records the current run has to beat: each as it stood when its live value was last 0
+ * (the score at a wipeout, the streak when it broke). A record set mid-run lands here when
+ * the run ends, so the HUD keeps showing the target while it is being beaten.
+ */
+export const standing = { ...records }
 
 let dirty = false
 let savedAt = -Infinity
@@ -36,6 +40,8 @@ function save() {
 
 /** Raises the records to the current run. Saves at most every few seconds, and when the page hides. */
 export function beatRecords(score: number, streak: number, now: number) {
+  if (score === 0) standing.score = records.score
+  if (streak === 0) standing.streak = records.streak
   if (score > records.score) {
     records.score = score
     dirty = true

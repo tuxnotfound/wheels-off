@@ -172,19 +172,84 @@ kbd {
 
 /* personal record under a live value */
 .hud-pr {
+  display: flex;
+  align-items: center;
   font-size: 12px;
-  opacity: 0.6;
   font-variant-numeric: tabular-nums;
 }
 
 .hud-pr small {
   font-size: 10px;
   margin: 0 5px 0 0;
+  opacity: 0.6;
 }
 
-.hud-pr--new {
-  opacity: 1;
-  color: var(--accent);
+.hud-trophy {
+  width: 15px;
+  height: 15px;
+  margin-right: 4px;
+  overflow: visible;
+}
+
+.hud-trophy__cup {
+  fill: #f2c14e;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.hud-trophy__handles {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* beating the record: a small flame flickering next to the live value */
+.hud-flame {
+  width: 1em;
+  height: 1em;
+  margin-left: 3px;
+  overflow: visible;
+  transform-origin: 50% 90%;
+  animation:
+    flame-in 0.35s ease-out,
+    flicker 0.5s ease-in-out 0.35s infinite alternate;
+}
+
+.hud-score__now .hud-flame {
+  width: 22px;
+  height: 22px;
+  margin-left: -2px;
+}
+
+.hud-flame__outer {
+  fill: #f07a2e;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.hud-flame__inner {
+  fill: #ffd75e;
+}
+
+@keyframes flame-in {
+  from {
+    transform: scale(0);
+  }
+  60% {
+    transform: scale(1.3);
+  }
+}
+
+@keyframes flicker {
+  from {
+    transform: scale(1, 1) rotate(-4deg);
+  }
+  to {
+    transform: scale(0.92, 1.1) rotate(4deg);
+  }
 }
 
 /* location card, like the reference's "MAIN SQUARE" */
@@ -283,7 +348,8 @@ kbd {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .title-card__go {
+  .title-card__go,
+  .hud-flame {
     animation: none;
   }
 }

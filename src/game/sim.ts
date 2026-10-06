@@ -364,6 +364,7 @@ function collide(uPrev: number) {
       sim.bailT = sim.time
       sim.speed *= 0.35
       sim.combo = 0
+      sim.score = 0 // a wipeout ends the run
       sim.events.push({ kind: 'hit', text: 'WIPEOUT!' })
       return
     }
