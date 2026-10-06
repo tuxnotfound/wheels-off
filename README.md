@@ -25,10 +25,10 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
   position and heading on damped springs. The world is moved and rotated so the anchor sits
   at the origin, and the chase camera widens with speed and rolls into carves.
 - **`src/game/records.ts`**: personal records, kept in `localStorage` across sessions: the
-  best run score, and the longest unbroken time above 58 km/h (the sim counts the live
-  streak). The HUD shows each record, with a trophy, under its live value, and a flame by
-  the live value while it is beating the record. The record shown is the one the run has
-  to beat; a new one replaces it when the run ends.
+  best run score, and the longest unbroken time at full speed, above 58 km/h (the sim
+  counts the live streak). The HUD shows each record, with a trophy, under its live value.
+  While a run is beating a record, the record follows the live value in red, with a flame
+  by the live value.
 - **`src/art/art.ts`**: the art pipeline. It loads `public/art/manifest.json`, preloads
   every image before the game boots, and provides unlit painted materials (the art carries
   its own shading) plus a shadow-pass material that respects cut-out silhouettes.

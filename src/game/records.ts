@@ -20,8 +20,8 @@ function load(): Records {
 export const records = load()
 /**
  * The records the current run has to beat: each as it stood when its live value was last 0
- * (the score at a wipeout, the streak when it broke). A record set mid-run lands here when
- * the run ends, so the HUD keeps showing the target while it is being beaten.
+ * (the score at a wipeout, the streak when it broke). A run is beating its record while
+ * the record has climbed past this.
  */
 export const standing = { ...records }
 

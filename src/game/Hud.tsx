@@ -1,5 +1,4 @@
 import { useHud } from './hudStore'
-import { STREAK_KMH } from './records'
 
 const secs = (s: number) =>
   s < 60 ? `${s.toFixed(1)}s` : `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`
@@ -27,10 +26,10 @@ function Trophy() {
   )
 }
 
-/** The record under a live value: the one the current run has to beat. */
-function Pr({ value }: { value: string }) {
+/** The record under a live value. While the run is beating it, it follows the value in red. */
+function Pr({ value, beating }: { value: string; beating: boolean }) {
   return (
-    <span className="hud-pr">
+    <span className={beating ? 'hud-pr hud-pr--beating' : 'hud-pr'}>
       <Trophy />
       <small>PR</small>
       {value}
@@ -40,8 +39,6 @@ function Pr({ value }: { value: string }) {
 
 export function Hud() {
   const { started, score, combo, speed, streak, best, turns, toast, street } = useHud()
-  const beatingScore = best.score > 0 && score > best.score
-  const beatingStreak = best.streak > 0 && streak > best.streak
   return (
     <div className="hud">
       {!started && (
@@ -61,10 +58,10 @@ export function Hud() {
           <div className="hud-score">
             <div className="hud-score__now">
               <span className="hud-score__n">{score}</span>
-              {beatingScore && <Flame />}
+              {best.beatingScore && <Flame />}
               {combo > 1 && <span className="hud-score__combo">x{combo}</span>}
             </div>
-            <Pr value={String(best.score)} />
+            <Pr value={String(best.score)} beating={best.beatingScore} />
           </div>
           <div className="hud-speed">
             <div>
@@ -72,10 +69,10 @@ export function Hud() {
               <small>km/h</small>
             </div>
             <span className={streak > 0 ? 'hud-streak hud-streak--on' : 'hud-streak'}>
-              <small>over {STREAK_KMH}</small> {secs(streak)}
-              {beatingStreak && <Flame />}
+              <small>full speed</small> {secs(streak)}
+              {best.beatingStreak && <Flame />}
             </span>
-            <Pr value={secs(best.streak)} />
+            <Pr value={secs(best.streak)} beating={best.beatingStreak} />
           </div>
         </>
       )}

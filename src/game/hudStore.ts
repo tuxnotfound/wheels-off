@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { standing } from './records'
+import { records } from './records'
 
 type Toast = { id: number; text: string; kind: 'clear' | 'hit' }
 type HudState = {
@@ -8,7 +8,8 @@ type HudState = {
   combo: number
   speed: number // km/h
   streak: number // seconds above STREAK_KMH, to a tenth
-  best: { score: number; streak: number } // the records this run has to beat, streak to a tenth
+  // the records (streak to a tenth), and whether the current run is the one setting them
+  best: { score: number; streak: number; beatingScore: boolean; beatingStreak: boolean }
   turns: { left: boolean; right: boolean } | null
   toast: Toast | null
   street: { id: number; name: string; kanji: string } | null
@@ -21,7 +22,7 @@ export const useHud = create<HudState>(() => ({
   combo: 0,
   speed: 0,
   streak: 0,
-  best: { score: standing.score, streak: Math.floor(standing.streak * 10) / 10 },
+  best: { score: records.score, streak: Math.floor(records.streak * 10) / 10, beatingScore: false, beatingStreak: false },
   turns: null,
   toast: null,
   street: null,
