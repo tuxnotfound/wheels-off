@@ -37,6 +37,10 @@ function Pr({ value, beating }: { value: string; beating: boolean }) {
   )
 }
 
+// The cards below are keyed by the sim time of their event so a new one replays its
+// animation. Two can start on the same frame (a wipeout and its record banner), and they
+// share a parent, so each kind gets its own key prefix: a duplicate key makes React copy
+// the card again on every render.
 export function Hud() {
   const { started, score, combo, speed, streak, best, turns, toast, street, record } = useHud()
   return (
@@ -77,7 +81,7 @@ export function Hud() {
         </>
       )}
       {record && (
-        <div className="record-card" key={record.id} role="status">
+        <div className="record-card" key={`record-${record.id}`} role="status">
           <Trophy className="record-card__trophy" />
           <div>
             <span className="record-card__title">NEW RECORD!</span>
@@ -86,13 +90,13 @@ export function Hud() {
         </div>
       )}
       {street && (
-        <div className="street-card" key={street.id}>
+        <div className="street-card" key={`street-${street.id}`}>
           <span className="street-card__jp">{street.kanji}</span>
           <span className="street-card__en">{street.name}</span>
         </div>
       )}
       {toast && (
-        <div className={`toast toast--${toast.kind}`} key={toast.id}>
+        <div className={`toast toast--${toast.kind}`} key={`toast-${toast.id}`}>
           {toast.text}
         </div>
       )}
