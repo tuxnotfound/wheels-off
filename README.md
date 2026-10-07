@@ -18,6 +18,9 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
   go back, Esc to ride). A run that makes a leaderboard asks for a name at the wipeout: Enter
   signs it, Esc signs it as John Doe.
 - **M** music on or off (remembered in this browser).
+- **F** free roam: the same endless town with no obstacles and no scores. F on the title card
+  rolls off in free roam; F on the pause screen rolls on in the other mode. Leaving arcade for
+  free roam ends the run, as a wipeout does. F mid-ride does nothing.
 
 ## How it's built
 
@@ -43,6 +46,10 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
   15 points and 12 s at the top; raise it before launch). Each table's top entry
   is the world record (WR), shown under the PR in the HUD with a crown; a run beating it
   shows as YOU with a blue flame.
+- **`src/game/mode.ts`**: the mode, arcade or free roam. In free roam the sim skips obstacles,
+  scores nothing and counts no full speed time, and the HUD shows the speed alone. Blocks laid
+  out during free roam keep no obstacles for good, so back in arcade none drops in right in
+  front of the rider: they return with the blocks that rise over the horizon.
 - **`src/game/arcadeStore.ts`, `Arcade.tsx`**: the cards over the ride, all in the title
   card's look, with scores and names in arcade type (Press Start 2P). The title card is the
   start screen and, until there is a real landing page, the pause screen too, with the top

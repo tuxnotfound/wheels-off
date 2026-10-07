@@ -19,6 +19,7 @@ import { useHud } from './hudStore'
 import { beatRecords, beating, endRun, records } from './records'
 import { rankFor, worldRecord } from './leaderboard'
 import { askForName, isPaused } from './arcadeStore'
+import { freeRoam } from './mode'
 import { tickAds } from '../ads/ads'
 
 const damp = (a: number, b: number, lambda: number, dt: number) => a + (b - a) * (1 - Math.exp(-lambda * dt))
@@ -84,7 +85,7 @@ function signature(): string {
 
 /** Steps the simulation first each frame, then mirrors what the HUD needs. */
 function SimDriver() {
-  const last = useRef({ t: 0 }).current
+  const last = useRef({ t: 0, free: false }).current
   useFrame(({ camera }, dt) => {
     if (isPaused()) return // the pause screen or a name being typed: the world holds still
     stepSim(dt)
@@ -102,10 +103,18 @@ function SimDriver() {
       patch.started = true
       patch.street = { id: sim.time, ...streetName(sim.street.seed) }
     }
+    // leaving arcade for free roam ends the run, as a wipeout does
+    const free = freeRoam()
+    const quit = free && !last.free
+    last.free = free
+    if (quit) {
+      sim.score = 0
+      sim.combo = 0
+    }
     if (sim.score !== hud.score) patch.score = sim.score
     if (sim.combo !== hud.combo) patch.combo = sim.combo
-    beatRecords(sim.score, sim.streak, sim.time)
-    if (wipeout) {
+    if (!free) beatRecords(sim.score, sim.streak, sim.time)
+    if (wipeout || quit) {
       // game over for this run: a run that makes a leaderboard signs it, else a new PR gets its banner
       const end = endRun()
       const scoreRank = rankFor('score', end.score)

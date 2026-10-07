@@ -2,6 +2,7 @@ import { useMusic } from '../audio/music'
 import { useHud } from './hudStore'
 import { Crown, Flame, Note, Trophy, secs } from './icons'
 import { BOARD_TITLE } from './leaderboard'
+import { useMode } from './mode'
 
 /**
  * The record under a live value. While the run is beating it, it follows the value in red.
@@ -36,34 +37,40 @@ function Wr({ value, name, beating }: { value: string; name: string; beating: bo
 export function Hud() {
   const { started, score, combo, speed, streak, best, wr, turns, toast, street, record } = useHud()
   const musicOff = useMusic((s) => s.off)
+  // free roam scores nothing: the speed alone, under the mode's name
+  const free = useMode((s) => s.mode === 'free')
   return (
     <div className="hud">
+      {started && !free && (
+        <div className="hud-score">
+          <span className="hud-board">{BOARD_TITLE.score}</span>
+          <div className="hud-score__now">
+            <span className="hud-score__n">{score}</span>
+            {(best.beatingScore || wr.beatingScore) && <Flame wr={wr.beatingScore} />}
+            {combo > 1 && <span className="hud-score__combo">x{combo}</span>}
+          </div>
+          <Pr value={String(best.score)} beating={best.beatingScore} popId={record?.score != null ? record.id : 0} />
+          <Wr value={String(wr.beatingScore ? score : wr.score)} name={wr.scoreName} beating={wr.beatingScore} />
+        </div>
+      )}
       {started && (
-        <>
-          <div className="hud-score">
-            <span className="hud-board">{BOARD_TITLE.score}</span>
-            <div className="hud-score__now">
-              <span className="hud-score__n">{score}</span>
-              {(best.beatingScore || wr.beatingScore) && <Flame wr={wr.beatingScore} />}
-              {combo > 1 && <span className="hud-score__combo">x{combo}</span>}
-            </div>
-            <Pr value={String(best.score)} beating={best.beatingScore} popId={record?.score != null ? record.id : 0} />
-            <Wr value={String(wr.beatingScore ? score : wr.score)} name={wr.scoreName} beating={wr.beatingScore} />
+        <div className="hud-speed">
+          <span className="hud-board">{free ? 'free roam' : BOARD_TITLE.speed}</span>
+          <div>
+            {speed}
+            <small>km/h</small>
           </div>
-          <div className="hud-speed">
-            <span className="hud-board">{BOARD_TITLE.speed}</span>
-            <div>
-              {speed}
-              <small>km/h</small>
-            </div>
-            <span className={streak > 0 ? 'hud-streak hud-streak--on' : 'hud-streak'}>
-              <small>full speed</small> {secs(streak)}
-              {(best.beatingStreak || wr.beatingStreak) && <Flame wr={wr.beatingStreak} />}
-            </span>
-            <Pr value={secs(best.streak)} beating={best.beatingStreak} popId={record?.streak != null ? record.id : 0} />
-            <Wr value={secs(wr.beatingStreak ? streak : wr.streak)} name={wr.streakName} beating={wr.beatingStreak} />
-          </div>
-        </>
+          {!free && (
+            <>
+              <span className={streak > 0 ? 'hud-streak hud-streak--on' : 'hud-streak'}>
+                <small>full speed</small> {secs(streak)}
+                {(best.beatingStreak || wr.beatingStreak) && <Flame wr={wr.beatingStreak} />}
+              </span>
+              <Pr value={secs(best.streak)} beating={best.beatingStreak} popId={record?.streak != null ? record.id : 0} />
+              <Wr value={secs(wr.beatingStreak ? streak : wr.streak)} name={wr.streakName} beating={wr.beatingStreak} />
+            </>
+          )}
+        </div>
       )}
       {record && (
         <div className="record-card" key={`record-${record.id}`} role="status">

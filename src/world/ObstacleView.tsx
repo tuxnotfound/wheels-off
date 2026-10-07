@@ -1,11 +1,13 @@
 import { useFrame } from '@react-three/fiber'
-import { useRef } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import type * as THREE from 'three'
 import { CONE, CYL, SPHERE } from '../look/geom'
 import { decalMat } from '../look/materials'
 import { cardboardTex, hazardTex } from '../look/textures'
 import { M } from './parts'
 import { sim } from '../game/sim'
+import { hasObstacles, keepClear, useMode } from '../game/mode'
+import { blockObstacles } from './streetGen'
 import type { Obstacle } from './streetGen'
 import { BLOCK } from './worldConfig'
 
@@ -112,4 +114,16 @@ export function ObstacleView({ ob, k }: { ob: Obstacle; k: number }) {
       <Body ob={ob} />
     </group>
   )
+}
+
+/** A block's obstacles. Free roam clears them, and the block stays clear after it (see mode.ts). */
+export function BlockObstacles({ seed, k, width }: { seed: number; k: number; width: number }) {
+  const key = `${seed}:${k}`
+  const free = useMode((s) => s.mode === 'free')
+  const obstacles = useMemo(() => blockObstacles(seed, k, width), [seed, k, width])
+  useLayoutEffect(() => {
+    if (free) keepClear(key)
+  }, [free, key])
+  if (!hasObstacles(key, free)) return null
+  return obstacles.map((ob) => <ObstacleView key={ob.id} ob={ob} k={k} />)
 }

@@ -97,6 +97,14 @@ canvas {
 }
 
 .title-card__rule {
+  margin: 0 0 8px;
+  font-family: system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* F: the other mode, under the rule */
+.title-card__mode {
   margin: 0 0 14px;
   font-family: system-ui, sans-serif;
   font-weight: 600;

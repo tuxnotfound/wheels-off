@@ -5,13 +5,15 @@ import type { PendingRun } from './arcadeStore'
 import { BOARD_JP, BOARD_SIZE, BOARD_TITLE, NAME_MAX, boards, lastName, worldRecord } from './leaderboard'
 import type { Board } from './leaderboard'
 import { useHud } from './hudStore'
+import { switchMode, useMode } from './mode'
 import { Crown, Trophy, secs } from './icons'
 import { records } from './records'
 
 // The cards over the ride, all in the title card's look, with scores and names in arcade
 // type: the title card itself (at the start, and again as the pause screen) with the top of
-// each leaderboard; the hi-scores card (R) with both leaderboards in full; the name entry after
-// a run that makes a leaderboard; and the burst behind it for a world record.
+// each leaderboard and the switch to free roam (F); the hi-scores card (R) with both
+// leaderboards in full; the name entry after a run that makes a leaderboard; and the burst
+// behind it for a world record.
 
 const ordinal = (i: number) => ['1ST', '2ND', '3RD'][i] ?? `${i + 1}TH`
 const shown = (board: Board, value: number) => (board === 'score' ? String(value) : secs(Math.floor(value * 10) / 10))
@@ -43,6 +45,7 @@ function Leaderboard({ board }: { board: Board }) {
 
 /** The title card: shown before the first ride and again whenever the game is paused. */
 function TitleCard({ paused }: { paused: boolean }) {
+  const free = useMode((s) => s.mode === 'free')
   return (
     <div className="overlay" role={paused ? 'dialog' : undefined} aria-label={paused ? 'Paused' : undefined}>
       <div className="title-card">
@@ -77,7 +80,10 @@ function TitleCard({ paused }: { paused: boolean }) {
           <dt><kbd>M</kbd></dt>
           <dd>music on/off</dd>
         </dl>
-        <p className="title-card__rule">a wipeout ends the run</p>
+        <p className="title-card__rule">{free ? 'free roam · no obstacles, no scores' : 'a wipeout ends the run'}</p>
+        <p className="title-card__mode">
+          <kbd>F</kbd> {free ? 'back to arcade' : paused ? 'free roam · ends this run' : 'free roam · no obstacles, no scores'}
+        </p>
         <p className="title-card__go">{paused ? 'paused · press P to roll on' : 'press any key to roll'}</p>
       </div>
     </div>
@@ -197,6 +203,14 @@ export function Arcade() {
       if (k === 'p' && useHud.getState().started) togglePause()
       else if (k === 'r') toggleRecords()
       else if (k === 'escape') resume()
+      else if (k === 'f') {
+        // only on the title card, which rolls off in free roam, or the pause screen, which rolls
+        // on in the other mode: a stray F mid-ride never ends a run
+        const { menu, pending } = useArcade.getState()
+        if (pending || !(menu === 'pause' || (menu === null && !useHud.getState().started))) return
+        switchMode()
+        resume()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

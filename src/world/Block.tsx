@@ -8,8 +8,8 @@ import { M, StopSign, UtilityPole } from './parts'
 import { Vehicle } from './vehicles'
 import { Nobori, RooftopBillboard, StreetBanner, WallPoster } from '../ads/fixtures'
 import { LitterView, PaintedLot, PropView, StreetTree } from './painted'
-import { ObstacleView } from './ObstacleView'
-import { blockObstacles, blockPlan, h, POLE_U } from './streetGen'
+import { BlockObstacles } from './ObstacleView'
+import { blockPlan, h, POLE_U } from './streetGen'
 import type { BlockPlan } from './streetGen'
 import { BLOCK, CURB, SIDEWALK } from './worldConfig'
 
@@ -60,7 +60,6 @@ function useWires(plan: BlockPlan, half: number): THREE.LineSegments {
 
 function Block({ seed, k, ix, iz, dir, width, u0 }: Omit<BlockDesc, 'key'>) {
   const plan = useMemo(() => blockPlan(seed, k, width, u0), [seed, k, width, u0])
-  const obstacles = useMemo(() => blockObstacles(seed, k, width), [seed, k, width])
   const half = width / 2
   const wires = useWires(plan, half)
   const els: ReactNode[] = []
@@ -143,7 +142,7 @@ function Block({ seed, k, ix, iz, dir, width, u0 }: Omit<BlockDesc, 'key'>) {
     )
   }
 
-  obstacles.forEach((ob) => els.push(<ObstacleView key={ob.id} ob={ob} k={k} />))
+  els.push(<BlockObstacles key="obstacles" seed={seed} k={k} width={width} />)
 
   return (
     <group position={[ix, 0, iz]} rotation-y={(-dir * Math.PI) / 2}>

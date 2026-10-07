@@ -70,6 +70,7 @@ export function endRun(): RunEnd {
   }
   runStart.score = records.score
   runStart.streak = records.streak
+  streakStart = records.streak // a run can end mid-streak (switching to free roam)
   run.score = 0
   run.streak = 0
   return end

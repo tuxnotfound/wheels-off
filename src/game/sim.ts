@@ -1,12 +1,13 @@
 import { input } from '../player/input'
 import { blockObstacles, childSeed, hasBranch, laneLimit, widthForSeed } from '../world/streetGen'
 import { BLOCK, DIR, TURN_R } from '../world/worldConfig'
+import { freeRoam, hasObstacles } from './mode'
 import { STREAK_KMH } from './records'
 
 // The skate simulation: plain mutable state stepped once per frame, no React.
 // The skater rides street centerlines offset by a lateral carve; turning at an
 // intersection follows a true quarter-circle arc, so position and heading stay
-// continuous through every corner.
+// continuous through every corner. Free roam (mode.ts) has no obstacles and scores nothing.
 
 export type Street = {
   seed: number
@@ -263,7 +264,7 @@ export function stepSim(dtRaw: number) {
       if (sim.speed > CRUISE && input.z === 0) sim.speed = damp(sim.speed, CRUISE, 0.5, dt)
       sim.speed = Math.max(0, sim.speed - (sim.topSpeed ? HOLD_FRICTION : ROLL_FRICTION) * dt)
     }
-    sim.streak = Math.round(sim.speed * 3.6) > STREAK_KMH ? sim.streak + dt : 0
+    sim.streak = !freeRoam() && Math.round(sim.speed * 3.6) > STREAK_KMH ? sim.streak + dt : 0
   }
 
   // --- lateral carve, softly held inside the lane ---
@@ -311,7 +312,7 @@ export function stepSim(dtRaw: number) {
       sim.landT = sim.time
       // a flip over nothing still counts, a little
       if (sim.flipT > sim.jumpT && !sim.airScored && !bailing) {
-        sim.score += 2
+        if (!freeRoam()) sim.score += 2
         sim.events.push({ kind: 'clear', text: 'KICKFLIP!' })
       }
     }
@@ -358,6 +359,7 @@ export function stepSim(dtRaw: number) {
 function collide(uPrev: number) {
   const s = sim.street
   const kb = Math.floor(sim.u / BLOCK)
+  if (!hasObstacles(`${s.seed}:${kb}`)) return
   for (const ob of blockObstacles(s.seed, kb, s.width)) {
     if (sim.hits.has(ob.id) || sim.cleared.has(ob.id)) continue
     const latHit = Math.abs(sim.lat - ob.s) < ob.w / 2 + BODY_HALF
