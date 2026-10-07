@@ -13,8 +13,9 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
   intersection to turn into it (arrows at the bottom show which turns exist).
 - **Space** ollie. Clearing obstacles builds a combo, and hitting one is a wipeout that ends
   the run: score and combo go back to 0.
-- **P** pause: how to play and the leaderboards (P or Esc to play on). A run that makes a
-  leaderboard asks for a name at the wipeout: Enter signs it, Esc signs it as John Doe.
+- **P** pause: back to the title card, with how to play and both leaderboards (P or Esc to
+  play on). A run that makes a leaderboard asks for a name at the wipeout: Enter signs it,
+  Esc signs it as John Doe.
 
 ## How it's built
 
@@ -39,10 +40,12 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
   fresh one comes with a default table of made-up locals to beat. Each table's top entry
   is the world record (WR), shown under the PR in the HUD with a crown; a run beating it
   shows as YOU with a blue flame.
-- **`src/game/arcadeStore.ts`, `Arcade.tsx`**: the arcade screens. The pause screen and the
-  name entry both hold the sim still and take the keyboard from it (`input.blocked`). A run
-  that makes a table gets the name entry instead of the PR banner; a world record gets a
-  burst (rays, flash, stars) behind it.
+- **`src/game/arcadeStore.ts`, `Arcade.tsx`**: the cards over the ride, all in the title
+  card's look, with scores and names in arcade type (Press Start 2P). The title card is the
+  start screen and, until there is a real landing page, the pause screen too, with the
+  HI-SCORE and both leaderboards. Pause and the name entry hold the sim still and take the
+  keyboard from it (`input.blocked`). A run that makes a table gets the name entry instead
+  of the PR banner; a world record gets a burst (rays, flash, stars) behind it.
 - **`src/art/art.ts`**: the art pipeline. It loads `public/art/manifest.json`, preloads
   every image before the game boots, and provides unlit painted materials (the art carries
   its own shading) plus a shadow-pass material that respects cut-out silhouettes.

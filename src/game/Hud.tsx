@@ -35,22 +35,6 @@ export function Hud() {
   const { started, score, combo, speed, streak, best, wr, turns, toast, street, record } = useHud()
   return (
     <div className="hud">
-      {!started && (
-        <div className="title-card">
-          <h1>WHEELS OFF</h1>
-          <p className="title-card__jp">ホイールズ・オフ</p>
-          <p className="title-card__hi">
-            HI-SCORE {wr.score} {wr.scoreName}
-          </p>
-          <ul className="keys">
-            <li><kbd>W</kbd> push <kbd>S</kbd> brake</li>
-            <li><kbd>A</kbd><kbd>D</kbd> carve · hold into a side street to turn</li>
-            <li><kbd>Space</kbd> ollie over the junk · tap twice to kickflip</li>
-            <li><kbd>P</kbd> pause · how to play · leaderboards</li>
-          </ul>
-          <p className="title-card__go">press any key to roll</p>
-        </div>
-      )}
       {started && (
         <>
           <div className="hud-score">

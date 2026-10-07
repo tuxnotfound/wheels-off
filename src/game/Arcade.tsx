@@ -2,14 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, MouseEvent } from 'react'
 import { resume, signName, togglePause, useArcade } from './arcadeStore'
 import type { PendingRun } from './arcadeStore'
-import { BOARD_SIZE, DEFAULT_NAME, NAME_MAX, boards, lastName } from './leaderboard'
+import { BOARD_SIZE, DEFAULT_NAME, NAME_MAX, boards, lastName, worldRecord } from './leaderboard'
 import type { Board } from './leaderboard'
 import { useHud } from './hudStore'
 import { Crown, secs } from './icons'
 import { STREAK_KMH } from './records'
 
-// The arcade screens over the ride: pause (how to play and the leaderboards), the name entry
-// after a run that makes a leaderboard, and the burst when that run is a world record.
+// The cards over the ride, all in the title card's look: the title card itself (at the start,
+// and again as the pause screen), with the HI-SCORE and both leaderboards in arcade type; the
+// name entry after a run that makes a leaderboard; and the burst behind it for a world record.
 
 const ordinal = (i: number) => ['1ST', '2ND', '3RD'][i] ?? `${i + 1}TH`
 const shown = (board: Board, value: number) => (board === 'score' ? String(value) : secs(Math.floor(value * 10) / 10))
@@ -18,11 +19,14 @@ function Leaderboard({ board }: { board: Board }) {
   const list = boards[board]
   return (
     <section className="board">
-      <h3>{board === 'score' ? 'TOP SCORES' : 'FULL SPEED'}</h3>
+      <h2 className="board__title">
+        {board === 'score' ? 'top scores' : 'full speed'}
+        {board === 'speed' && <small> over {STREAK_KMH} km/h</small>}
+      </h2>
       <ol>
         {Array.from({ length: BOARD_SIZE }, (_, i) => (
           <li key={i} className="board__row">
-            <span>{ordinal(i)}</span>
+            <span className="board__rank">{ordinal(i)}</span>
             <span className="board__name">{list[i]?.name ?? '---'}</span>
             <span className="board__value">{list[i] ? shown(board, list[i].value) : ''}</span>
           </li>
@@ -32,28 +36,30 @@ function Leaderboard({ board }: { board: Board }) {
   )
 }
 
-function PauseScreen() {
+/** The title card: shown before the first ride and again whenever the game is paused. */
+function TitleCard({ paused }: { paused: boolean }) {
+  const top = worldRecord('score')
   return (
-    <div className="arcade" role="dialog" aria-label="Paused">
-      <div className="arcade__panel">
-        <h2 className="arcade__title arcade__blink">PAUSED</h2>
-        <div className="arcade__cols">
-          <section className="howto">
-            <h3>HOW TO PLAY</h3>
-            <ul>
-              <li><kbd>W</kbd> push <kbd>S</kbd> brake</li>
-              <li><kbd>A</kbd><kbd>D</kbd> carve, hold into a side street to turn</li>
-              <li><kbd>Space</kbd> ollie, tap twice to kickflip</li>
-              <li><kbd>P</kbd> pause</li>
-            </ul>
-            <p>Ollie the junk to score. Every clear in a row is worth more than the last.</p>
-            <p>Hold full speed, over {STREAK_KMH} km/h, for as long as you can.</p>
-            <p>A wipeout ends the run. Beat your PR, chase the WR, sign the top 10.</p>
-          </section>
+    <div className="overlay" role={paused ? 'dialog' : undefined} aria-label={paused ? 'Paused' : undefined}>
+      <div className="title-card">
+        <h1>WHEELS OFF</h1>
+        <p className="title-card__jp">ホイールズ・オフ</p>
+        {top && (
+          <p className="title-card__hi">
+            HI-SCORE {top.value} {top.name}
+          </p>
+        )}
+        <ul className="keys">
+          <li><kbd>W</kbd> push <kbd>S</kbd> brake</li>
+          <li><kbd>A</kbd><kbd>D</kbd> carve · hold into a side street to turn</li>
+          <li><kbd>Space</kbd> ollie over the junk · tap twice to kickflip</li>
+          <li><kbd>P</kbd> pause · a wipeout ends the run</li>
+        </ul>
+        <div className="title-card__boards">
           <Leaderboard board="score" />
           <Leaderboard board="speed" />
         </div>
-        <p className="arcade__hint">PRESS P TO PLAY</p>
+        <p className="title-card__go">{paused ? 'paused · press P to roll on' : 'press any key to roll'}</p>
       </div>
     </div>
   )
@@ -82,10 +88,8 @@ function WorldRecordBurst() {
 
 function Result({ label, value, rank, pr }: { label: string; value: string; rank: number; pr: boolean }) {
   return (
-    <li className={rank === 0 ? 'entry__result entry__result--wr' : 'entry__result'}>
-      <span>{label}</span>
-      <b>{value}</b>
-      <span>{rank === 0 ? 'WR' : ordinal(rank)}</span>
+    <li>
+      {label} <b>{value}</b> <span className="entry__rank">{rank === 0 ? 'WR' : ordinal(rank)}</span>
       {pr && <span className="entry__pr">NEW PR</span>}
     </li>
   )
@@ -104,17 +108,17 @@ function NameEntry({ run }: { run: PendingRun }) {
   }
   const wr = run.scoreRank === 0 || run.speedRank === 0
   return (
-    <div className={wr ? 'arcade arcade--wr' : 'arcade'} role="dialog" aria-label="Enter your name" onMouseDown={keepFocus}>
+    <div className={wr ? 'overlay overlay--wr' : 'overlay'} role="dialog" aria-label="Enter your name" onMouseDown={keepFocus}>
       {wr && <WorldRecordBurst />}
       <form
-        className="arcade__panel entry"
+        className="title-card entry"
         onSubmit={(e) => {
           e.preventDefault()
           signName(name)
         }}
       >
         {wr && <Crown className="entry__crown" />}
-        <h2 className={wr ? 'arcade__title entry__wr' : 'arcade__title'}>{wr ? 'NEW WORLD RECORD!' : 'HIGH SCORE!'}</h2>
+        <h1 className={wr ? 'entry__title--wr' : undefined}>{wr ? 'NEW WORLD RECORD!' : 'HIGH SCORE!'}</h1>
         <ul className="entry__results">
           {run.scoreRank !== null && <Result label="SCORE" value={String(run.score)} rank={run.scoreRank} pr={run.prScore} />}
           {run.speedRank !== null && (
@@ -122,7 +126,7 @@ function NameEntry({ run }: { run: PendingRun }) {
           )}
         </ul>
         <label className="entry__label">
-          ENTER YOUR NAME
+          enter your name
           <input
             ref={field}
             className="entry__field"
@@ -138,7 +142,7 @@ function NameEntry({ run }: { run: PendingRun }) {
             }}
           />
         </label>
-        <p className="arcade__hint">ENTER TO SIGN · ESC TO PLAY ON AS {DEFAULT_NAME.toUpperCase()}</p>
+        <p className="title-card__go">enter to sign · esc to play on as {DEFAULT_NAME}</p>
       </form>
     </div>
   )
@@ -146,6 +150,7 @@ function NameEntry({ run }: { run: PendingRun }) {
 
 export function Arcade() {
   const { menu, pending } = useArcade()
+  const started = useHud((s) => s.started)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat || e.target instanceof HTMLInputElement) return
@@ -158,6 +163,6 @@ export function Arcade() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   if (pending) return <NameEntry key={pending.id} run={pending} />
-  if (menu) return <PauseScreen />
+  if (!started || menu) return <TitleCard paused={started} />
   return null
 }
