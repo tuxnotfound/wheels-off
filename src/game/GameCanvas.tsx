@@ -103,10 +103,14 @@ function SimDriver() {
     const best = {
       score: records.score,
       streak: Math.floor(records.streak * 10) / 10,
-      beatingScore: records.score > standing.score,
-      beatingStreak: records.streak > standing.streak,
+      beatingScore: standing.score > 0 && records.score > standing.score,
+      beatingStreak: standing.streak > 0 && records.streak > standing.streak,
     }
-    if (Object.entries(best).some(([k, v]) => hud.best[k as keyof typeof best] !== v)) patch.best = best
+    if (Object.entries(best).some(([k, v]) => hud.best[k as keyof typeof best] !== v)) {
+      patch.best = best
+      if (best.beatingStreak && !hud.best.beatingStreak) patch.record = { id: sim.time, what: 'streak' }
+      if (best.beatingScore && !hud.best.beatingScore) patch.record = { id: sim.time, what: 'score' }
+    }
     const turns = upcomingTurn()
     if (JSON.stringify(turns) !== JSON.stringify(hud.turns)) patch.turns = turns
     if (sim.time - last.t > 0.2) {

@@ -16,9 +16,9 @@ function Flame() {
   )
 }
 
-function Trophy() {
+function Trophy({ className = 'hud-trophy' }: { className?: string }) {
   return (
-    <svg className="hud-trophy" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
       <path className="hud-trophy__handles" d="M6.5 5H3.8a2.6 2.6 0 0 0 3.4 4.6M17.5 5h2.7a2.6 2.6 0 0 1-3.4 4.6" />
       <path className="hud-trophy__cup" d="M6 3h12v5.5a6 6 0 0 1-12 0Z" />
       <path className="hud-trophy__cup" d="M10.5 14.2h3L13.2 18h-2.4ZM7.5 18h9v3.2h-9Z" />
@@ -38,7 +38,7 @@ function Pr({ value, beating }: { value: string; beating: boolean }) {
 }
 
 export function Hud() {
-  const { started, score, combo, speed, streak, best, turns, toast, street } = useHud()
+  const { started, score, combo, speed, streak, best, turns, toast, street, record } = useHud()
   return (
     <div className="hud">
       {!started && (
@@ -75,6 +75,15 @@ export function Hud() {
             <Pr value={secs(best.streak)} beating={best.beatingStreak} />
           </div>
         </>
+      )}
+      {record && (
+        <div className="record-card" key={record.id} role="status">
+          <Trophy className="record-card__trophy" />
+          <div>
+            <span className="record-card__title">NEW RECORD!</span>
+            <span className="record-card__what">{record.what === 'score' ? 'best score' : 'longest at full speed'}</span>
+          </div>
+        </div>
       )}
       {street && (
         <div className="street-card" key={street.id}>

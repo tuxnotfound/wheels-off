@@ -12,6 +12,7 @@ type HudState = {
   best: { score: number; streak: number; beatingScore: boolean; beatingStreak: boolean }
   turns: { left: boolean; right: boolean } | null
   toast: Toast | null
+  record: { id: number; what: 'score' | 'streak' } | null // a run just broke this record
   street: { id: number; name: string; kanji: string } | null
 }
 
@@ -25,5 +26,6 @@ export const useHud = create<HudState>(() => ({
   best: { score: records.score, streak: Math.floor(records.streak * 10) / 10, beatingScore: false, beatingStreak: false },
   turns: null,
   toast: null,
+  record: null,
   street: null,
 }))

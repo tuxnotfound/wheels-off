@@ -28,7 +28,9 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
   best run score, and the longest unbroken time at full speed, above 58 km/h (the sim
   counts the live streak). The HUD shows each record, with a trophy, under its live value.
   While a run is beating a record, the record follows the live value in red, with a pulsing
-  flame by the live value, and its trophy pops the moment the old record falls.
+  flame by the live value. The moment the old record falls, its trophy pops and a
+  "NEW RECORD!" banner drops in at the top. A first run, with no record yet, beats nothing.
+  Open `/?reset-records` to start the records over.
 - **`src/art/art.ts`**: the art pipeline. It loads `public/art/manifest.json`, preloads
   every image before the game boots, and provides unlit painted materials (the art carries
   its own shading) plus a shadow-pass material that respects cut-out silhouettes.

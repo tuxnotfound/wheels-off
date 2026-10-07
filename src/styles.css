@@ -289,6 +289,90 @@ kbd {
   }
 }
 
+/* a run just broke a record: a banner drops in at the top, between the score and the speed */
+.record-card {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bubble);
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 3px 4px 0 var(--ink);
+  padding: 6px 18px 6px 10px;
+  white-space: nowrap;
+  opacity: 0;
+  animation: record-card 2.8s ease-out forwards;
+}
+
+.record-card__trophy {
+  width: 40px;
+  height: 40px;
+  overflow: visible;
+  transform-origin: 50% 80%;
+  animation: record-trophy 0.8s ease-out 0.2s;
+}
+
+.record-card__title {
+  display: block;
+  font-size: 22px;
+  line-height: 1.1;
+  color: var(--accent);
+}
+
+.record-card__what {
+  display: block;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+@keyframes record-card {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -30px) scale(0.7);
+  }
+  10% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.08);
+  }
+  18%,
+  85% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -12px);
+  }
+}
+
+@keyframes record-trophy {
+  30% {
+    transform: scale(1.4) rotate(-12deg);
+    filter: drop-shadow(0 0 6px rgb(255 205 80 / 0.95));
+  }
+  55% {
+    transform: scale(0.92) rotate(7deg);
+  }
+  75% {
+    transform: scale(1.05) rotate(-2deg);
+  }
+}
+
+@keyframes record-card-still {
+  0%,
+  85% {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%);
+  }
+}
+
 /* location card, like the reference's "MAIN SQUARE" */
 .street-card {
   position: absolute;
@@ -387,7 +471,13 @@ kbd {
 @media (prefers-reduced-motion: reduce) {
   .title-card__go,
   .hud-flame,
-  .hud-pr--beating .hud-trophy {
+  .hud-pr--beating .hud-trophy,
+  .record-card__trophy {
     animation: none;
+  }
+
+  /* the banner still has to say it: shown in place, then faded */
+  .record-card {
+    animation-name: record-card-still;
   }
 }

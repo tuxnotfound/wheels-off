@@ -17,11 +17,26 @@ function load(): Records {
   }
 }
 
+// Open the game with ?reset-records to start the records over. The flag is dropped from the
+// URL straight away, so a reload keeps the new records.
+function resetIfAsked() {
+  const url = new URL(location.href)
+  if (!url.searchParams.has('reset-records')) return
+  url.searchParams.delete('reset-records')
+  history.replaceState(null, '', url)
+  try {
+    localStorage.removeItem(KEY)
+  } catch {
+    // storage blocked: nothing was kept to reset
+  }
+}
+
+resetIfAsked()
 export const records = load()
 /**
  * The records the current run has to beat: each as it stood when its live value was last 0
  * (the score at a wipeout, the streak when it broke). A run is beating its record while
- * the record has climbed past this.
+ * the record has climbed past this. With no record yet (0) there is nothing to beat.
  */
 export const standing = { ...records }
 
