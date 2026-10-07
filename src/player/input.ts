@@ -7,6 +7,7 @@ export const input = {
   steerSide: 0, // last steer key pressed
   steerBuffer: 0, // seconds left on that press (turn intent survives a tap)
   started: false,
+  blocked: false, // paused or typing a name: the game ignores the keyboard
 }
 
 const held = new Set<string>()
@@ -29,6 +30,7 @@ export function installInput() {
   if (installed) return
   installed = true
   window.addEventListener('keydown', (e) => {
+    if (input.blocked || e.target instanceof HTMLInputElement) return
     const k = e.key.toLowerCase()
     if (k === ' ' || k.startsWith('arrow')) e.preventDefault()
     input.started = true
@@ -62,4 +64,13 @@ export function installInput() {
     held.clear()
     recompute()
   })
+}
+
+/** Lets go of every key and drops buffered presses, so nothing carries over a pause. */
+export function releaseKeys() {
+  held.clear()
+  recompute()
+  input.jumpBuffer = 0
+  input.flipBuffer = 0
+  input.steerBuffer = 0
 }

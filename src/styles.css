@@ -4,6 +4,13 @@
   --bubble: #fdfaf2;
   --accent: #d9533f;
   --display: 'Dela Gothic One', 'Hiragino Sans', 'Noto Sans JP', system-ui, sans-serif;
+  --arcade: 'Press Start 2P', ui-monospace, monospace;
+  /* the arcade screens: a dark cabinet screen with neon */
+  --screen: #16143a;
+  --neon-gold: #ffd23f;
+  --neon-cyan: #7ce0ff;
+  --neon-pink: #ff7ad9;
+  --neon-text: #e8e4ff;
 }
 
 * {
@@ -92,6 +99,14 @@ kbd {
   font-family: var(--display);
   font-size: 12px;
   line-height: 20px;
+}
+
+.title-card__hi {
+  margin: 0 0 14px;
+  font-family: var(--arcade);
+  font-size: 11px;
+  color: var(--accent);
+  text-transform: uppercase;
 }
 
 .title-card__go {
@@ -214,6 +229,29 @@ kbd {
   }
 }
 
+.hud-crown {
+  width: 15px;
+  height: 15px;
+  margin-right: 4px;
+  overflow: visible;
+}
+
+.hud-crown__gem {
+  fill: var(--accent);
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.hud-wr__name {
+  margin-left: 5px;
+  max-width: 8em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
 .hud-trophy__cup {
   fill: #f2c14e;
   stroke: var(--ink);
@@ -257,6 +295,15 @@ kbd {
 
 .hud-flame__inner {
   fill: #ffd75e;
+}
+
+/* beating the world record: the flame burns blue, the hottest there is */
+.hud-flame--wr .hud-flame__outer {
+  fill: #3fa9ff;
+}
+
+.hud-flame--wr .hud-flame__inner {
+  fill: #dff4ff;
 }
 
 @keyframes flame-in {
@@ -473,12 +520,360 @@ kbd {
   text-shadow: 2px 2px 0 var(--ink);
 }
 
+/* ---- the arcade screens: pause, name entry, world record ---- */
+.arcade {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  overflow: auto;
+  background:
+    repeating-linear-gradient(to bottom, rgb(0 0 0 / 0.22) 0 2px, transparent 2px 4px),
+    rgb(14 12 36 / 0.78);
+  font-family: var(--arcade);
+  color: var(--neon-text);
+}
+
+.arcade__panel {
+  position: relative;
+  max-width: min(1000px, 100%);
+  padding: 24px 26px 20px;
+  background: var(--screen);
+  border: 4px solid var(--neon-gold);
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 4px var(--ink),
+    0 0 28px 6px rgb(255 210 63 / 0.3);
+  text-align: center;
+}
+
+.arcade__title {
+  margin: 0 0 20px;
+  font-size: clamp(18px, 3.4vw, 28px);
+  font-weight: normal;
+  letter-spacing: 2px;
+  color: var(--neon-gold);
+  text-shadow: 3px 3px 0 var(--accent);
+}
+
+.arcade__blink,
+.arcade__hint {
+  animation: blink 1.1s steps(2, jump-none) infinite;
+}
+
+.arcade__hint {
+  margin: 20px 0 0;
+  font-size: 10px;
+  line-height: 1.8;
+}
+
+.arcade__cols {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 30px;
+  text-align: left;
+}
+
+.arcade h3 {
+  margin: 0 0 14px;
+  font-size: 12px;
+  font-weight: normal;
+  color: var(--neon-cyan);
+}
+
+.arcade kbd {
+  font-family: var(--arcade);
+  font-size: 9px;
+  line-height: 18px;
+  color: var(--ink);
+}
+
+.howto {
+  max-width: 290px;
+  font-size: 10px;
+  line-height: 1.9;
+}
+
+.howto ul {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  line-height: 2.4;
+}
+
+.howto p {
+  margin: 0 0 10px;
+}
+
+.board {
+  min-width: 250px;
+}
+
+.board ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 11px;
+  line-height: 2.2;
+}
+
+.board__row {
+  display: grid;
+  grid-template-columns: 3.6em 1fr auto;
+  gap: 10px;
+}
+
+/* classic table colors, rank by rank; the top row cycles like a cabinet's */
+.board__row:nth-child(1) {
+  animation: rainbow 1.2s steps(1, end) infinite;
+}
+.board__row:nth-child(2) {
+  color: #d9d9ec;
+}
+.board__row:nth-child(3) {
+  color: #ff9f5a;
+}
+.board__row:nth-child(4),
+.board__row:nth-child(8) {
+  color: var(--neon-cyan);
+}
+.board__row:nth-child(5),
+.board__row:nth-child(9) {
+  color: var(--neon-pink);
+}
+.board__row:nth-child(6),
+.board__row:nth-child(10) {
+  color: #9dff7a;
+}
+.board__row:nth-child(7) {
+  color: #b8a6ff;
+}
+
+.board__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.board__value {
+  text-align: right;
+}
+
+@keyframes rainbow {
+  0% {
+    color: var(--neon-gold);
+  }
+  17% {
+    color: var(--neon-pink);
+  }
+  33% {
+    color: var(--neon-cyan);
+  }
+  50% {
+    color: #9dff7a;
+  }
+  67% {
+    color: #ff9f5a;
+  }
+  83% {
+    color: #fdfaf2;
+  }
+}
+
+/* name entry */
+.entry {
+  width: min(560px, 100%);
+}
+
+.entry__results {
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 0;
+  font-size: 12px;
+  line-height: 2.4;
+}
+
+.entry__result {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.entry__result b {
+  font-size: 16px;
+  font-weight: normal;
+  color: #fff;
+}
+
+.entry__result--wr {
+  color: var(--neon-gold);
+}
+
+.entry__pr {
+  color: var(--neon-pink);
+}
+
+.entry__label {
+  display: block;
+  font-size: 11px;
+  color: var(--neon-cyan);
+}
+
+.entry__field {
+  display: block;
+  width: calc(12ch + 26px);
+  max-width: 100%;
+  margin: 12px auto 0;
+  padding: 10px;
+  font: inherit;
+  font-size: 18px;
+  text-align: center;
+  text-transform: uppercase;
+  color: #fff;
+  caret-color: var(--neon-gold);
+  background: #0c0b22;
+  border: 3px solid #fdfaf2;
+  border-radius: 4px;
+  outline: none;
+}
+
+.entry__field:focus {
+  border-color: var(--neon-gold);
+  box-shadow: 0 0 14px rgb(255 210 63 / 0.55);
+}
+
+/* a world record: the panel slams in, the crown bobs, the title flashes through the colors */
+.arcade--wr .arcade__panel {
+  animation: wr-panel 0.7s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+  box-shadow:
+    0 0 0 4px var(--ink),
+    0 0 60px 16px rgb(255 210 63 / 0.55);
+}
+
+.entry__crown {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: -4px auto 8px;
+  overflow: visible;
+  animation: wr-crown 0.9s ease-in-out infinite alternate;
+}
+
+.entry__wr {
+  font-size: clamp(20px, 4.6vw, 40px);
+  animation: rainbow 0.6s steps(1, end) infinite;
+}
+
+.wr-burst {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.wr-burst__rays {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 220vmax;
+  height: 220vmax;
+  margin: -110vmax 0 0 -110vmax;
+  background: repeating-conic-gradient(rgb(255 210 63 / 0.2) 0 9deg, transparent 9deg 18deg);
+  animation:
+    fade-in 0.6s ease-out both,
+    spin 16s linear infinite;
+}
+
+.wr-burst__flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  animation: wr-flash 0.7s ease-out;
+}
+
+.wr-burst__star {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  font-size: 28px;
+  color: var(--neon-gold);
+  text-shadow: 2px 2px 0 var(--ink);
+  opacity: 0;
+  animation: wr-star 1.6s ease-out var(--delay) infinite;
+}
+
+@keyframes wr-panel {
+  from {
+    opacity: 0;
+    transform: scale(0.3) rotate(-8deg);
+  }
+}
+
+@keyframes wr-crown {
+  from {
+    transform: translateY(0) rotate(-7deg) scale(1);
+  }
+  to {
+    transform: translateY(-7px) rotate(7deg) scale(1.1);
+  }
+}
+
+@keyframes wr-flash {
+  from {
+    opacity: 0.9;
+  }
+}
+
+@keyframes wr-star {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  65% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dx) * 1vmin), calc(-50% + var(--dy) * 1vmin)) scale(1.4) rotate(200deg);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .title-card__go,
   .hud-flame,
   .hud-trophy--pop,
-  .record-card__trophy {
+  .record-card__trophy,
+  .arcade__blink,
+  .arcade__hint,
+  .board__row:nth-child(1),
+  .arcade--wr .arcade__panel,
+  .entry__crown,
+  .entry__wr,
+  .wr-burst__rays,
+  .wr-burst__star {
     animation: none;
+  }
+
+  .wr-burst__flash {
+    display: none;
   }
 
   /* the banner still has to say it: shown in place, then faded */

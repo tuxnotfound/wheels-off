@@ -17,9 +17,13 @@ import { childStreet, sim, stepSim, upcomingTurn } from './sim'
 import type { Street } from './sim'
 import { useHud } from './hudStore'
 import { beatRecords, beating, endRun, records } from './records'
+import { rankFor, worldRecord } from './leaderboard'
+import { askForName, isPaused } from './arcadeStore'
 import { tickAds } from '../ads/ads'
 
 const damp = (a: number, b: number, lambda: number, dt: number) => a + (b - a) * (1 - Math.exp(-lambda * dt))
+const tenths = (s: number) => Math.floor(s * 10) / 10
+const differs = <T extends object>(a: T, b: T) => Object.entries(a).some(([k, v]) => b[k as keyof T] !== v)
 function wrap(a: number): number {
   while (a > Math.PI) a -= 2 * Math.PI
   while (a < -Math.PI) a += 2 * Math.PI
@@ -82,6 +86,7 @@ function signature(): string {
 function SimDriver() {
   const last = useRef({ t: 0 }).current
   useFrame(({ camera }, dt) => {
+    if (isPaused()) return // the pause screen or a name being typed: the world holds still
     stepSim(dt)
     tickAds(camera, Math.min(dt, 1 / 20))
     const hud = useHud.getState()
@@ -100,17 +105,36 @@ function SimDriver() {
     if (sim.score !== hud.score) patch.score = sim.score
     if (sim.combo !== hud.combo) patch.combo = sim.combo
     beatRecords(sim.score, sim.streak, sim.time)
-    const set = wipeout ? endRun() : null
-    if (set) patch.record = { id: sim.time, score: set.score, streak: set.streak === null ? null : Math.floor(set.streak * 10) / 10 }
-    const streak = Math.floor(sim.streak * 10) / 10
+    if (wipeout) {
+      // game over for this run: a run that makes a leaderboard signs it, else a new PR gets its banner
+      const end = endRun()
+      const scoreRank = rankFor('score', end.score)
+      const speedRank = rankFor('speed', end.streak)
+      if (scoreRank !== null || speedRank !== null) askForName({ id: sim.time, ...end, scoreRank, speedRank })
+      else if (end.prScore || end.prStreak) {
+        patch.record = { id: sim.time, score: end.prScore ? records.score : null, streak: end.prStreak ? tenths(records.streak) : null }
+      }
+    }
+    const streak = tenths(sim.streak)
     if (streak !== hud.streak) patch.streak = streak
     const best = {
       score: records.score,
-      streak: Math.floor(records.streak * 10) / 10,
+      streak: tenths(records.streak),
       beatingScore: beating.score,
       beatingStreak: beating.streak,
     }
-    if (Object.entries(best).some(([k, v]) => hud.best[k as keyof typeof best] !== v)) patch.best = best
+    if (differs(best, hud.best)) patch.best = best
+    const topScore = worldRecord('score')
+    const topSpeed = worldRecord('speed')
+    const wr = {
+      score: topScore?.value ?? 0,
+      scoreName: topScore?.name ?? '',
+      streak: tenths(topSpeed?.value ?? 0),
+      streakName: topSpeed?.name ?? '',
+      beatingScore: topScore !== null && sim.score > topScore.value,
+      beatingStreak: topSpeed !== null && sim.streak > topSpeed.value,
+    }
+    if (differs(wr, hud.wr)) patch.wr = wr
     const turns = upcomingTurn()
     if (JSON.stringify(turns) !== JSON.stringify(hud.turns)) patch.turns = turns
     if (sim.time - last.t > 0.2) {
