@@ -24,6 +24,7 @@ const TEE = '#2f6b5a'
 const TEE_SHADE = '#1e4a3f'
 const TEE_LOOSE = 0.012 // the body pushed out this far from the top it is made from
 const SLEEVE_FLARE = 0.02 // the sleeves widen by this much toward their hems at the elbows
+const TEE_HEM = 0.02 // the hem's height below the leg joints
 
 // Her face, after the Lofi Girl: small dark almond eyes under heavy lids, looking a little
 // down, a darker lash line, warmer skin and a round jaw in place of the pointed chin.
@@ -306,6 +307,73 @@ function inflate(m: THREE.SkinnedMesh, push: (p: THREE.Vector3) => number) {
 }
 
 /**
+ * Cuts a skinned mesh level at `y` (bind space): triangles wholly below it go, and the
+ * corners of those crossing it come up onto it, so the edge is straight.
+ */
+function trimBelow(m: THREE.SkinnedMesh, y: number) {
+  const g = m.geometry
+  const index = g.index
+  if (!index) return
+  const pos = g.attributes.position
+  const p = v3()
+  const at = (i: number) => p.fromBufferAttribute(pos, i).applyMatrix4(m.bindMatrix)
+  const tris: number[] = []
+  const groups = g.groups.length ? [...g.groups] : [{ start: 0, count: index.count, materialIndex: 0 }]
+  g.clearGroups()
+  for (const gr of groups) {
+    const start = tris.length
+    for (let k = gr.start; k < gr.start + gr.count; k += 3) {
+      const abc = [index.getX(k), index.getX(k + 1), index.getX(k + 2)]
+      if (abc.some((i) => at(i).y >= y)) tris.push(...abc)
+    }
+    g.addGroup(start, tris.length - start, gr.materialIndex)
+  }
+  g.setIndex(tris)
+  for (let i = 0; i < pos.count; i++) {
+    if (at(i).y >= y) continue
+    p.y = y
+    p.applyMatrix4(m.bindMatrixInverse)
+    pos.setXYZ(i, p.x, p.y, p.z)
+  }
+  pos.needsUpdate = true
+}
+
+/**
+ * Hands a skinned mesh's vertices below `y` (bind space) wholly to `bone`, easing in over
+ * `blend` above it.
+ */
+function weightTo(m: THREE.SkinnedMesh, bone: THREE.Bone, y: number, blend: number) {
+  const k = m.skeleton.bones.indexOf(bone)
+  if (k < 0) return
+  const pos = m.geometry.attributes.position
+  const si = m.geometry.attributes.skinIndex
+  const sw = m.geometry.attributes.skinWeight
+  const p = v3()
+  for (let i = 0; i < pos.count; i++) {
+    const t = 1 - THREE.MathUtils.smoothstep(p.fromBufferAttribute(pos, i).applyMatrix4(m.bindMatrix).y, y, y + blend)
+    if (t === 0) continue
+    // the old weights scale down by 1 - t; the bone takes t, in its own slot or the lightest
+    let slot = -1
+    for (let c = 0; c < 4; c++) if (si.getComponent(i, c) === k && sw.getComponent(i, c) > 0) slot = c
+    if (slot < 0) {
+      slot = 0
+      for (let c = 1; c < 4; c++) if (sw.getComponent(i, c) < sw.getComponent(i, slot)) slot = c
+      si.setComponent(i, slot, k)
+      sw.setComponent(i, slot, 0)
+    }
+    let sum = 0
+    for (let c = 0; c < 4; c++) {
+      const w = sw.getComponent(i, c) * (1 - t) + (c === slot ? t : 0)
+      sw.setComponent(i, c, w)
+      sum += w
+    }
+    for (let c = 0; c < 4; c++) sw.setComponent(i, c, sw.getComponent(i, c) / sum)
+  }
+  si.needsUpdate = true
+  sw.needsUpdate = true
+}
+
+/**
  * A cloth shell over part of the skin: the triangles whose corners all pass `keep`, copied
  * into a new mesh on the same skeleton and pushed out along their normals by `push` (both
  * get the corner in bind space). It bends exactly with the skin under it.
@@ -378,8 +446,11 @@ function addPants(vrm: VRM) {
   skinShell(
     skin,
     (p) => p.y >= hem && p.y <= waist,
-    // thin at the waist, loose from mid-thigh down
-    (p) => 0.01 + 0.024 * THREE.MathUtils.smoothstep((waist - p.y) / (waist - hem), 0.12, 0.55),
+    // close at the waist, relaxed and straight down the legs, gathered a little at the ankles
+    (p) => {
+      const down = (waist - p.y) / (waist - hem)
+      return 0.008 + 0.012 * THREE.MathUtils.smoothstep(down, 0.1, 0.45) - 0.006 * THREE.MathUtils.smoothstep(down, 0.85, 1)
+    },
     clothMat(mtoonOf(shorts), PANTS, PANTS_SHADE),
     'Pants',
   )
@@ -387,11 +458,12 @@ function addPants(vrm: VRM) {
 }
 
 /**
- * An oversized tee made from the top: dark green, its body pushed out loose, with wide
- * sleeves from the shoulders to the elbows, flaring toward their hems. In the bind T-pose
- * the arms lie along x, so the sleeves are the skin out past the shoulder joints. They
- * start under the top's own short sleeves, which lift off the arm as it lowers and would
- * show skin.
+ * An oversized tee made from the top: dark green, its body pushed out loose and its hem
+ * hung from the pelvis, with wide sleeves from the shoulders to the elbows, flaring toward
+ * their hems. In the bind T-pose the arms lie along x at shoulder height, so the sleeves
+ * are the skin out past the shoulder joints and level with them (the legs reach out that
+ * far too, lower down). They start under the top's own short sleeves, which lift off the
+ * arm as it lowers and would show skin.
  */
 function addTee(vrm: VRM) {
   const named = meshFinder(vrm)
@@ -403,12 +475,21 @@ function addTee(vrm: VRM) {
   if (!top || !src) return
   flatten(src, TEE, TEE_SHADE)
   inflate(top, () => TEE_LOOSE)
+  const hips = vrm.humanoid.getRawBoneNode('hips')
+  const thigh = vrm.humanoid.getRawBoneNode('leftUpperLeg')
+  if (hips && thigh) {
+    const legRoot = thigh.getWorldPosition(v3()).y
+    // VRoid hangs the hem from the thighs, and a wide stance tears it open: the pelvis holds it
+    weightTo(top, hips as THREE.Bone, legRoot + 0.02, 0.08)
+    trimBelow(top, legRoot - TEE_HEM) // and a straight hem in place of VRoid's ragged one
+  }
   if (!skin || !shoulder || !elbow) return
-  const start = Math.abs(shoulder.getWorldPosition(v3()).x)
+  const arm = shoulder.getWorldPosition(v3())
+  const start = Math.abs(arm.x)
   const hem = Math.abs(elbow.getWorldPosition(v3()).x)
   skinShell(
     skin,
-    (q) => Math.abs(q.x) >= start && Math.abs(q.x) <= hem,
+    (q) => Math.abs(q.x) >= start && Math.abs(q.x) <= hem && Math.abs(q.y - arm.y) < 0.1,
     (q) => 0.016 + SLEEVE_FLARE * THREE.MathUtils.smoothstep((Math.abs(q.x) - start) / (hem - start), 0.3, 1),
     clothMat(src, TEE, TEE_SHADE),
     'Sleeves',

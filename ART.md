@@ -122,9 +122,10 @@ humanoid bones with the skate animation. Hair and cloth spring bones swing on th
 It also restyles every model the same way (constants at the top of
 `src/player/VrmRider.tsx`): chibi proportions (head 1.9x, body 0.8x, chubbier arms and
 legs), long hair strands shortened to the shoulder blades, a knit beanie with
-headphones fitted over the hair's crown, loose navy pants built from the leg skin in
-place of shorts (a model without a `Bottoms` material keeps what it wears), and the top as
-an oversized dark green tee with wide sleeves to the elbows built from the arm skin.
+headphones fitted over the hair's crown, relaxed straight navy pants built from the leg
+skin in place of shorts (a model without a `Bottoms` material keeps what it wears), and
+the top as an oversized dark green tee: hung from the pelvis and cut straight at the hips,
+with wide sleeves to the elbows built from the arm skin.
 The face is reshaped after the Lofi Girl: smaller near-black almond eyes under heavy lids,
 a bolder lash line, warmer skin and a rounder jaw. So a VRoid export can keep normal
 proportions, long hair and its own face.
