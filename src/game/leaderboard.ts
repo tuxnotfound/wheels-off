@@ -5,8 +5,9 @@ import { readJson, writeJson } from './storage'
 // cabinet comes with a default table to beat. The top entry of each is the world record.
 
 export type Board = 'score' | 'speed'
-/** What each board is called in the game. */
+/** What each board is called in the game, and in Japanese (as the title card does for the game). */
 export const BOARD_TITLE: Record<Board, string> = { score: 'trickster', speed: 'speedster' }
+export const BOARD_JP: Record<Board, string> = { score: 'トリックスター', speed: 'スピードスター' }
 export type Entry = { name: string; value: number } // speed values in seconds
 
 export const BOARD_SIZE = 10

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, MouseEvent } from 'react'
 import { resume, signName, togglePause, toggleRecords, useArcade } from './arcadeStore'
 import type { PendingRun } from './arcadeStore'
-import { BOARD_SIZE, BOARD_TITLE, DEFAULT_NAME, NAME_MAX, boards, lastName, worldRecord } from './leaderboard'
+import { BOARD_JP, BOARD_SIZE, BOARD_TITLE, DEFAULT_NAME, NAME_MAX, boards, lastName, worldRecord } from './leaderboard'
 import type { Board } from './leaderboard'
 import { useHud } from './hudStore'
 import { Crown, Trophy, secs } from './icons'
@@ -21,10 +21,9 @@ function Leaderboard({ board }: { board: Board }) {
   const pr = board === 'score' ? records.score : records.streak
   return (
     <section className="board">
-      <h2 className="board__title">
-        {BOARD_TITLE[board]}
-        <small>{board === 'score' ? 'best run score' : `longest over ${STREAK_KMH} km/h`}</small>
-      </h2>
+      <h2 className="board__title">{BOARD_TITLE[board]}</h2>
+      <p className="board__jp">{BOARD_JP[board]}</p>
+      <p className="board__what">{board === 'score' ? 'best run score' : `longest over ${STREAK_KMH} km/h`}</p>
       <ol>
         {Array.from({ length: BOARD_SIZE }, (_, i) => (
           <li key={i} className="board__row">
@@ -49,24 +48,34 @@ function TitleCard({ paused }: { paused: boolean }) {
       <div className="title-card">
         <h1>WHEELS OFF</h1>
         <p className="title-card__jp">ホイールズ・オフ</p>
-        <p className="title-card__hi">
+        <div className="title-card__tops">
           {(['score', 'speed'] as const).map((board) => {
             const top = worldRecord(board)
             return (
-              top && (
-                <span key={board}>
-                  {BOARD_TITLE[board]} {shown(board, top.value)} {top.name}
-                </span>
-              )
+              <div key={board} className="title-card__top">
+                <span className="title-card__board">{BOARD_TITLE[board]}</span>
+                <span className="title-card__hi">HI-SCORE {top ? `${shown(board, top.value)} ${top.name}` : '---'}</span>
+              </div>
             )
           })}
-        </p>
-        <ul className="keys">
-          <li><kbd>W</kbd> or <kbd className="kbd--arrow">↑</kbd> push · <kbd>S</kbd> or <kbd className="kbd--arrow">↓</kbd> brake</li>
-          <li><kbd>A</kbd><kbd>D</kbd> or <kbd className="kbd--arrow">←</kbd><kbd className="kbd--arrow">→</kbd> carve · hold into a side street to turn</li>
-          <li><kbd>Space</kbd> ollie over the junk · tap twice to kickflip</li>
-          <li><kbd>P</kbd> pause · <kbd>R</kbd> records · a wipeout ends the run</li>
-        </ul>
+        </div>
+        <dl className="controls">
+          <dt><kbd>W</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">↑</kbd></dt>
+          <dd>push</dd>
+          <dt><kbd>S</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">↓</kbd></dt>
+          <dd>brake</dd>
+          <dt>
+            <kbd>A</kbd><kbd>D</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">←</kbd><kbd className="kbd--arrow">→</kbd>
+          </dt>
+          <dd>carve · hold into a side street to turn</dd>
+          <dt><kbd>Space</kbd></dt>
+          <dd>ollie over the junk · tap twice to kickflip</dd>
+          <dt><kbd>P</kbd></dt>
+          <dd>pause</dd>
+          <dt><kbd>R</kbd></dt>
+          <dd>records</dd>
+        </dl>
+        <p className="title-card__rule">a wipeout ends the run</p>
         <p className="title-card__go">{paused ? 'paused · press P to roll on' : 'press any key to roll'}</p>
       </div>
     </div>

@@ -69,14 +69,38 @@ canvas {
   opacity: 0.7;
 }
 
-.keys {
-  list-style: none;
-  padding: 0;
+/* the controls: keys right-aligned in one column, what they do left-aligned in the next */
+.controls {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  gap: 6px 12px;
+  align-items: center;
+  margin: 0 0 10px;
+  text-align: left;
+  font-family: system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.controls dt {
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.controls dd {
+  margin: 0;
+}
+
+.controls__or {
+  margin: 0 3px;
+  opacity: 0.45;
+}
+
+.title-card__rule {
   margin: 0 0 14px;
   font-family: system-ui, sans-serif;
   font-weight: 600;
   font-size: 14px;
-  line-height: 2;
 }
 
 kbd {
@@ -100,12 +124,30 @@ kbd {
   font-weight: 700;
 }
 
-.title-card__hi {
+/* the top of each leaderboard, side by side: its name, then its HI-SCORE in arcade type */
+.title-card__tops {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 6px 24px;
-  margin: 0 0 14px;
+  gap: 10px 44px;
+  margin: 0 0 16px;
+}
+
+.title-card__top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.title-card__board {
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.title-card__hi {
   font-family: var(--arcade);
   font-size: 11px;
   color: var(--accent);
@@ -542,23 +584,33 @@ kbd {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 14px 34px;
+  gap: 18px 56px;
   margin: 0 0 16px;
   text-align: left;
 }
 
+/* each leaderboard headed like the game: its name in the title type, then in Japanese */
 .board__title {
-  margin: 0 0 6px;
-  font-size: 18px;
-  font-weight: normal;
-  line-height: 1.2;
+  margin: 0;
+  font-size: clamp(24px, 3.4vw, 32px);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.board__jp {
+  margin: 6px 0 2px;
+  font-size: 13px;
+  opacity: 0.7;
   text-align: center;
 }
 
-.board__title small {
-  display: block;
+.board__what {
+  margin: 0 0 10px;
   font-size: 11px;
-  opacity: 0.6;
+  opacity: 0.5;
+  text-align: center;
 }
 
 .board__pr {
