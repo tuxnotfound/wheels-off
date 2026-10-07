@@ -17,6 +17,7 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
   (P or Esc to play on). **R** high scores: both leaderboards in full, from anywhere (R to
   go back, Esc to ride). A run that makes a leaderboard asks for a name at the wipeout: Enter
   signs it, Esc signs it as John Doe.
+- **M** music on or off (remembered in this browser).
 
 ## How it's built
 
@@ -35,7 +36,7 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
   flame by the live value. A run lasts until a wipeout, and that is when its records are
   set: the trophies pop and a "NEW RECORD!" banner with the values drops in at the top. A
   first run, with no record yet, beats nothing. Open `/?reset-records` to start over (it
-  clears the records, the leaderboards and the remembered name).
+  clears the records, the leaderboards, the remembered name and the music setting).
 - **`src/game/leaderboard.ts`**: the arcade high score tables, top 10 by run score
   ("trickster") and by time at full speed ("speedster"). Like a cabinet's, they live on this machine (`localStorage`) and a
   fresh one comes with a default table of made-up locals to beat (set low for play-testing,
@@ -49,6 +50,14 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
   panels are labelled with the board they feed (TRICKSTER, SPEEDSTER). Pause and the name entry hold the sim still and take the
   keyboard from it (`input.blocked`). A run that makes a table gets the name entry instead
   of the PR banner; a world record gets a burst (rays, flash, stars) behind it.
+- **`src/audio/`**: the music, with no audio files. `lofi.ts` composes lo-fi hip hop live in
+  Web Audio: each tune picks a key, a tempo and a loop of four jazz chords, played on an FM
+  electric piano over a boom-bap beat and a bass that follows the kick. A tune runs 32 bars
+  (keys-only intro, melody in the second half, a breakdown without drums), then the next one
+  starts in another key. A tape (pitch wobble, soft saturation) and vinyl crackle give the lo-fi
+  sound. `music.ts` starts it on the first key press or click (browsers allow sound only after
+  one), turns it off and on with M, muffles it under the title card and pause screen, and
+  stops it while the tab is hidden.
 - **`src/art/art.ts`**: the art pipeline. It loads `public/art/manifest.json`, preloads
   every image before the game boots, and provides unlit painted materials (the art carries
   its own shading) plus a shadow-pass material that respects cut-out silhouettes.
@@ -128,6 +137,6 @@ Open `/?vrm=<file under public/art/>` to try a VRM character without editing the
 
 ## Next steps
 
-1. Sound: board roll, pop, landing, ambient town.
+1. Sound effects: board roll, pop, landing, ambient town.
 2. Grindable curbs and rails, manuals, a trick-and-score loop beyond ollies.
 3. Pedestrians and cyclists, day/evening palettes, mobile touch controls.

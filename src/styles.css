@@ -574,6 +574,37 @@ kbd {
   text-shadow: 2px 2px 0 var(--ink);
 }
 
+/* the music's state, and its key, in the corner */
+.hud-music {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bubble);
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 2px 3px 0 var(--ink);
+  padding: 4px 6px 4px 10px;
+}
+
+.hud-note {
+  width: 20px;
+  height: 20px;
+  overflow: visible;
+}
+
+.hud-music--off .hud-note > :not(.hud-note__off) {
+  opacity: 0.45;
+}
+
+.hud-note__off {
+  stroke: var(--accent);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+
 /* ---- cards over the ride: the title card (start and pause), name entry, world record ---- */
 .overlay {
   position: fixed;

@@ -1,5 +1,6 @@
+import { useMusic } from '../audio/music'
 import { useHud } from './hudStore'
-import { Crown, Flame, Trophy, secs } from './icons'
+import { Crown, Flame, Note, Trophy, secs } from './icons'
 import { BOARD_TITLE } from './leaderboard'
 
 /**
@@ -34,6 +35,7 @@ function Wr({ value, name, beating }: { value: string; name: string; beating: bo
 // the card again on every render.
 export function Hud() {
   const { started, score, combo, speed, streak, best, wr, turns, toast, street, record } = useHud()
+  const musicOff = useMusic((s) => s.off)
   return (
     <div className="hud">
       {started && (
@@ -92,6 +94,12 @@ export function Hud() {
       {toast && (
         <div className={`toast toast--${toast.kind}`} key={`toast-${toast.id}`}>
           {toast.text}
+        </div>
+      )}
+      {started && (
+        <div className={musicOff ? 'hud-music hud-music--off' : 'hud-music'} role="status" aria-label={musicOff ? 'music off' : 'music on'}>
+          <Note off={musicOff} />
+          <kbd>M</kbd>
         </div>
       )}
       {started && turns && (

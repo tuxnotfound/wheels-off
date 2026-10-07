@@ -74,6 +74,8 @@ function TitleCard({ paused }: { paused: boolean }) {
           <dd>pause</dd>
           <dt><kbd>R</kbd></dt>
           <dd>high scores</dd>
+          <dt><kbd>M</kbd></dt>
+          <dd>music on/off</dd>
         </dl>
         <p className="title-card__rule">a wipeout ends the run</p>
         <p className="title-card__go">{paused ? 'paused · press P to roll on' : 'press any key to roll'}</p>

@@ -3,8 +3,9 @@
 
 const PREFIX = 'wheelsoff:'
 
-// Open the game with ?reset-records to start the records, the leaderboard and the remembered
-// name over. The flag is dropped from the URL straight away, so a reload keeps what comes after.
+// Open the game with ?reset-records to start the records, the leaderboard, the remembered name
+// and the music setting over. The flag is dropped from the URL straight away, so a reload keeps
+// what comes after.
 function resetIfAsked() {
   const url = new URL(location.href)
   if (!url.searchParams.has('reset-records')) return

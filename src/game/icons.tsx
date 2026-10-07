@@ -39,3 +39,16 @@ export function Crown({ className = 'hud-crown' }: { className?: string }) {
     </svg>
   )
 }
+
+/** The music's mark: two beamed notes, struck through while it is off. */
+export function Note({ off }: { off: boolean }) {
+  return (
+    <svg className="hud-note" viewBox="0 0 24 24" aria-hidden="true">
+      <path className="hud-trophy__handles" d="M8.6 17.4V6.2l11-2.6v11.2" />
+      <path className="hud-trophy__cup" d="M8.6 6.2l11-2.6v3.4l-11 2.6Z" />
+      <ellipse className="hud-trophy__cup" cx="6" cy="17.6" rx="3" ry="2.4" />
+      <ellipse className="hud-trophy__cup" cx="17" cy="15" rx="3" ry="2.4" />
+      {off && <path className="hud-note__off" d="M3 3l18 18" />}
+    </svg>
+  )
+}
