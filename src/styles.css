@@ -1091,18 +1091,54 @@ kbd {
   white-space: nowrap;
 }
 
-/* on a phone or tablet with no keyboard, in place of the keys and PRESS START */
+/* on a phone or tablet, in place of the modes, the keys and PRESS START */
 .landing__touch {
+  position: relative;
   display: none;
-  margin: 0;
-  padding: 7px 14px;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 18px 16px 14px;
+  overflow: hidden;
   background: var(--bubble);
   border: 3px solid var(--ink);
-  border-radius: 14px;
-  box-shadow: 3px 4px 0 var(--ink);
+  border-radius: 18px;
+  box-shadow: 4px 5px 0 var(--ink);
+  animation: rise 0.5s ease-out 0.85s both;
+}
+
+/* the mode cards' band, in gold */
+.landing__touch::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 8px;
+  border-bottom: 3px solid var(--ink);
+  background: var(--gold);
+}
+
+.landing__touch p {
+  margin: 0;
+}
+
+.landing__touch-title {
+  font-size: clamp(16px, 4.4vw, 24px);
+  line-height: 1.1;
+  letter-spacing: 0.03em;
+  text-wrap: balance;
+}
+
+.landing__touch-jp {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.landing__touch .landing__touch-what {
+  margin-top: 8px;
   font-family: system-ui, sans-serif;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
 .landing__chips {
@@ -1311,15 +1347,23 @@ kbd {
   }
 }
 
-/* no keyboard: say so, in place of the keys */
+/* a phone or tablet: no ways to ride yet (the hi-scores card closes only by key), just the
+   word that a mobile version is coming */
 @media (hover: none) and (pointer: coarse) {
+  .landing__body {
+    bottom: 56px;
+    justify-content: space-between;
+  }
+
+  .landing__modes,
   .landing__keys,
-  .landing__start {
+  .landing__start,
+  .chip--scores {
     display: none;
   }
 
   .landing__touch {
-    display: block;
+    display: flex;
   }
 }
 
@@ -1349,6 +1393,7 @@ kbd {
   .landing__word span,
   .landing__sub,
   .landing__modes,
+  .landing__touch,
   .landing__keys,
   .landing__chips,
   .landing__start,

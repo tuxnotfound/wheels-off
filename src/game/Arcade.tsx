@@ -100,7 +100,7 @@ function Landing() {
   return (
     <main className={started ? 'landing landing--off' : 'landing'} aria-label="Wheels Off">
       <nav className="landing__chips">
-        <button className="chip" {...landingButton(toggleRecords)}>
+        <button className="chip chip--scores" {...landingButton(toggleRecords)}>
           <kbd>R</kbd> hi-scores
         </button>
         {/* its own click decides the music, not the first-click wake-up behind it */}
@@ -154,7 +154,11 @@ function Landing() {
             <span><kbd>Space</kbd> ollie</span>
             <span><kbd>P</kbd> pause</span>
           </p>
-          <p className="landing__touch">Wheels Off rides on a keyboard. Open it on a computer to play.</p>
+          <div className="landing__touch">
+            <p className="landing__touch-title">MOBILE VERSION SOON</p>
+            <p className="landing__touch-jp">スマホ版、近日公開</p>
+            <p className="landing__touch-what">Wheels Off is made for a desktop browser. Open it on a computer to ride.</p>
+          </div>
         </div>
       </div>
       {!covered && <p className="landing__start">PRESS START</p>}

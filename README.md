@@ -14,7 +14,8 @@ It shows the title, the two modes, the keys, and the hi-scores going round on a 
 rolls off in arcade (**F** in free roam), or click a mode; the page clears away as the camera
 swings round behind the kid into the chase. **R** opens the hi-scores from there, **M** the music.
 Keys that leave or move around the page (Cmd, Ctrl, Alt, Shift, Tab, Esc) never start the ride.
-On a phone or tablet with no keyboard, it says the game needs one.
+On a phone or tablet (a touch screen with no mouse), the modes, the keys and the hi-scores
+button give way to a "mobile version soon" card; the attract ride and the music still play.
 
 ## Controls
 
