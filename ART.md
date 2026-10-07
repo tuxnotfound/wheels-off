@@ -121,8 +121,9 @@ To try a model without editing the manifest, put it under `public/art/` and open
 humanoid bones with the skate animation. Hair and cloth spring bones swing on their own.
 It also restyles every model the same way (constants at the top of
 `src/player/VrmRider.tsx`): chibi proportions (head 1.9x, body 0.8x, chubbier arms and
-legs), long hair strands shortened to the shoulder blades, a knit beanie with
-headphones fitted over the hair's crown, and loose navy pants built from the leg skin in
+legs), and the Lofi Girl look: flat chestnut hair cut to a blunt bob at the jaw, a bun
+with a teal tie, big pink and red headphones, a chunky red scarf, the top in dark green
+with long sleeves built from the arm skin, and loose navy pants built from the leg skin in
 place of shorts (a model without a `Bottoms` material keeps what it wears). So a VRoid
 export can keep normal proportions and long hair.
 If the file is missing or broken, the game falls back to the procedural kid and logs a

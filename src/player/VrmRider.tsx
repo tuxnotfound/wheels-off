@@ -4,20 +4,33 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm'
 import type { MToonMaterial, VRM, VRMHumanBoneName } from '@pixiv/three-vrm'
 import { curvedDepth, markRider, riderMat } from '../look/materials'
-import { BEANIE, BEANIE_CUFF, BEANIE_TAG, PANTS, PANTS_SHADE, PHONES, PHONES_CAP, ProceduralRider } from './ProceduralRider'
+import { PANTS, PANTS_SHADE, ProceduralRider } from './ProceduralRider'
 import { DECK_TOP, footFlat, riderLeg, solveLeg, toBody } from './pose'
 import type { Foot, LegAngles, Pose } from './pose'
 import type { RiderProps } from './Skater'
 
-const TARGET_HEIGHT = 1.45 // the kid's height in world meters (beanie included), whatever the model's size
+const TARGET_HEIGHT = 1.45 // the kid's height in world meters (bun included), whatever the model's size
 
-// Chibi: a smaller body under a much bigger head, chubby limbs, long hair cut to the
-// shoulder blades.
+// Chibi: a smaller body under a much bigger head, chubby limbs, hair cut to a bob.
 const BODY_SCALE = 0.8
 const HEAD_SCALE = 1.9
-const HAIR_CUT = 0.8 // long strands keep their width, lose this much length below the ears
+const BOB = 0.5 // the cut, from the head joint (0) down to the neck joint (1): about the jaw
 const LEG_PUFF = 1.25 // limbs thickened around their bones, not lengthened
 const ARM_PUFF = 1.15
+
+// The Lofi Girl look: a chestnut bob tied up in a bun, big pink and cream headphones, a
+// chunky red scarf and a dark green sweater.
+const HAIR = '#8a4a34'
+const HAIR_SHADE = '#5a2f24'
+const HAIR_TIE = '#3f9a8c'
+const SWEATER = '#2f6b5a'
+const SWEATER_SHADE = '#1e4a3f'
+const SCARF = '#d8483d'
+const PHONES_BAND = '#e4a69c'
+const PHONES_SHELL = '#cf4c43'
+const PHONES_FACE = '#f4e7d3'
+const PHONES_PAD = '#4a302b'
+const RELAXED = 0.45 // how much of the model's relaxed expression she wears
 
 type Rig = {
   vrm: VRM
@@ -35,41 +48,52 @@ type Rig = {
 
 const v3 = () => new THREE.Vector3()
 
-/** Over-ear headphones in the beanie's frame: band over the crown, cups on the ears. */
-function headphones(rx: number, ry: number, earY: number): THREE.Group {
+/** A disc facing sideways (along x), for the headphone cups. */
+function disc(r: number, t: number, color: string, x: number) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, t, 28), riderMat(color))
+  m.rotation.z = Math.PI / 2
+  m.position.x = x
+  return m
+}
+
+/**
+ * Big over-ear headphones, centered between the ears: a wide flat band over the crown and
+ * padded cups, cream faces in red shells on dark cushions.
+ */
+function headphones(rx: number, top: number): THREE.Group {
   const g = new THREE.Group()
-  const cupR = ry * 0.34
-  const cupT = rx * 0.2
+  const cupR = top * 0.3
+  const cupT = rx * 0.26
   const cx = rx + cupT * 0.5 // cups sit on the hair at the sides
-  const bx = rx * 1.04 + cupT * 0.3 // band clears the beanie's cuff
-  const top = ry * 1.06 + cupT * 0.3
-  const pts = [new THREE.Vector3(cx, earY + cupR * 0.75, 0)]
+  const bx = rx * 1.06
+  const crown = top * 1.04
+  const pts = [new THREE.Vector3(cx, cupR * 0.8, 0)]
   for (let i = 0; i <= 18; i++) {
     const a = (i / 18) * Math.PI
-    pts.push(new THREE.Vector3(bx * Math.cos(a), top * Math.sin(a), 0))
+    pts.push(new THREE.Vector3(bx * Math.cos(a), crown * Math.sin(a), 0))
   }
-  pts.push(new THREE.Vector3(-cx, earY + cupR * 0.75, 0))
-  const band = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 90, rx * 0.05, 8), riderMat(PHONES))
+  pts.push(new THREE.Vector3(-cx, cupR * 0.8, 0))
+  const band = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 90, rx * 0.045, 8), riderMat(PHONES_BAND))
+  band.scale.z = 2.4 // wide and flat across the head
   g.add(band)
   for (const s of [-1, 1]) {
-    const cup = new THREE.Mesh(new THREE.CylinderGeometry(cupR, cupR, cupT, 28), riderMat(PHONES))
-    cup.rotation.z = Math.PI / 2
-    cup.position.set(s * cx, earY, 0)
-    const cap = new THREE.Mesh(new THREE.CylinderGeometry(cupR * 0.74, cupR * 0.74, cupT * 0.35, 28), riderMat(PHONES_CAP))
-    cap.rotation.z = Math.PI / 2
-    cap.position.set(s * (cx + cupT * 0.6), earY, 0)
-    const slider = new THREE.Mesh(new THREE.BoxGeometry(cupT * 0.7, cupR * 0.6, cupR * 0.45), riderMat(PHONES))
-    slider.position.set(s * cx, earY + cupR * 1.05, 0)
-    g.add(cup, cap, slider)
+    const slider = new THREE.Mesh(new THREE.BoxGeometry(cupT * 0.6, cupR * 0.7, cupR * 0.5), riderMat(PHONES_BAND))
+    slider.position.set(s * cx, cupR * 1.05, 0)
+    g.add(
+      disc(cupR, cupT * 0.45, PHONES_PAD, s * (rx + cupT * 0.22)),
+      disc(cupR * 0.94, cupT * 0.55, PHONES_SHELL, s * (rx + cupT * 0.7)),
+      disc(cupR * 0.68, cupT * 0.2, PHONES_FACE, s * (rx + cupT * 1.02)),
+      slider,
+    )
   }
   return g
 }
 
 /**
- * Knit beanie fitted over the hair's crown, with headphones over it, parented to the
- * head bone so they follow every nod. Returns the top of the beanie (model units).
+ * Her hair tied up in a bun at the back of the crown, with headphones over it, parented to
+ * the head bone so they follow every nod. Returns the top of the bun or band (model units).
  */
-function addHeadwear(vrm: VRM) {
+function addHeadwear(vrm: VRM, hairMat: THREE.Material) {
   const head = vrm.humanoid.getRawBoneNode('head')
   const eye = vrm.humanoid.getRawBoneNode('leftEye') ?? head
   if (!head || !eye) return
@@ -90,42 +114,116 @@ function addHeadwear(vrm: VRM) {
     }
   })
   if (!Number.isFinite(lo.y)) return
-  const rx = ((hi.x - lo.x) / 2) * 1.05
-  const rz = ((hi.z - lo.z) / 2) * 1.05
-  const rimY = eyeY + (hi.y - eyeY) * 0.3
-  const ry = (hi.y - rimY) * 1.12
-  const tilt = -0.28 // rim above the bangs in front, low over the nape behind
+  const rx = ((hi.x - lo.x) / 2) * 1.02
+  const rz = (hi.z - lo.z) / 2
+  const earY = eyeY - (hi.y - eyeY) * 0.12
+  const top = hi.y - earY // the crown, above the ears
 
-  const beanie = new THREE.Group()
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(1, 36, 14, 0, Math.PI * 2, 0, Math.PI / 2), riderMat(BEANIE))
-  dome.scale.set(rx, ry, rz)
-  const cuff = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.02, 1, 36), riderMat(BEANIE_CUFF))
-  cuff.scale.set(rx * 1.04, ry * 0.36, rz * 1.04)
-  cuff.position.y = ry * 0.1
-  const tag = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), riderMat(BEANIE_TAG))
-  tag.scale.set(rx * 0.32, ry * 0.2, rz * 0.08)
-  tag.position.set(0, ry * 0.1, rz * 1.04)
-  const earY = (eyeY - (hi.y - eyeY) * 0.12 - rimY) / Math.cos(tilt)
-  beanie.add(dome, cuff, tag, headphones(rx, ry, earY))
-  beanie.position.set((lo.x + hi.x) / 2, rimY, (lo.z + hi.z) / 2)
-  beanie.rotation.x = tilt
-  beanie.updateMatrix()
+  // the bun, high on the back of the head, with a teal tie where it meets the hair
+  const bunR = rx * 0.5
+  const out = new THREE.Vector3(0, 0.77, -0.64).normalize() // 50 degrees up from straight back
+  const base = new THREE.Vector3(0, top * out.y, rz * out.z)
+  const bun = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 18), hairMat)
+  bun.scale.set(bunR, bunR * 0.9, bunR)
+  bun.position.copy(base).addScaledVector(out, bunR * 0.85)
+  const tie = new THREE.Mesh(new THREE.TorusGeometry(bunR * 0.6, bunR * 0.14, 10, 28), riderMat(HAIR_TIE))
+  tie.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), out)
+  tie.position.copy(base).addScaledVector(out, bunR * 0.3)
+
+  const gear = new THREE.Group()
+  gear.add(bun, tie, headphones(rx, top))
+  gear.position.set((lo.x + hi.x) / 2, earY, (lo.z + hi.z) / 2)
+  gear.updateMatrix()
   vrm.scene.updateMatrixWorld(true)
-  beanie.matrix.premultiply(head.matrixWorld.clone().invert())
-  beanie.matrix.decompose(beanie.position, beanie.quaternion, beanie.scale)
-  head.add(beanie)
-  return rimY + ry * 1.06
+  gear.matrix.premultiply(head.matrixWorld.clone().invert())
+  gear.matrix.decompose(gear.position, gear.quaternion, gear.scale)
+  head.add(gear)
+  return earY + Math.max(top * 1.04 + rx * 0.045, bun.position.y + bunR * 0.9)
 }
 
-/** Long strands (4+ joints) squashed along their length below the first joint, so they keep their width. */
-function cutHair(scene: THREE.Object3D) {
-  scene.traverse((o) => {
-    const m = /^J_Sec_Hair2_(\d+)$/.exec(o.name)
-    if (!m || !o.parent) return
-    let depth = 0
-    for (let c: THREE.Object3D | undefined = o; c; c = c.children.find((k) => /Hair/.test(k.name))) depth++
-    if (depth >= 4) o.scale.set(1, 1 - HAIR_CUT, 1)
+/** A chunky red scarf wound twice round the neck, on the neck bone. */
+function addScarf(vrm: VRM, skin: THREE.SkinnedMesh) {
+  const neck = vrm.humanoid.getRawBoneNode('neck')
+  const head = vrm.humanoid.getRawBoneNode('head')
+  if (!neck || !head) return
+  vrm.scene.updateMatrixWorld(true)
+  const y0 = neck.getWorldPosition(v3()).y
+  const y1 = head.getWorldPosition(v3()).y
+  const lo = v3().setScalar(Infinity)
+  const hi = v3().setScalar(-Infinity)
+  const p = v3()
+  const pos = skin.geometry.attributes.position
+  for (let i = 0; i < pos.count; i++) {
+    p.fromBufferAttribute(pos, i).applyMatrix4(skin.matrixWorld)
+    if (p.y < y0 || p.y > y1) continue
+    lo.min(p)
+    hi.max(p)
+  }
+  if (!Number.isFinite(lo.y)) return
+  const r = Math.max(hi.x - lo.x, hi.z - lo.z) / 2
+  const tube = r * 0.62
+  const ring = (y: number, R: number, t: number, tilt: number) => {
+    const m = new THREE.Mesh(new THREE.TorusGeometry(R, t, 12, 36), riderMat(SCARF))
+    m.rotation.set(Math.PI / 2 + tilt, 0, 0)
+    m.position.y = y
+    return m
+  }
+  // two wraps, the upper one tipped up at the back
+  const scarf = new THREE.Group()
+  scarf.add(ring(0, r * 1.45, tube, 0), ring(tube * 1.1, r * 1.3, tube * 0.85, -0.18))
+  scarf.position.set((lo.x + hi.x) / 2, y0 + (y1 - y0) * 0.2, (lo.z + hi.z) / 2)
+  scarf.updateMatrix()
+  scarf.matrix.premultiply(neck.matrixWorld.clone().invert())
+  scarf.matrix.decompose(scarf.position, scarf.quaternion, scarf.scale)
+  neck.add(scarf)
+}
+
+/**
+ * A blunt bob, cut level at the jaw: hair wholly below the cut goes, and strands that cross
+ * it end on it. Cut in the mesh, not by squashing bones: a strand can't be shortened above
+ * its first joint, and the back strands hang from the nape. Run at rest. Returns the hair
+ * joints below the cut, which have nothing left to swing.
+ */
+function cutHair(vrm: VRM) {
+  const below = new Set<THREE.Object3D>()
+  const head = vrm.humanoid.getRawBoneNode('head')
+  const neck = vrm.humanoid.getRawBoneNode('neck')
+  if (!head || !neck) return below
+  const y0 = head.getWorldPosition(v3()).y
+  const cut = y0 - (y0 - neck.getWorldPosition(v3()).y) * BOB
+  const p = v3()
+  head.traverse((o) => {
+    if (/^J_Sec_Hair/.test(o.name) && o.getWorldPosition(p).y < cut) below.add(o)
   })
+  vrm.scene.traverse((o) => {
+    const m = o as THREE.SkinnedMesh
+    const mat = m.isSkinnedMesh ? mtoonOf(m) : undefined
+    if (!mat || !/hair/i.test(mat.name) || !m.geometry.index) return
+    const g = m.geometry
+    const index = g.index!
+    const pos = g.attributes.position
+    const y = (i: number) => p.fromBufferAttribute(pos, i).applyMatrix4(m.bindMatrix).y
+    const tris: number[] = []
+    const groups = g.groups.length ? [...g.groups] : [{ start: 0, count: index.count, materialIndex: 0 }]
+    g.clearGroups()
+    for (const gr of groups) {
+      const start = tris.length
+      for (let k = gr.start; k < gr.start + gr.count; k += 3) {
+        const abc = [index.getX(k), index.getX(k + 1), index.getX(k + 2)]
+        if (abc.some((i) => y(i) >= cut)) tris.push(...abc)
+      }
+      g.addGroup(start, tris.length - start, gr.materialIndex)
+    }
+    g.setIndex(tris)
+    for (let i = 0; i < pos.count; i++) {
+      if (y(i) >= cut) continue
+      p.y = cut
+      p.applyMatrix4(m.bindMatrixInverse)
+      pos.setXYZ(i, p.x, p.y, p.z)
+    }
+    pos.needsUpdate = true
+  })
+  return below
 }
 
 // [bone, its child, thickening, fades in from the body joint]
@@ -212,24 +310,58 @@ function bindRangeY(m: THREE.SkinnedMesh): [number, number] {
   return [lo, hi]
 }
 
-/**
- * Loose pants in place of the shorts: the skin from the waist to just over the shoes,
- * copied into a new mesh on the same skeleton and pushed out into a cloth shell that
- * widens from the thighs down. It bends exactly with the legs under it. The shorts go.
- */
-function addPants(vrm: VRM) {
+/** A model's skinned meshes, found by material name. */
+function meshFinder(vrm: VRM) {
   const meshes: THREE.SkinnedMesh[] = []
   vrm.scene.traverse((o) => {
     if ((o as THREE.SkinnedMesh).isSkinnedMesh) meshes.push(o as THREE.SkinnedMesh)
   })
-  const named = (re: RegExp) => meshes.find((m) => ([] as THREE.Material[]).concat(m.material).some((x) => re.test(x.name)))
-  const skin = named(/^body.*skin/i)
-  const shorts = named(/bottoms/i)
-  const shoes = named(/shoe/i)
-  if (!skin || !shorts) return
-  const waist = bindRangeY(shorts)[1] + 0.005
-  const hem = shoes ? bindRangeY(shoes)[1] - 0.02 : bindRangeY(skin)[0] + 0.1
+  return (re: RegExp) => meshes.find((m) => ([] as THREE.Material[]).concat(m.material).some((x) => re.test(x.name)))
+}
 
+/** The mesh's own MToon material, not its outline. */
+function mtoonOf(m: THREE.Mesh): MToonMaterial | undefined {
+  return ([] as THREE.Material[]).concat(m.material).find((x) => (x as MToonMaterial).isMToonMaterial && !(x as MToonMaterial).isOutline) as MToonMaterial | undefined
+}
+
+/** An MToon material in flat colors: its textures dropped, lit and shade colors set. */
+function flatten(m: MToonMaterial, color: string, shade: string) {
+  m.map = null
+  m.shadeMultiplyTexture = null
+  m.shadingShiftTexture = null
+  m.rimMultiplyTexture = null
+  m.matcapTexture = null
+  m.normalMap = null
+  m.emissiveMap = null
+  m.emissive.set(0x000000) // its map may have masked it to highlights
+  m.uvAnimationMaskTexture = null
+  m.color.set(color)
+  m.shadeColorFactor.set(shade)
+  m.needsUpdate = true
+  return m
+}
+
+/** A cloth material for a shell open at its ends, from the clothes' own MToon if there is one. */
+function clothMat(src: MToonMaterial | undefined, color: string, shade: string) {
+  if (!src) return riderMat(color, true)
+  const m = flatten(src.clone(), color, shade)
+  m.side = THREE.DoubleSide
+  m.userData = {}
+  return m
+}
+
+/**
+ * A cloth shell over part of the skin: the triangles whose corners all pass `keep`, copied
+ * into a new mesh on the same skeleton and pushed out along their normals by `push` (both
+ * get the corner in bind space). It bends exactly with the skin under it.
+ */
+function skinShell(
+  skin: THREE.SkinnedMesh,
+  keep: (p: THREE.Vector3) => boolean,
+  push: (p: THREE.Vector3) => number,
+  mat: THREE.Material,
+  name: string,
+) {
   const g = skin.geometry
   const index = g.index!
   const group = g.groups.find((x) => x.materialIndex === 0) ?? { start: 0, count: index.count }
@@ -237,15 +369,13 @@ function addPants(vrm: VRM) {
   const nrm = g.attributes.normal
   const p = v3()
   const n = v3()
-  const y = (i: number) => p.fromBufferAttribute(pos, i).applyMatrix4(skin.bindMatrix).y
+  const at = (i: number) => p.fromBufferAttribute(pos, i).applyMatrix4(skin.bindMatrix)
   const remap = new Map<number, number>()
   const tris: number[] = []
   for (let k = group.start; k < group.start + group.count; k += 3) {
-    const a = index.getX(k)
-    const b = index.getX(k + 1)
-    const c = index.getX(k + 2)
-    if ([a, b, c].some((i) => y(i) < hem || y(i) > waist)) continue
-    for (const i of [a, b, c]) {
+    const abc = [index.getX(k), index.getX(k + 1), index.getX(k + 2)]
+    if (!abc.every((i) => keep(at(i)))) continue
+    for (const i of abc) {
       if (!remap.has(i)) remap.set(i, remap.size)
       tris.push(remap.get(i)!)
     }
@@ -253,62 +383,108 @@ function addPants(vrm: VRM) {
   if (!tris.length) return
 
   const out = new THREE.BufferGeometry()
-  for (const name of ['position', 'normal', 'uv', 'skinIndex', 'skinWeight']) {
-    const src = g.attributes[name] as THREE.BufferAttribute | undefined
+  for (const attr of ['position', 'normal', 'uv', 'skinIndex', 'skinWeight']) {
+    const src = g.attributes[attr] as THREE.BufferAttribute | undefined
     if (!src) continue
     const Arr = src.array.constructor as new (n: number) => THREE.TypedArray
     const dst = new THREE.BufferAttribute(new Arr(remap.size * src.itemSize), src.itemSize, src.normalized)
     for (const [from, to] of remap) for (let c = 0; c < src.itemSize; c++) dst.setComponent(to, c, src.getComponent(from, c))
-    out.setAttribute(name, dst)
+    out.setAttribute(attr, dst)
   }
   out.setIndex(tris)
-  // the shell: thin at the waist, loose from mid-thigh down
+  // corners split at UV seams share one normal, or the push would open cracks along them
+  const key = (i: number) => at(i).toArray().map((c) => Math.round(c * 1e5)).join()
+  const welded = new Map<string, THREE.Vector3>()
+  for (const from of remap.keys()) {
+    const k = key(from)
+    welded.set(k, (welded.get(k) ?? v3()).add(n.fromBufferAttribute(nrm, from).transformDirection(skin.bindMatrix)))
+  }
   const op = out.attributes.position
   for (const [from, to] of remap) {
-    p.fromBufferAttribute(pos, from).applyMatrix4(skin.bindMatrix)
-    n.fromBufferAttribute(nrm, from).transformDirection(skin.bindMatrix)
-    const down = (waist - p.y) / (waist - hem)
-    p.addScaledVector(n, 0.01 + 0.024 * THREE.MathUtils.smoothstep(down, 0.12, 0.55)).applyMatrix4(skin.bindMatrixInverse)
+    n.copy(welded.get(key(from))!).normalize()
+    p.addScaledVector(n, push(p)).applyMatrix4(skin.bindMatrixInverse)
     op.setXYZ(to, p.x, p.y, p.z)
   }
 
-  const src = ([] as THREE.Material[]).concat(shorts.material).find((m) => !(m as MToonMaterial).isOutline)
-  let mat: THREE.Material
-  if (src && (src as MToonMaterial).isMToonMaterial) {
-    const m = (src as MToonMaterial).clone()
-    m.map = null
-    m.shadeMultiplyTexture = null
-    m.shadingShiftTexture = null
-    m.rimMultiplyTexture = null
-    m.matcapTexture = null
-    m.normalMap = null
-    m.emissiveMap = null
-    m.uvAnimationMaskTexture = null
-    m.color.set(PANTS)
-    m.shadeColorFactor.set(PANTS_SHADE)
-    m.side = THREE.DoubleSide // open at the hem
-    m.userData = {}
-    m.needsUpdate = true
-    mat = m
-  } else mat = riderMat(PANTS, true)
-  const pants = new THREE.SkinnedMesh(out, mat)
-  pants.name = 'Pants'
-  pants.position.copy(skin.position)
-  pants.quaternion.copy(skin.quaternion)
-  pants.scale.copy(skin.scale)
-  skin.parent!.add(pants)
-  pants.bind(skin.skeleton, skin.bindMatrix)
+  const shell = new THREE.SkinnedMesh(out, mat)
+  shell.name = name
+  shell.position.copy(skin.position)
+  shell.quaternion.copy(skin.quaternion)
+  shell.scale.copy(skin.scale)
+  skin.parent!.add(shell)
+  shell.bind(skin.skeleton, skin.bindMatrix)
+}
+
+/**
+ * Loose pants in place of the shorts: a shell over the skin from the waist to just over the
+ * shoes, widening from the thighs down. The shorts go.
+ */
+function addPants(vrm: VRM) {
+  const named = meshFinder(vrm)
+  const skin = named(/^body.*skin/i)
+  const shorts = named(/bottoms/i)
+  const shoes = named(/shoe/i)
+  if (!skin || !shorts) return
+  const waist = bindRangeY(shorts)[1] + 0.005
+  const hem = shoes ? bindRangeY(shoes)[1] - 0.02 : bindRangeY(skin)[0] + 0.1
+  skinShell(
+    skin,
+    (p) => p.y >= hem && p.y <= waist,
+    // thin at the waist, loose from mid-thigh down
+    (p) => 0.01 + 0.024 * THREE.MathUtils.smoothstep((waist - p.y) / (waist - hem), 0.12, 0.55),
+    clothMat(mtoonOf(shorts), PANTS, PANTS_SHADE),
+    'Pants',
+  )
   shorts.visible = false
 }
 
 /**
- * Spring colliders and joint radii don't follow bone scale; match them to the new sizes.
- * The cut hair also gets some weight and damping: short hair bounces less, and without
- * it a landing squash whips the strands up over the beanie.
+ * Her sweater: the top goes dark green, with long sleeves from the shoulders to the wrists,
+ * a little loose at the cuffs. In the bind T-pose the arms lie along x, so the sleeves are
+ * the skin out past the shoulder joints. They start under the top's short sleeves, which
+ * lift off the arm as it lowers and would show skin there.
  */
-function fitSprings(vrm: VRM) {
+function addSweater(vrm: VRM) {
+  const named = meshFinder(vrm)
+  const skin = named(/^body.*skin/i)
+  const top = named(/tops/i)
+  const shoulder = vrm.humanoid.getRawBoneNode('leftUpperArm')
+  const hand = vrm.humanoid.getRawBoneNode('leftHand')
+  const src = top && mtoonOf(top)
+  if (!top || !src) return
+  flatten(src, SWEATER, SWEATER_SHADE)
+  if (!skin || !shoulder || !hand) return
+  const start = Math.abs(shoulder.getWorldPosition(v3()).x)
+  const wrist = Math.abs(hand.getWorldPosition(v3()).x)
+  skinShell(
+    skin,
+    (q) => Math.abs(q.x) >= start && Math.abs(q.x) <= wrist,
+    (q) => 0.01 + 0.014 * THREE.MathUtils.smoothstep((Math.abs(q.x) - start) / (wrist - start), 0.6, 1),
+    clothMat(src, SWEATER, SWEATER_SHADE),
+    'Sleeves',
+  )
+}
+
+/** Flat chestnut hair, for her bob and bun. Returns the hair material. */
+function dyeHair(vrm: VRM) {
+  let hair: MToonMaterial | undefined
+  vrm.scene.traverse((o) => {
+    const m = (o as THREE.Mesh).isMesh ? mtoonOf(o as THREE.Mesh) : undefined
+    if (m && /hair/i.test(m.name)) hair = flatten(m, HAIR, HAIR_SHADE)
+  })
+  return hair ?? riderMat(HAIR)
+}
+
+/**
+ * Spring colliders and joint radii don't follow bone scale; match them to the new sizes.
+ * Hair joints below the bob's cut stop swinging: the strand ends they would fling about
+ * are gone. The rest of the hair gets some weight and damping: short hair bounces less,
+ * and without it a landing squash whips the strands up over the headphones.
+ */
+function fitSprings(vrm: VRM, cut: Set<THREE.Object3D>) {
   const sm = vrm.springBoneManager
   if (!sm) return
+  for (const j of [...sm.joints]) if (cut.has(j.bone)) sm.deleteJoint(j)
   const s = v3()
   for (const c of sm.colliders) {
     const k = c.getWorldScale(s).x
@@ -342,7 +518,10 @@ function buildRig(vrm: VRM): Rig {
   })
   puffLimbs(vrm)
   addPants(vrm)
-  const crown = addHeadwear(vrm) ?? headRestY + (headRestY - at('neck').y) * 2.2
+  addSweater(vrm)
+  const skin = meshFinder(vrm)(/^body.*skin/i)
+  if (skin) addScarf(vrm, skin)
+  const crown = addHeadwear(vrm, dyeHair(vrm)) ?? headRestY + (headRestY - at('neck').y) * 2.2
   vrm.scene.traverse((o) => {
     const m = o as THREE.Mesh
     if (!m.isMesh) return
@@ -353,11 +532,11 @@ function buildRig(vrm: VRM): Rig {
     for (const mat of ([] as THREE.Material[]).concat(m.material)) markRider(mat)
   })
 
+  const cut = cutHair(vrm)
   raw('hips')?.scale.setScalar(BODY_SCALE)
   raw('head')?.scale.setScalar(HEAD_SCALE / BODY_SCALE)
-  cutHair(vrm.scene)
   vrm.scene.updateMatrixWorld(true)
-  fitSprings(vrm)
+  fitSprings(vrm, cut)
 
   const top = at('head').y + (crown - headRestY) * HEAD_SCALE
   const foot = at('rightFoot')
@@ -440,11 +619,12 @@ function applyPose(r: Rig, p: Pose, dt: number, blink: { t: number }) {
   b('leftHand')?.rotation.set(0, 0, 0.25)
   b('rightHand')?.rotation.set(0, 0, -0.25)
 
-  // blink every few seconds
+  // her calm, half-lidded look, and a blink every few seconds
   blink.t -= dt
   const em = r.vrm.expressionManager
   if (em) {
     if (blink.t < 0) blink.t = 2 + Math.random() * 3
+    em.setValue('relaxed', RELAXED)
     em.setValue('blink', blink.t < 0.12 ? 1 : 0)
   }
   r.vrm.update(dt)
