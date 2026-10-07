@@ -6,8 +6,8 @@ import { createLofi } from './lofi'
 
 // The soundtrack: lo-fi tunes composed live (lofi.ts). M turns it off and on, and the choice is
 // kept in this browser. A browser only lets a page make sound after a key press or a click, so
-// the music starts with the first one. Under the title card and the pause screen it plays
-// muffled, as if from the next room, and it stops while the tab is hidden.
+// the music starts with the first one. Under the landing page and the cards over the ride it
+// plays muffled, as if from the next room, and it stops while the tab is hidden.
 
 const KEY = 'wheelsoff:music-off'
 const LEVEL = 0.6
@@ -56,7 +56,7 @@ function muffle() {
   tone.frequency.setTargetAtTime(covered ? MUFFLED_HZ : OPEN_HZ, ctx.currentTime, 0.12)
 }
 
-export function toggleMusic() {
+function toggleMusic() {
   const off = !useMusic.getState().off
   useMusic.setState({ off })
   writeJson(KEY, off)
@@ -74,6 +74,15 @@ function wake() {
   apply()
 }
 
+/**
+ * M, or the music button on the landing page. Music that is on but not yet playing (no key
+ * press or click so far) starts, rather than being turned off unheard.
+ */
+export function pressMusic() {
+  if (!useMusic.getState().off && ctx?.state !== 'running') wake()
+  else toggleMusic()
+}
+
 let installed = false
 export function installMusic() {
   if (installed) return
@@ -81,7 +90,7 @@ export function installMusic() {
   window.addEventListener('keydown', (e) => {
     if (e.target instanceof HTMLInputElement) return // typing a name
     const m = e.key.toLowerCase() === 'm' && !e.metaKey && !e.ctrlKey && !e.altKey
-    if (m && !e.repeat) toggleMusic()
+    if (m && !e.repeat) pressMusic()
     else if (!m) wake()
   })
   window.addEventListener('pointerdown', wake)

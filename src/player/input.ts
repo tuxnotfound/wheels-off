@@ -15,7 +15,9 @@ const LEFT = ['a', 'arrowleft']
 const RIGHT = ['d', 'arrowright']
 const UP = ['w', 'arrowup']
 const DOWN = ['s', 'arrowdown']
-const NEVER_START = ['p', 'r', 'm'] // pause, records and music: they never start the ride
+// pause, records and music never start the ride, nor do keys that leave the page or move
+// around it (Cmd+Tab, Tab to the landing page's buttons)
+const NEVER_START = ['p', 'r', 'm', 'tab', 'escape', 'shift', 'meta', 'control', 'alt', 'capslock']
 
 function recompute() {
   const has = (ks: string[]) => ks.some((k) => held.has(k))
@@ -34,7 +36,7 @@ export function installInput() {
     if (input.blocked || e.target instanceof HTMLInputElement) return
     const k = e.key.toLowerCase()
     if (k === ' ' || k.startsWith('arrow')) e.preventDefault()
-    if (!NEVER_START.includes(k)) input.started = true
+    if (!NEVER_START.includes(k) && !e.metaKey && !e.ctrlKey && !e.altKey) input.started = true
     if (e.repeat) return
     held.add(k)
     if (k === ' ') {

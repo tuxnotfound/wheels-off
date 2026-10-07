@@ -7,6 +7,7 @@ import { cardboardTex, hazardTex } from '../look/textures'
 import { M } from './parts'
 import { sim } from '../game/sim'
 import { hasObstacles, keepClear, useMode } from '../game/mode'
+import { input } from '../player/input'
 import { blockObstacles } from './streetGen'
 import type { Obstacle } from './streetGen'
 import { BLOCK } from './worldConfig'
@@ -116,14 +117,16 @@ export function ObstacleView({ ob, k }: { ob: Obstacle; k: number }) {
   )
 }
 
-/** A block's obstacles. Free roam clears them, and the block stays clear after it (see mode.ts). */
+/** A block's obstacles. Free roam's rules clear them, and the block stays clear after it (see mode.ts). */
 export function BlockObstacles({ seed, k, width }: { seed: number; k: number; width: number }) {
   const key = `${seed}:${k}`
-  const free = useMode((s) => s.mode === 'free')
+  const mode = useMode((s) => s.mode)
+  const free = mode === 'free' || !input.started // free roam, or the landing page's attract ride
   const obstacles = useMemo(() => blockObstacles(seed, k, width), [seed, k, width])
+  // re-marked on every switch of mode, since switching into free roam forgets the marks
   useLayoutEffect(() => {
     if (free) keepClear(key)
-  }, [free, key])
+  }, [free, mode, key])
   if (!hasObstacles(key, free)) return null
   return obstacles.map((ob) => <ObstacleView key={ob.id} ob={ob} k={k} />)
 }

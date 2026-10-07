@@ -1,6 +1,6 @@
 import { input } from '../player/input'
 import { blockObstacles, childSeed, hasBranch, laneLimit, widthForSeed } from '../world/streetGen'
-import { BLOCK, DIR, TURN_R } from '../world/worldConfig'
+import { BEHIND_LANDING, BLOCK, DIR, TURN_R } from '../world/worldConfig'
 import { freeRoam, hasObstacles } from './mode'
 import { STREAK_KMH } from './records'
 
@@ -80,7 +80,8 @@ const idleGap = () => 2.6 + Math.random() * 3.0
 
 const damp = (a: number, b: number, lambda: number, dt: number) => a + (b - a) * (1 - Math.exp(-lambda * dt))
 
-const START: Street = { seed: 1, ox: 0, oz: 0, dir: 0, width: widthForSeed(1), minK: -1, u0: 0 }
+// the first street reaches back as far as the landing shot looks (BEHIND_LANDING)
+const START: Street = { seed: 1, ox: 0, oz: 0, dir: 0, width: widthForSeed(1), minK: -BEHIND_LANDING, u0: 0 }
 
 export const sim = {
   time: 0,
@@ -199,73 +200,71 @@ export function stepSim(dtRaw: number) {
   const bailing = sim.time - sim.bailT < BAIL_TIME
 
   // --- speed: stroke, brake, or roll ---
-  if (input.started) {
-    sim.braking = input.z < 0 && sim.grounded && !bailing
-    if (input.z <= 0) sim.topSpeed = false
-    else if (sim.speed >= MAX_SPEED - 0.3) sim.topSpeed = true
-    else if (sim.speed < MAX_SPEED - HOLD_BAND) sim.topSpeed = false
-    const powering = input.z > 0 && !sim.topSpeed
-    const cruising = sim.grounded && !bailing && !sim.braking && !powering
-    if (!cruising) sim.nextIdleT = sim.time + idleGap()
-    const idle = cruising && sim.time >= sim.nextIdleT
-    if (idle) sim.nextIdleT = sim.time + idleGap()
-    const sagging = sim.topSpeed && sim.speed < MAX_SPEED - HOLD_SAG
-    const want = sim.grounded && !bailing && input.z >= 0 && (powering || sim.speed < CRUISE - 1.5 || idle || sagging)
+  sim.braking = input.z < 0 && sim.grounded && !bailing
+  if (input.z <= 0) sim.topSpeed = false
+  else if (sim.speed >= MAX_SPEED - 0.3) sim.topSpeed = true
+  else if (sim.speed < MAX_SPEED - HOLD_BAND) sim.topSpeed = false
+  const powering = input.z > 0 && !sim.topSpeed
+  const cruising = sim.grounded && !bailing && !sim.braking && !powering
+  if (!cruising) sim.nextIdleT = sim.time + idleGap()
+  const idle = cruising && sim.time >= sim.nextIdleT
+  if (idle) sim.nextIdleT = sim.time + idleGap()
+  const sagging = sim.topSpeed && sim.speed < MAX_SPEED - HOLD_SAG
+  const want = sim.grounded && !bailing && input.z >= 0 && (powering || sim.speed < CRUISE - 1.5 || idle || sagging)
 
-    const P = sim.push
-    const stage = (next: PushStage, dur = 0) => {
-      P.stage = next
-      P.t = 0
-      P.dur = dur
-    }
-    if (!sim.grounded || bailing || sim.braking) {
-      if (P.stage !== 'idle') stage('idle') // aborted: the pose eases the foot back onto the deck
-    } else {
-      P.t += dt
-      const len = P.stroke.endZ - P.stroke.plantZ
-      if (P.stage === 'idle' && want) {
+  const P = sim.push
+  const stage = (next: PushStage, dur = 0) => {
+    P.stage = next
+    P.t = 0
+    P.dur = dur
+  }
+  if (!sim.grounded || bailing || sim.braking) {
+    if (P.stage !== 'idle') stage('idle') // aborted: the pose eases the foot back onto the deck
+  } else {
+    P.t += dt
+    const len = P.stroke.endZ - P.stroke.plantZ
+    if (P.stage === 'idle' && want) {
+      P.power = powering
+      P.stroke = powering ? STROKES.power : STROKES.easy
+      stage('reach', REACH_FROM_DECK)
+      P.fromDeck = true
+    } else if (P.stage === 'reach' && P.t >= P.dur) {
+      stage('contact')
+      P.sweep = 0
+      // spread the push over how long the foot will be down at this speed
+      const contact = len / Math.min(Math.max(sim.speed, 1.5), P.stroke.lock)
+      P.rate = PUSH_GAIN / Math.min(Math.max(contact, 0.08), 0.4)
+    } else if (P.stage === 'contact') {
+      P.sweep += Math.min(sim.speed, P.stroke.lock) * dt
+      if (P.sweep >= len || P.t > 0.6) {
+        P.endZ = P.stroke.plantZ + Math.min(P.sweep, len)
+        stage('lift', P.stroke.lift)
+      }
+    } else if (P.stage === 'lift' && P.t >= P.dur) {
+      stage(want ? 'swing' : 'home', want ? P.stroke.swing : HOME_TIME)
+    } else if (P.stage === 'swing' && P.t >= P.dur) {
+      if (want) {
         P.power = powering
         P.stroke = powering ? STROKES.power : STROKES.easy
-        stage('reach', REACH_FROM_DECK)
-        P.fromDeck = true
-      } else if (P.stage === 'reach' && P.t >= P.dur) {
-        stage('contact')
-        P.sweep = 0
-        // spread the push over how long the foot will be down at this speed
-        const contact = len / Math.min(Math.max(sim.speed, 1.5), P.stroke.lock)
-        P.rate = PUSH_GAIN / Math.min(Math.max(contact, 0.08), 0.4)
-      } else if (P.stage === 'contact') {
-        P.sweep += Math.min(sim.speed, P.stroke.lock) * dt
-        if (P.sweep >= len || P.t > 0.6) {
-          P.endZ = P.stroke.plantZ + Math.min(P.sweep, len)
-          stage('lift', P.stroke.lift)
-        }
-      } else if (P.stage === 'lift' && P.t >= P.dur) {
-        stage(want ? 'swing' : 'home', want ? P.stroke.swing : HOME_TIME)
-      } else if (P.stage === 'swing' && P.t >= P.dur) {
-        if (want) {
-          P.power = powering
-          P.stroke = powering ? STROKES.power : STROKES.easy
-          stage('reach', P.stroke.reach)
-          P.fromDeck = false
-        } else stage('home', HOME_TIME)
-      } else if (P.stage === 'home' && P.t >= P.dur) stage('idle')
-    }
-    sim.stroking = P.stage !== 'idle'
-    const contact = P.stage === 'contact'
-
-    if (sim.braking) sim.speed = Math.max(0, sim.speed - (sim.speed * BRAKE_K + BRAKE_MIN) * dt)
-    else if (bailing) sim.speed = damp(sim.speed, MIN_SPEED, 0.5, dt)
-    else if (contact) {
-      // aim a little past the target so the last pushes don't crawl up to it
-      const target = input.z > 0 ? MAX_SPEED + 1 : CRUISE + 0.8
-      sim.speed = Math.min(MAX_SPEED, Math.max(sim.speed, damp(sim.speed, target, sim.push.rate, dt)))
-    } else if (sim.grounded) {
-      if (sim.speed > CRUISE && input.z === 0) sim.speed = damp(sim.speed, CRUISE, 0.5, dt)
-      sim.speed = Math.max(0, sim.speed - (sim.topSpeed ? HOLD_FRICTION : ROLL_FRICTION) * dt)
-    }
-    sim.streak = !freeRoam() && Math.round(sim.speed * 3.6) > STREAK_KMH ? sim.streak + dt : 0
+        stage('reach', P.stroke.reach)
+        P.fromDeck = false
+      } else stage('home', HOME_TIME)
+    } else if (P.stage === 'home' && P.t >= P.dur) stage('idle')
   }
+  sim.stroking = P.stage !== 'idle'
+  const contact = P.stage === 'contact'
+
+  if (sim.braking) sim.speed = Math.max(0, sim.speed - (sim.speed * BRAKE_K + BRAKE_MIN) * dt)
+  else if (bailing) sim.speed = damp(sim.speed, MIN_SPEED, 0.5, dt)
+  else if (contact) {
+    // aim a little past the target so the last pushes don't crawl up to it
+    const target = input.z > 0 ? MAX_SPEED + 1 : CRUISE + 0.8
+    sim.speed = Math.min(MAX_SPEED, Math.max(sim.speed, damp(sim.speed, target, sim.push.rate, dt)))
+  } else if (sim.grounded) {
+    if (sim.speed > CRUISE && input.z === 0) sim.speed = damp(sim.speed, CRUISE, 0.5, dt)
+    sim.speed = Math.max(0, sim.speed - (sim.topSpeed ? HOLD_FRICTION : ROLL_FRICTION) * dt)
+  }
+  sim.streak = !freeRoam() && Math.round(sim.speed * 3.6) > STREAK_KMH ? sim.streak + dt : 0
 
   // --- lateral carve, softly held inside the lane ---
   const lim = sim.arc ? Math.min(laneLimit(sim.street.width), laneLimit(sim.arc.to.width)) : laneLimit(sim.street.width)
@@ -287,7 +286,7 @@ export function stepSim(dtRaw: number) {
   }
 
   // --- ollie ---
-  if (input.jumpBuffer > 0 && sim.grounded && !bailing && input.started) {
+  if (input.jumpBuffer > 0 && sim.grounded && !bailing) {
     input.jumpBuffer = 0
     sim.vy = JUMP_V
     sim.grounded = false

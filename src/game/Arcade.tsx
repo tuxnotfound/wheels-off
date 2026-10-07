@@ -1,19 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CSSProperties, MouseEvent } from 'react'
+import type { ButtonHTMLAttributes, CSSProperties, MouseEvent } from 'react'
 import { resume, signName, togglePause, toggleRecords, useArcade } from './arcadeStore'
 import type { PendingRun } from './arcadeStore'
 import { BOARD_JP, BOARD_SIZE, BOARD_TITLE, NAME_MAX, boards, lastName, worldRecord } from './leaderboard'
 import type { Board } from './leaderboard'
 import { useHud } from './hudStore'
-import { switchMode, useMode } from './mode'
-import { Crown, Trophy, secs } from './icons'
+import { roll, switchMode, useMode } from './mode'
+import { Crown, Note, Trophy, secs } from './icons'
 import { records } from './records'
+import { pressMusic, useMusic } from '../audio/music'
 
-// The cards over the ride, all in the title card's look, with scores and names in arcade
-// type: the title card itself (at the start, and again as the pause screen) with the top of
-// each leaderboard and the switch to free roam (F); the hi-scores card (R) with both
-// leaderboards in full; the name entry after a run that makes a leaderboard; and the burst
-// behind it for a world record.
+// What is drawn over the ride. First the landing page, over the attract ride, until someone
+// takes over. Then the cards, all in the title card's look, with scores and names in arcade
+// type: the pause card (P) with the top of each leaderboard and the switch to free roam (F);
+// the hi-scores card (R) with both leaderboards in full; the name entry after a run that makes
+// a leaderboard; and the burst behind it for a world record.
 
 const ordinal = (i: number) => ['1ST', '2ND', '3RD'][i] ?? `${i + 1}TH`
 const shown = (board: Board, value: number) => (board === 'score' ? String(value) : secs(Math.floor(value * 10) / 10))
@@ -43,11 +44,147 @@ function Leaderboard({ board }: { board: Board }) {
   )
 }
 
-/** The title card: shown before the first ride and again whenever the game is paused. */
-function TitleCard({ paused }: { paused: boolean }) {
+// how long the landing page takes to clear away once the ride starts (its CSS exit animation)
+const LANDING_EXIT_MS = 800
+
+const letters = (word: string, from: number) =>
+  [...word].map((c, i) => (
+    <span key={i} style={{ '--i': from + i } as CSSProperties}>
+      {c}
+    </span>
+  ))
+
+/**
+ * A landing page button. It takes its own Enter and Space, so pressing it doesn't also start
+ * the ride, and a mouse click lets go of the focus, so the next Space is an ollie, not a press.
+ */
+const landingButton = (act: () => void): ButtonHTMLAttributes<HTMLButtonElement> => ({
+  type: 'button',
+  onKeyDown: (e) => {
+    if (e.key === 'Enter' || e.key === ' ') e.stopPropagation()
+  },
+  onClick: (e) => {
+    if (e.detail) e.currentTarget.blur()
+    act()
+  },
+})
+
+/** A board's top three, for the marquee. */
+const topThree = (board: Board) =>
+  boards[board].slice(0, 3).map((e, i) => `${ordinal(i)} ${shown(board, e.value)} ${e.name.toUpperCase()}`)
+
+/**
+ * The landing page, over the attract ride: the title, the two ways to ride, the keys, and the
+ * hi-scores going round on a marquee. Any key rolls off in arcade, F in free roam; the page
+ * clears away as the camera swings round behind the kid.
+ */
+function Landing() {
+  const started = useHud((s) => s.started)
+  const covered = useArcade((s) => s.menu !== null) // the hi-scores card, opened from here
+  const musicOff = useMusic((s) => s.off)
+  const [gone, setGone] = useState(false)
+  useEffect(() => {
+    if (!started) return
+    const t = setTimeout(() => setGone(true), LANDING_EXIT_MS)
+    return () => clearTimeout(t)
+  }, [started])
+  if (gone) return null
+  const marquee = [
+    [BOARD_TITLE.score.toUpperCase(), ...topThree('score')],
+    [BOARD_TITLE.speed.toUpperCase(), ...topThree('speed')],
+    ...(records.score > 0 || records.streak > 0
+      ? [['YOUR PR', `${BOARD_TITLE.score.toUpperCase()} ${records.score}`, `${BOARD_TITLE.speed.toUpperCase()} ${shown('speed', records.streak)}`]]
+      : []),
+    ['FREE PLAY'],
+  ]
+  return (
+    <main className={started ? 'landing landing--off' : 'landing'} aria-label="Wheels Off">
+      <nav className="landing__chips">
+        <button className="chip" {...landingButton(toggleRecords)}>
+          <kbd>R</kbd> hi-scores
+        </button>
+        {/* its own click decides the music, not the first-click wake-up behind it */}
+        <button
+          className={musicOff ? 'chip chip--off' : 'chip'}
+          aria-label={musicOff ? 'music off' : 'music on'}
+          {...landingButton(pressMusic)}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <Note off={musicOff} />
+          <kbd>M</kbd>
+        </button>
+      </nav>
+      <div className="landing__body">
+        <header className="landing__head">
+          <h1 className="landing__title" aria-label="Wheels Off">
+            <span className="landing__word" aria-hidden="true">
+              {letters('WHEELS', 0)}
+            </span>
+            <span className="landing__word landing__word--off" aria-hidden="true">
+              {letters('OFF', 6)}
+            </span>
+          </h1>
+          <p className="landing__sub">
+            <span className="landing__jp">ホイールズ・オフ</span>
+            <span className="landing__tag">skate an endless sakura town at golden hour</span>
+          </p>
+        </header>
+        <div className="landing__go">
+          <div className="landing__modes">
+            <button className="mode-card mode-card--arcade" {...landingButton(() => roll('arcade'))}>
+              <span className="mode-card__name">ARCADE</span>
+              <span className="mode-card__jp">アーケード</span>
+              <span className="mode-card__what">ollie the obstacles and chain combos for the hi-scores. a wipeout ends the run.</span>
+              <span className="mode-card__key">
+                <kbd>Enter</kbd> or any key
+              </span>
+            </button>
+            <button className="mode-card mode-card--free" {...landingButton(() => roll('free'))}>
+              <span className="mode-card__name">FREE ROAM</span>
+              <span className="mode-card__jp">フリーローム</span>
+              <span className="mode-card__what">the same endless town with no obstacles and no scores.</span>
+              <span className="mode-card__key">
+                <kbd>F</kbd>
+              </span>
+            </button>
+          </div>
+          <p className="landing__keys">
+            <span><kbd>W</kbd> push</span>
+            <span><kbd>S</kbd> brake</span>
+            <span><kbd>A</kbd><kbd>D</kbd> carve</span>
+            <span><kbd>Space</kbd> ollie</span>
+            <span><kbd>P</kbd> pause</span>
+          </p>
+          <p className="landing__touch">Wheels Off rides on a keyboard. Open it on a computer to play.</p>
+        </div>
+      </div>
+      {!covered && <p className="landing__start">PRESS START</p>}
+      <div className="marquee" aria-hidden="true">
+        <div className="marquee__track">
+          {[0, 1].map((copy) => (
+            <div key={copy} className="marquee__copy">
+              {marquee.map(([head, ...rest], i) => (
+                <span key={i} className="marquee__item">
+                  <b>{head}</b>
+                  {rest.map((x, j) => (
+                    <span key={j}>{x}</span>
+                  ))}
+                  <i>★</i>
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </main>
+  )
+}
+
+/** The pause card (P): the title card, with how to play and the top of each leaderboard. */
+function PauseCard() {
   const free = useMode((s) => s.mode === 'free')
   return (
-    <div className="overlay" role={paused ? 'dialog' : undefined} aria-label={paused ? 'Paused' : undefined}>
+    <div className="overlay" role="dialog" aria-label="Paused">
       <div className="title-card">
         <h1>WHEELS OFF</h1>
         <p className="title-card__jp">ホイールズ・オフ</p>
@@ -82,9 +219,9 @@ function TitleCard({ paused }: { paused: boolean }) {
         </dl>
         <p className="title-card__rule">{free ? 'free roam · no obstacles, no scores' : 'a wipeout ends the run'}</p>
         <p className="title-card__mode">
-          <kbd>F</kbd> {free ? 'back to arcade' : paused ? 'free roam · ends this run' : 'free roam · no obstacles, no scores'}
+          <kbd>F</kbd> {free ? 'back to arcade' : 'free roam · ends this run'}
         </p>
-        <p className="title-card__go">{paused ? 'paused · press P to roll on' : 'press any key to roll'}</p>
+        <p className="title-card__go">paused · press P to roll on</p>
       </div>
     </div>
   )
@@ -194,18 +331,17 @@ function NameEntry({ run }: { run: PendingRun }) {
 
 export function Arcade() {
   const { menu, pending } = useArcade()
-  const started = useHud((s) => s.started)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat || e.target instanceof HTMLInputElement) return
+      if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || e.target instanceof HTMLInputElement) return
       const k = e.key.toLowerCase()
-      // P does nothing on the title card; R opens the records from anywhere
+      // P does nothing on the landing page; R opens the records from anywhere
       if (k === 'p' && useHud.getState().started) togglePause()
       else if (k === 'r') toggleRecords()
       else if (k === 'escape') resume()
       else if (k === 'f') {
-        // only on the title card, which rolls off in free roam, or the pause screen, which rolls
-        // on in the other mode: a stray F mid-ride never ends a run
+        // only on the landing page, which rolls off in free roam, or the pause screen, which
+        // rolls on in the other mode: a stray F mid-ride never ends a run
         const { menu, pending } = useArcade.getState()
         if (pending || !(menu === 'pause' || (menu === null && !useHud.getState().started))) return
         switchMode()
@@ -215,8 +351,14 @@ export function Arcade() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
-  if (pending) return <NameEntry key={pending.id} run={pending} />
-  if (menu === 'records') return <HiScoresCard />
-  if (!started || menu === 'pause') return <TitleCard paused={started} />
-  return null
+  let card = null
+  if (pending) card = <NameEntry key={pending.id} run={pending} />
+  else if (menu === 'records') card = <HiScoresCard />
+  else if (menu === 'pause') card = <PauseCard />
+  return (
+    <>
+      <Landing />
+      {card}
+    </>
+  )
 }

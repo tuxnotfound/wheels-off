@@ -6,6 +6,16 @@ road junk. The town is painted 2D art (facades, props, obstacles) mapped onto si
 shapes, and the character is a VRM model (VRoid Studio). The art in the repo is generated
 placeholder art. **See [ART.md](ART.md) for how to replace it and add a character.**
 
+## Landing page
+
+The game opens on a landing page over the attract ride: the kid cruises the town on their own,
+carving and throwing ollies and kickflips, with the camera drifting around the front of them.
+It shows the title, the two modes, the keys, and the hi-scores going round on a marquee. Any key
+rolls off in arcade (**F** in free roam), or click a mode; the page clears away as the camera
+swings round behind the kid into the chase. **R** opens the hi-scores from there, **M** the music.
+Keys that leave or move around the page (Cmd, Ctrl, Alt, Shift, Tab, Esc) never start the ride.
+On a phone or tablet with no keyboard, it says the game needs one.
+
 ## Controls
 
 - **W / ↑** push (speed up), **S / ↓** brake
@@ -13,12 +23,13 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
   intersection to turn into it (arrows at the bottom show which turns exist).
 - **Space** ollie. Clearing obstacles builds a combo, and hitting one is a wipeout that ends
   the run: score and combo go back to 0.
-- **P** pause: back to the title card, with how to play and the top of each leaderboard
+- **P** pause: the pause card, with how to play and the top of each leaderboard
   (P or Esc to play on). **R** high scores: both leaderboards in full, from anywhere (R to
   go back, Esc to ride). A run that makes a leaderboard asks for a name at the wipeout: Enter
   signs it, Esc signs it as John Doe.
-- **M** music on or off (remembered in this browser).
-- **F** free roam: the same endless town with no obstacles and no scores. F on the title card
+- **M** music on or off (remembered in this browser). Before the first key press or click the
+  browser keeps it silent, so M then starts it rather than turning it off.
+- **F** free roam: the same endless town with no obstacles and no scores. F on the landing page
   rolls off in free roam; F on the pause screen rolls on in the other mode. Leaving arcade for
   free roam ends the run, as a wipeout does. F mid-ride does nothing.
 
@@ -31,7 +42,16 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
   obstacle clear/hit, and scoring.
 - **`src/game/GameCanvas.tsx`**: canvas, lights, and a camera anchor that trails the skater's
   position and heading on damped springs. The world is moved and rotated so the anchor sits
-  at the origin, and the chase camera widens with speed and rolls into carves.
+  at the origin, and the chase camera widens with speed and rolls into carves. Before anyone
+  takes over, the camera holds the landing shot: low in front of the kid, drifting from side to
+  side, kept over the road, and on a wide screen aimed so the kid rides right of the title. It
+  renders three blocks behind (`BEHIND_LANDING`) instead of one, since it looks back down the
+  street. Taking over swings it round the kid, on the side of the street with more room, into
+  the chase in 1.5 s.
+- **`src/game/autopilot.ts`**: the attract ride behind the landing page. It drives the same
+  input as the keyboard: straight down the first street (no carving near an intersection, so it
+  never turns), a carve every few seconds, and an ollie or a kickflip every 3.5 to 7.5 s. The
+  ride counts no ad impressions and pops no toasts.
 - **`src/game/records.ts`**: personal records, kept in `localStorage` across sessions: the
   best run score, and the longest unbroken time at full speed, above 58 km/h (the sim
   counts the live streak). The HUD shows each record, with a trophy, under its live value.
@@ -47,13 +67,14 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
   is the world record (WR), shown under the PR in the HUD with a crown; a run beating it
   shows as YOU with a blue flame.
 - **`src/game/mode.ts`**: the mode, arcade or free roam. In free roam the sim skips obstacles,
-  scores nothing and counts no full speed time, and the HUD shows the speed alone. Blocks laid
+  scores nothing and counts no full speed time, and the HUD shows the speed alone. The attract
+  ride runs under the same rules, whichever mode the player then picks. Blocks laid
   out during free roam keep no obstacles for good, so back in arcade none drops in right in
   front of the rider: they return with the blocks that rise over the horizon.
-- **`src/game/arcadeStore.ts`, `Arcade.tsx`**: the cards over the ride, all in the title
-  card's look, with scores and names in arcade type (Press Start 2P). The title card is the
-  start screen and, until there is a real landing page, the pause screen too, with the top
-  of each leaderboard; the hi-scores card (R) shows both in full, with your PRs. The HUD
+- **`src/game/arcadeStore.ts`, `Arcade.tsx`**: the landing page, then the cards over the ride,
+  all in the title card's look, with scores and names in arcade type (Press Start 2P). The
+  pause card (P) shows the top of each leaderboard; the hi-scores card (R) shows both in full,
+  with your PRs. The HUD
   panels are labelled with the board they feed (TRICKSTER, SPEEDSTER). Pause and the name entry hold the sim still and take the
   keyboard from it (`input.blocked`). A run that makes a table gets the name entry instead
   of the PR banner; a world record gets a burst (rays, flash, stars) behind it.
@@ -63,7 +84,7 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
   (keys-only intro, melody in the second half, a breakdown without drums), then the next one
   starts in another key. A tape (pitch wobble, soft saturation) and vinyl crackle give the lo-fi
   sound. `music.ts` starts it on the first key press or click (browsers allow sound only after
-  one), turns it off and on with M, muffles it under the title card and pause screen, and
+  one), turns it off and on with M, muffles it under the landing page and the cards, and
   stops it while the tab is hidden.
 - **`src/art/art.ts`**: the art pipeline. It loads `public/art/manifest.json`, preloads
   every image before the game boots, and provides unlit painted materials (the art carries

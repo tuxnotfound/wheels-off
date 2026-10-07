@@ -18,7 +18,7 @@ export type PendingRun = {
 }
 
 type Menu = 'pause' | 'records' | null
-// back: where closing the records returns to (the pause screen, or the ride or title card)
+// back: where closing the records returns to (the pause screen, or the ride or landing page)
 type ArcadeState = { menu: Menu; back: Menu; pending: PendingRun | null }
 
 export const useArcade = create<ArcadeState>(() => ({ menu: null, back: null, pending: null }))
@@ -51,7 +51,7 @@ export function toggleRecords() {
   else show('records', s.menu)
 }
 
-/** Esc: back to the ride (or the title card) from any menu. */
+/** Esc: back to the ride (or the landing page) from any menu. */
 export function resume() {
   if (useArcade.getState().menu) show(null)
 }

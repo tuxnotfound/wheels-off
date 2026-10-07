@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-import { input } from './input'
 import { sim } from '../game/sim'
 
 // The skate animation as numbers, computed once per frame from the sim. Riders (the VRM
@@ -197,7 +196,7 @@ export function stepPose(st: PoseState, dt: number): Pose {
   const flipping = sim.flipT > sim.jumpT
   const fp = flipping ? clamp((t - sim.flipT) / sim.flipDur, 0, 1) : 1
   const flipBump = flipping ? Math.sin(fp * Math.PI) : 0
-  const rolling = sim.grounded && input.started ? Math.min(sim.speed / 17, 1) : 0
+  const rolling = sim.grounded ? Math.min(sim.speed / 17, 1) : 0
   const P = sim.push
   const pushing = P.stage !== 'idle'
 
@@ -222,7 +221,7 @@ export function stepPose(st: PoseState, dt: number): Pose {
 
   // crouch: ride low (knees soaking up the road), tuck in the air (higher through a
   // kickflip), squash on landing
-  let bend = input.started ? 0.55 + rolling * 0.12 + Math.sin(t * 19) * 0.012 * rolling + 0.1 * pp : 0.22
+  let bend = 0.55 + rolling * 0.12 + Math.sin(t * 19) * 0.012 * rolling + 0.1 * pp
   if (!sim.grounded) bend = sinceJump < 0.08 ? 0.3 : 1.0 + flipBump * 0.2
   if (sinceLand < 0.5) bend += 0.55 * Math.exp(-sinceLand * 9)
   if (bailing) bend = 0.8

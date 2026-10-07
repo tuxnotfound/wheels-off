@@ -3,6 +3,7 @@ export const CURVE = 0.006 // planet curvature (bigger = tighter horizon)
 export const BLOCK = 32 // distance between intersections along a street
 export const AHEAD = 3 // blocks of the current street rendered ahead
 export const BEHIND = 1 // blocks rendered behind
+export const BEHIND_LANDING = 3 // blocks rendered behind on the landing page, whose shot looks back down the street
 export const BRANCH_DEPTH = 2 // blocks of a side-street rendered before you take it
 export const TURN_R = 6 // centerline radius of the arc carved through an intersection
 export const SIDEWALK = 2.2 // sidewalk width
