@@ -15,6 +15,7 @@ const LEFT = ['a', 'arrowleft']
 const RIGHT = ['d', 'arrowright']
 const UP = ['w', 'arrowup']
 const DOWN = ['s', 'arrowdown']
+const MENU = ['p', 'r'] // pause and records: they open a menu, never start the ride
 
 function recompute() {
   const has = (ks: string[]) => ks.some((k) => held.has(k))
@@ -33,7 +34,7 @@ export function installInput() {
     if (input.blocked || e.target instanceof HTMLInputElement) return
     const k = e.key.toLowerCase()
     if (k === ' ' || k.startsWith('arrow')) e.preventDefault()
-    input.started = true
+    if (!MENU.includes(k)) input.started = true
     if (e.repeat) return
     held.add(k)
     if (k === ' ') {

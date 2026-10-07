@@ -93,7 +93,18 @@ kbd {
   line-height: 20px;
 }
 
+/* the display font draws arrows tiny */
+.kbd--arrow {
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .title-card__hi {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 24px;
   margin: 0 0 14px;
   font-family: var(--arcade);
   font-size: 11px;
@@ -538,14 +549,26 @@ kbd {
 
 .board__title {
   margin: 0 0 6px;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: normal;
+  line-height: 1.2;
   text-align: center;
 }
 
 .board__title small {
+  display: block;
   font-size: 11px;
   opacity: 0.6;
+}
+
+.board__pr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 8px 0 0;
+  font-family: var(--arcade);
+  font-size: 10px;
+  text-transform: uppercase;
 }
 
 .board ol {

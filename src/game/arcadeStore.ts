@@ -2,8 +2,9 @@ import { create } from 'zustand'
 import { input, releaseKeys } from '../player/input'
 import { DEFAULT_NAME, cleanName, rememberName, signRun } from './leaderboard'
 
-// The arcade layer over the ride: the pause screen (P), and the name entry after a run that
-// makes the leaderboard. Either one holds the sim still and takes the keyboard from it.
+// The arcade layer over the ride: the pause screen (P), the records (R), and the name entry
+// after a run that makes a leaderboard. Each one holds the sim still and takes the keyboard
+// from it.
 
 /** A finished run waiting for its name: what it scored and where it places. */
 export type PendingRun = {
@@ -16,13 +17,15 @@ export type PendingRun = {
   prStreak: boolean
 }
 
-type ArcadeState = { menu: boolean; pending: PendingRun | null }
+type Menu = 'pause' | 'records' | null
+// back: where closing the records returns to (the pause screen, or the ride or title card)
+type ArcadeState = { menu: Menu; back: Menu; pending: PendingRun | null }
 
-export const useArcade = create<ArcadeState>(() => ({ menu: false, pending: null }))
+export const useArcade = create<ArcadeState>(() => ({ menu: null, back: null, pending: null }))
 
 export function isPaused(): boolean {
   const s = useArcade.getState()
-  return s.menu || s.pending !== null
+  return s.menu !== null || s.pending !== null
 }
 
 function hold(on: boolean) {
@@ -30,17 +33,27 @@ function hold(on: boolean) {
   if (on) releaseKeys()
 }
 
+function show(menu: Menu, back: Menu = null) {
+  useArcade.setState({ menu, back })
+  hold(menu !== null)
+}
+
 export function togglePause() {
   const s = useArcade.getState()
   if (s.pending) return // the name entry has its own keys
-  useArcade.setState({ menu: !s.menu })
-  hold(!s.menu)
+  show(s.menu ? null : 'pause')
 }
 
+export function toggleRecords() {
+  const s = useArcade.getState()
+  if (s.pending) return
+  if (s.menu === 'records') show(s.back)
+  else show('records', s.menu)
+}
+
+/** Esc: back to the ride (or the title card) from any menu. */
 export function resume() {
-  if (!useArcade.getState().menu) return
-  useArcade.setState({ menu: false })
-  hold(false)
+  if (useArcade.getState().menu) show(null)
 }
 
 export function askForName(run: PendingRun) {

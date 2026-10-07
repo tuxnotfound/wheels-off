@@ -1,5 +1,6 @@
 import { useHud } from './hudStore'
 import { Crown, Flame, Trophy, secs } from './icons'
+import { BOARD_TITLE } from './leaderboard'
 
 /**
  * The record under a live value. While the run is beating it, it follows the value in red.
@@ -69,12 +70,12 @@ export function Hud() {
             </span>
             {record.score !== null && (
               <span className="record-card__what">
-                best score <b>{record.score}</b>
+                {BOARD_TITLE.score} <b>{record.score}</b>
               </span>
             )}
             {record.streak !== null && (
               <span className="record-card__what">
-                full speed <b>{secs(record.streak)}</b>
+                {BOARD_TITLE.speed} <b>{secs(record.streak)}</b>
               </span>
             )}
           </div>

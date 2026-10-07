@@ -13,9 +13,10 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
   intersection to turn into it (arrows at the bottom show which turns exist).
 - **Space** ollie. Clearing obstacles builds a combo, and hitting one is a wipeout that ends
   the run: score and combo go back to 0.
-- **P** pause: back to the title card, with how to play and both leaderboards (P or Esc to
-  play on). A run that makes a leaderboard asks for a name at the wipeout: Enter signs it,
-  Esc signs it as John Doe.
+- **P** pause: back to the title card, with how to play and the top of each leaderboard
+  (P or Esc to play on). **R** records: both leaderboards in full, from anywhere (R to go
+  back, Esc to ride). A run that makes a leaderboard asks for a name at the wipeout: Enter
+  signs it, Esc signs it as John Doe.
 
 ## How it's built
 
@@ -35,15 +36,15 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
   set: the trophies pop and a "NEW RECORD!" banner with the values drops in at the top. A
   first run, with no record yet, beats nothing. Open `/?reset-records` to start over (it
   clears the records, the leaderboards and the remembered name).
-- **`src/game/leaderboard.ts`**: the arcade high score tables, top 10 by run score and by
-  time at full speed. Like a cabinet's, they live on this machine (`localStorage`) and a
+- **`src/game/leaderboard.ts`**: the arcade high score tables, top 10 by run score
+  ("trickster") and by time at full speed ("speedster"). Like a cabinet's, they live on this machine (`localStorage`) and a
   fresh one comes with a default table of made-up locals to beat. Each table's top entry
   is the world record (WR), shown under the PR in the HUD with a crown; a run beating it
   shows as YOU with a blue flame.
 - **`src/game/arcadeStore.ts`, `Arcade.tsx`**: the cards over the ride, all in the title
   card's look, with scores and names in arcade type (Press Start 2P). The title card is the
-  start screen and, until there is a real landing page, the pause screen too, with the
-  HI-SCORE and both leaderboards. Pause and the name entry hold the sim still and take the
+  start screen and, until there is a real landing page, the pause screen too, with the top
+  of each leaderboard; the records card (R) shows both in full, with your PRs. Pause and the name entry hold the sim still and take the
   keyboard from it (`input.blocked`). A run that makes a table gets the name entry instead
   of the PR banner; a world record gets a burst (rays, flash, stars) behind it.
 - **`src/art/art.ts`**: the art pipeline. It loads `public/art/manifest.json`, preloads

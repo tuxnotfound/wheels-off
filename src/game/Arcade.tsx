@@ -1,27 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, MouseEvent } from 'react'
-import { resume, signName, togglePause, useArcade } from './arcadeStore'
+import { resume, signName, togglePause, toggleRecords, useArcade } from './arcadeStore'
 import type { PendingRun } from './arcadeStore'
-import { BOARD_SIZE, DEFAULT_NAME, NAME_MAX, boards, lastName, worldRecord } from './leaderboard'
+import { BOARD_SIZE, BOARD_TITLE, DEFAULT_NAME, NAME_MAX, boards, lastName, worldRecord } from './leaderboard'
 import type { Board } from './leaderboard'
 import { useHud } from './hudStore'
-import { Crown, secs } from './icons'
-import { STREAK_KMH } from './records'
+import { Crown, Trophy, secs } from './icons'
+import { STREAK_KMH, records } from './records'
 
-// The cards over the ride, all in the title card's look: the title card itself (at the start,
-// and again as the pause screen), with the HI-SCORE and both leaderboards in arcade type; the
-// name entry after a run that makes a leaderboard; and the burst behind it for a world record.
+// The cards over the ride, all in the title card's look, with scores and names in arcade
+// type: the title card itself (at the start, and again as the pause screen) with the top of
+// each leaderboard; the records card (R) with both leaderboards in full; the name entry after
+// a run that makes a leaderboard; and the burst behind it for a world record.
 
 const ordinal = (i: number) => ['1ST', '2ND', '3RD'][i] ?? `${i + 1}TH`
 const shown = (board: Board, value: number) => (board === 'score' ? String(value) : secs(Math.floor(value * 10) / 10))
 
 function Leaderboard({ board }: { board: Board }) {
   const list = boards[board]
+  const pr = board === 'score' ? records.score : records.streak
   return (
     <section className="board">
       <h2 className="board__title">
-        {board === 'score' ? 'top scores' : 'full speed'}
-        {board === 'speed' && <small> over {STREAK_KMH} km/h</small>}
+        {BOARD_TITLE[board]}
+        <small>{board === 'score' ? 'best run score' : `longest over ${STREAK_KMH} km/h`}</small>
       </h2>
       <ol>
         {Array.from({ length: BOARD_SIZE }, (_, i) => (
@@ -32,34 +34,57 @@ function Leaderboard({ board }: { board: Board }) {
           </li>
         ))}
       </ol>
+      <p className="board__pr">
+        <Trophy />
+        your PR {pr > 0 ? shown(board, pr) : '---'}
+      </p>
     </section>
   )
 }
 
 /** The title card: shown before the first ride and again whenever the game is paused. */
 function TitleCard({ paused }: { paused: boolean }) {
-  const top = worldRecord('score')
   return (
     <div className="overlay" role={paused ? 'dialog' : undefined} aria-label={paused ? 'Paused' : undefined}>
       <div className="title-card">
         <h1>WHEELS OFF</h1>
         <p className="title-card__jp">ホイールズ・オフ</p>
-        {top && (
-          <p className="title-card__hi">
-            HI-SCORE {top.value} {top.name}
-          </p>
-        )}
+        <p className="title-card__hi">
+          {(['score', 'speed'] as const).map((board) => {
+            const top = worldRecord(board)
+            return (
+              top && (
+                <span key={board}>
+                  {BOARD_TITLE[board]} {shown(board, top.value)} {top.name}
+                </span>
+              )
+            )
+          })}
+        </p>
         <ul className="keys">
-          <li><kbd>W</kbd> push <kbd>S</kbd> brake</li>
-          <li><kbd>A</kbd><kbd>D</kbd> carve · hold into a side street to turn</li>
+          <li><kbd>W</kbd> or <kbd className="kbd--arrow">↑</kbd> push · <kbd>S</kbd> or <kbd className="kbd--arrow">↓</kbd> brake</li>
+          <li><kbd>A</kbd><kbd>D</kbd> or <kbd className="kbd--arrow">←</kbd><kbd className="kbd--arrow">→</kbd> carve · hold into a side street to turn</li>
           <li><kbd>Space</kbd> ollie over the junk · tap twice to kickflip</li>
-          <li><kbd>P</kbd> pause · a wipeout ends the run</li>
+          <li><kbd>P</kbd> pause · <kbd>R</kbd> records · a wipeout ends the run</li>
         </ul>
+        <p className="title-card__go">{paused ? 'paused · press P to roll on' : 'press any key to roll'}</p>
+      </div>
+    </div>
+  )
+}
+
+/** Both leaderboards in full, with your own PR under each. */
+function RecordsCard() {
+  return (
+    <div className="overlay" role="dialog" aria-label="Records">
+      <div className="title-card">
+        <h1>RECORDS</h1>
+        <p className="title-card__jp">きろく</p>
         <div className="title-card__boards">
           <Leaderboard board="score" />
           <Leaderboard board="speed" />
         </div>
-        <p className="title-card__go">{paused ? 'paused · press P to roll on' : 'press any key to roll'}</p>
+        <p className="title-card__go">press R to go back</p>
       </div>
     </div>
   )
@@ -120,9 +145,11 @@ function NameEntry({ run }: { run: PendingRun }) {
         {wr && <Crown className="entry__crown" />}
         <h1 className={wr ? 'entry__title--wr' : undefined}>{wr ? 'NEW WORLD RECORD!' : 'HIGH SCORE!'}</h1>
         <ul className="entry__results">
-          {run.scoreRank !== null && <Result label="SCORE" value={String(run.score)} rank={run.scoreRank} pr={run.prScore} />}
+          {run.scoreRank !== null && (
+            <Result label={BOARD_TITLE.score.toUpperCase()} value={String(run.score)} rank={run.scoreRank} pr={run.prScore} />
+          )}
           {run.speedRank !== null && (
-            <Result label="FULL SPEED" value={shown('speed', run.streak)} rank={run.speedRank} pr={run.prStreak} />
+            <Result label={BOARD_TITLE.speed.toUpperCase()} value={shown('speed', run.streak)} rank={run.speedRank} pr={run.prStreak} />
           )}
         </ul>
         <label className="entry__label">
@@ -155,14 +182,16 @@ export function Arcade() {
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat || e.target instanceof HTMLInputElement) return
       const k = e.key.toLowerCase()
-      // P on the title card only starts the ride, like any key
+      // P does nothing on the title card; R opens the records from anywhere
       if (k === 'p' && useHud.getState().started) togglePause()
+      else if (k === 'r') toggleRecords()
       else if (k === 'escape') resume()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   if (pending) return <NameEntry key={pending.id} run={pending} />
-  if (!started || menu) return <TitleCard paused={started} />
+  if (menu === 'records') return <RecordsCard />
+  if (!started || menu === 'pause') return <TitleCard paused={started} />
   return null
 }
