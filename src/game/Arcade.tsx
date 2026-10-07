@@ -2,15 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, MouseEvent } from 'react'
 import { resume, signName, togglePause, toggleRecords, useArcade } from './arcadeStore'
 import type { PendingRun } from './arcadeStore'
-import { BOARD_JP, BOARD_SIZE, BOARD_TITLE, DEFAULT_NAME, NAME_MAX, boards, lastName, worldRecord } from './leaderboard'
+import { BOARD_JP, BOARD_SIZE, BOARD_TITLE, NAME_MAX, boards, lastName, worldRecord } from './leaderboard'
 import type { Board } from './leaderboard'
 import { useHud } from './hudStore'
 import { Crown, Trophy, secs } from './icons'
-import { STREAK_KMH, records } from './records'
+import { records } from './records'
 
 // The cards over the ride, all in the title card's look, with scores and names in arcade
 // type: the title card itself (at the start, and again as the pause screen) with the top of
-// each leaderboard; the records card (R) with both leaderboards in full; the name entry after
+// each leaderboard; the hi-scores card (R) with both leaderboards in full; the name entry after
 // a run that makes a leaderboard; and the burst behind it for a world record.
 
 const ordinal = (i: number) => ['1ST', '2ND', '3RD'][i] ?? `${i + 1}TH`
@@ -23,7 +23,7 @@ function Leaderboard({ board }: { board: Board }) {
     <section className="board">
       <h2 className="board__title">{BOARD_TITLE[board]}</h2>
       <p className="board__jp">{BOARD_JP[board]}</p>
-      <p className="board__what">{board === 'score' ? 'best run score' : `longest over ${STREAK_KMH} km/h`}</p>
+      <p className="board__what">{board === 'score' ? 'best tricks score' : 'best speed score'}</p>
       <ol>
         {Array.from({ length: BOARD_SIZE }, (_, i) => (
           <li key={i} className="board__row">
@@ -35,7 +35,7 @@ function Leaderboard({ board }: { board: Board }) {
       </ol>
       <p className="board__pr">
         <Trophy />
-        your PR {pr > 0 ? shown(board, pr) : '---'}
+        YOUR PR {pr > 0 ? shown(board, pr) : '---'}
       </p>
     </section>
   )
@@ -54,7 +54,7 @@ function TitleCard({ paused }: { paused: boolean }) {
             return (
               <div key={board} className="title-card__top">
                 <span className="title-card__board">{BOARD_TITLE[board]}</span>
-                <span className="title-card__hi">HI-SCORE {top ? `${shown(board, top.value)} ${top.name}` : '---'}</span>
+                <span className="title-card__hi">HI-SCORE {top ? `${shown(board, top.value)} ${top.name.toUpperCase()}` : '---'}</span>
               </div>
             )
           })}
@@ -69,11 +69,11 @@ function TitleCard({ paused }: { paused: boolean }) {
           </dt>
           <dd>carve · hold into a side street to turn</dd>
           <dt><kbd>Space</kbd></dt>
-          <dd>ollie over the junk · tap twice to kickflip</dd>
+          <dd>ollie · tap twice to kickflip</dd>
           <dt><kbd>P</kbd></dt>
           <dd>pause</dd>
           <dt><kbd>R</kbd></dt>
-          <dd>records</dd>
+          <dd>high scores</dd>
         </dl>
         <p className="title-card__rule">a wipeout ends the run</p>
         <p className="title-card__go">{paused ? 'paused · press P to roll on' : 'press any key to roll'}</p>
@@ -82,13 +82,13 @@ function TitleCard({ paused }: { paused: boolean }) {
   )
 }
 
-/** Both leaderboards in full, with your own PR under each. */
-function RecordsCard() {
+/** The hi-scores card (R): both leaderboards in full, with your own PR under each. */
+function HiScoresCard() {
   return (
-    <div className="overlay" role="dialog" aria-label="Records">
+    <div className="overlay" role="dialog" aria-label="Hi-scores">
       <div className="title-card">
-        <h1>RECORDS</h1>
-        <p className="title-card__jp">きろく</p>
+        <h1>HI-SCORES</h1>
+        <p className="title-card__jp">ハイスコア</p>
         <div className="title-card__boards">
           <Leaderboard board="score" />
           <Leaderboard board="speed" />
@@ -178,7 +178,7 @@ function NameEntry({ run }: { run: PendingRun }) {
             }}
           />
         </label>
-        <p className="title-card__go">enter to sign · esc to play on as {DEFAULT_NAME}</p>
+        <p className="title-card__go">press esc to continue</p>
       </form>
     </div>
   )
@@ -200,7 +200,7 @@ export function Arcade() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   if (pending) return <NameEntry key={pending.id} run={pending} />
-  if (menu === 'records') return <RecordsCard />
+  if (menu === 'records') return <HiScoresCard />
   if (!started || menu === 'pause') return <TitleCard paused={started} />
   return null
 }

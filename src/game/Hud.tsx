@@ -39,6 +39,7 @@ export function Hud() {
       {started && (
         <>
           <div className="hud-score">
+            <span className="hud-board">{BOARD_TITLE.score}</span>
             <div className="hud-score__now">
               <span className="hud-score__n">{score}</span>
               {(best.beatingScore || wr.beatingScore) && <Flame wr={wr.beatingScore} />}
@@ -48,6 +49,7 @@ export function Hud() {
             <Wr value={String(wr.beatingScore ? score : wr.score)} name={wr.scoreName} beating={wr.beatingScore} />
           </div>
           <div className="hud-speed">
+            <span className="hud-board">{BOARD_TITLE.speed}</span>
             <div>
               {speed}
               <small>km/h</small>

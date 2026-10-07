@@ -17,11 +17,12 @@ export const NAME_MAX = 12
 const KEY = 'wheelsoff:leaderboard'
 const NAME_KEY = 'wheelsoff:name'
 
-// The default table: made-up locals, there to be beaten
+// The default table: made-up locals, there to be beaten. Set low for play-testing, so a world
+// record is in reach; raise it before launch (it was 200 points and 90 s at the top).
 const SEED_NAMES = ['HANA', 'KENJI', 'YUKI', 'SORA', 'RIN', 'TAKUMI', 'MOMO', 'JIRO', 'AOI', 'REN']
 const SEED: Record<Board, number[]> = {
-  score: [200, 150, 110, 80, 60, 45, 30, 20, 12, 6],
-  speed: [90, 70, 55, 42, 32, 24, 18, 12, 8, 5],
+  score: [15, 12, 10, 8, 6, 5, 4, 3, 2, 1],
+  speed: [12, 10, 8, 6, 5, 4, 3, 2, 1.5, 1],
 }
 
 function seeded(board: Board): Entry[] {

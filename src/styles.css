@@ -151,7 +151,6 @@ kbd {
   font-family: var(--arcade);
   font-size: 11px;
   color: var(--accent);
-  text-transform: uppercase;
 }
 
 .title-card__go {
@@ -177,6 +176,16 @@ kbd {
   border-radius: 14px;
   box-shadow: 2px 3px 0 var(--ink);
   padding: 4px 14px;
+}
+
+/* which board a panel feeds: TRICKSTER over the score, SPEEDSTER over the speed */
+.hud-board {
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin-top: 4px;
 }
 
 .hud-score__now {
@@ -620,7 +629,6 @@ kbd {
   margin: 8px 0 0;
   font-family: var(--arcade);
   font-size: 10px;
-  text-transform: uppercase;
 }
 
 .board ol {
