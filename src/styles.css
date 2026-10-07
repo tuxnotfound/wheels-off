@@ -978,17 +978,6 @@ kbd {
   transform: rotate(-3deg);
 }
 
-.landing__tag {
-  padding: 7px 14px;
-  background: var(--bubble);
-  border: 3px solid var(--ink);
-  border-radius: 14px;
-  box-shadow: 3px 4px 0 var(--ink);
-  font-family: system-ui, sans-serif;
-  font-size: 15px;
-  font-weight: 700;
-}
-
 .landing__go {
   display: flex;
   flex-direction: column;
@@ -1299,11 +1288,6 @@ kbd {
     top: 64px;
     bottom: 56px;
     justify-content: space-between;
-  }
-
-  .landing__tag {
-    font-size: 14px;
-    text-wrap: balance;
   }
 
   .landing::before {

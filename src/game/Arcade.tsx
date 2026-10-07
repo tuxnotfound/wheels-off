@@ -126,7 +126,6 @@ function Landing() {
           </h1>
           <p className="landing__sub">
             <span className="landing__jp">ホイールズ・オフ</span>
-            <span className="landing__tag">skate an endless sakura town at golden hour</span>
           </p>
         </header>
         <div className="landing__go">
