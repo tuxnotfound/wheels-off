@@ -12,7 +12,7 @@ type HudState = {
   best: { score: number; streak: number; beatingScore: boolean; beatingStreak: boolean }
   turns: { left: boolean; right: boolean } | null
   toast: Toast | null
-  record: { id: number; what: 'score' | 'streak' } | null // a run just broke this record
+  record: { id: number; score: number | null; streak: number | null } | null // records the last run set
   street: { id: number; name: string; kanji: string } | null
 }
 

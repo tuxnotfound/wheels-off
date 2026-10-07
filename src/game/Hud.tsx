@@ -26,11 +26,14 @@ function Trophy({ className = 'hud-trophy' }: { className?: string }) {
   )
 }
 
-/** The record under a live value. While the run is beating it, it follows the value in red. */
-function Pr({ value, beating }: { value: string; beating: boolean }) {
+/**
+ * The record under a live value. While the run is beating it, it follows the value in red.
+ * Its trophy pops when a run ends having set it (popId, re-keyed so the animation replays).
+ */
+function Pr({ value, beating, popId }: { value: string; beating: boolean; popId: number }) {
   return (
     <span className={beating ? 'hud-pr hud-pr--beating' : 'hud-pr'}>
-      <Trophy />
+      <Trophy key={popId} className={popId ? 'hud-trophy hud-trophy--pop' : 'hud-trophy'} />
       <small>PR</small>
       {value}
     </span>
@@ -65,7 +68,7 @@ export function Hud() {
               {best.beatingScore && <Flame />}
               {combo > 1 && <span className="hud-score__combo">x{combo}</span>}
             </div>
-            <Pr value={String(best.score)} beating={best.beatingScore} />
+            <Pr value={String(best.score)} beating={best.beatingScore} popId={record?.score != null ? record.id : 0} />
           </div>
           <div className="hud-speed">
             <div>
@@ -76,7 +79,7 @@ export function Hud() {
               <small>full speed</small> {secs(streak)}
               {best.beatingStreak && <Flame />}
             </span>
-            <Pr value={secs(best.streak)} beating={best.beatingStreak} />
+            <Pr value={secs(best.streak)} beating={best.beatingStreak} popId={record?.streak != null ? record.id : 0} />
           </div>
         </>
       )}
@@ -84,8 +87,19 @@ export function Hud() {
         <div className="record-card" key={`record-${record.id}`} role="status">
           <Trophy className="record-card__trophy" />
           <div>
-            <span className="record-card__title">NEW RECORD!</span>
-            <span className="record-card__what">{record.what === 'score' ? 'best score' : 'longest at full speed'}</span>
+            <span className="record-card__title">
+              {record.score !== null && record.streak !== null ? 'NEW RECORDS!' : 'NEW RECORD!'}
+            </span>
+            {record.score !== null && (
+              <span className="record-card__what">
+                best score <b>{record.score}</b>
+              </span>
+            )}
+            {record.streak !== null && (
+              <span className="record-card__what">
+                full speed <b>{secs(record.streak)}</b>
+              </span>
+            )}
           </div>
         </div>
       )}

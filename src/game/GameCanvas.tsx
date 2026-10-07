@@ -16,7 +16,7 @@ import { AHEAD, BEHIND, BLOCK, BRANCH_DEPTH, DIR } from '../world/worldConfig'
 import { childStreet, sim, stepSim, upcomingTurn } from './sim'
 import type { Street } from './sim'
 import { useHud } from './hudStore'
-import { beatRecords, records, standing } from './records'
+import { beatRecords, beating, endRun, records } from './records'
 import { tickAds } from '../ads/ads'
 
 const damp = (a: number, b: number, lambda: number, dt: number) => a + (b - a) * (1 - Math.exp(-lambda * dt))
@@ -86,9 +86,11 @@ function SimDriver() {
     tickAds(camera, Math.min(dt, 1 / 20))
     const hud = useHud.getState()
     const patch: Partial<ReturnType<typeof useHud.getState>> = {}
+    let wipeout = false
     for (const ev of sim.events) {
       if (ev.kind === 'street') patch.street = { id: sim.time, ...streetName(sim.street.seed) }
       else patch.toast = { id: sim.time, text: ev.text, kind: ev.kind }
+      if (ev.kind === 'hit') wipeout = true
     }
     sim.events.length = 0
     if (input.started && !hud.started) {
@@ -98,19 +100,17 @@ function SimDriver() {
     if (sim.score !== hud.score) patch.score = sim.score
     if (sim.combo !== hud.combo) patch.combo = sim.combo
     beatRecords(sim.score, sim.streak, sim.time)
+    const set = wipeout ? endRun() : null
+    if (set) patch.record = { id: sim.time, score: set.score, streak: set.streak === null ? null : Math.floor(set.streak * 10) / 10 }
     const streak = Math.floor(sim.streak * 10) / 10
     if (streak !== hud.streak) patch.streak = streak
     const best = {
       score: records.score,
       streak: Math.floor(records.streak * 10) / 10,
-      beatingScore: standing.score > 0 && records.score > standing.score,
-      beatingStreak: standing.streak > 0 && records.streak > standing.streak,
+      beatingScore: beating.score,
+      beatingStreak: beating.streak,
     }
-    if (Object.entries(best).some(([k, v]) => hud.best[k as keyof typeof best] !== v)) {
-      patch.best = best
-      if (best.beatingStreak && !hud.best.beatingStreak) patch.record = { id: sim.time, what: 'streak' }
-      if (best.beatingScore && !hud.best.beatingScore) patch.record = { id: sim.time, what: 'score' }
-    }
+    if (Object.entries(best).some(([k, v]) => hud.best[k as keyof typeof best] !== v)) patch.best = best
     const turns = upcomingTurn()
     if (JSON.stringify(turns) !== JSON.stringify(hud.turns)) patch.turns = turns
     if (sim.time - last.t > 0.2) {

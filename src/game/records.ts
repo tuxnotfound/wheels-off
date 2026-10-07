@@ -1,5 +1,7 @@
 // Personal records, kept in this browser across sessions: the best run score, and the
 // longest unbroken time riding above STREAK_KMH. The streak itself is counted in the sim.
+// A run lasts from one wipeout to the next. The records rise (and save) live, but a run
+// only sets them when it ends, which is when the HUD announces them.
 
 export const STREAK_KMH = 58
 
@@ -33,12 +35,12 @@ function resetIfAsked() {
 
 resetIfAsked()
 export const records = load()
-/**
- * The records the current run has to beat: each as it stood when its live value was last 0
- * (the score at a wipeout, the streak when it broke). A run is beating its record while
- * the record has climbed past this. With no record yet (0) there is nothing to beat.
- */
-export const standing = { ...records }
+/** The records as they stood when this run started. With no record yet (0) there is nothing to beat. */
+const runStart = { ...records }
+/** The streak record as it stood when the live streak began. */
+let streakStart = records.streak
+/** Whether the live score and streak are beating the records they started against. */
+export const beating = { score: false, streak: false }
 
 let dirty = false
 let savedAt = -Infinity
@@ -53,10 +55,11 @@ function save() {
   }
 }
 
-/** Raises the records to the current run. Saves at most every few seconds, and when the page hides. */
+/** Raises the records to the live values. Saves at most every few seconds, and when the page hides. */
 export function beatRecords(score: number, streak: number, now: number) {
-  if (score === 0) standing.score = records.score
-  if (streak === 0) standing.streak = records.streak
+  if (streak === 0) streakStart = records.streak
+  beating.score = runStart.score > 0 && score > runStart.score
+  beating.streak = streakStart > 0 && streak > streakStart
   if (score > records.score) {
     records.score = score
     dirty = true
@@ -69,6 +72,15 @@ export function beatRecords(score: number, streak: number, now: number) {
     savedAt = now
     save()
   }
+}
+
+/** Ends the run (a wipeout): returns the records it set, if any, and starts the next run against them. */
+export function endRun(): { score: number | null; streak: number | null } | null {
+  const score = runStart.score > 0 && records.score > runStart.score ? records.score : null
+  const streak = runStart.streak > 0 && records.streak > runStart.streak ? records.streak : null
+  runStart.score = records.score
+  runStart.streak = records.streak
+  return score === null && streak === null ? null : { score, streak }
 }
 
 window.addEventListener('pagehide', save)
