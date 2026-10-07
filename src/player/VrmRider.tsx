@@ -19,12 +19,11 @@ const HAIR_CUT = 0.8 // long strands keep their width, lose this much length bel
 const LEG_PUFF = 1.25 // limbs thickened around their bones, not lengthened
 const ARM_PUFF = 1.15
 
-// An oversized dark green sweater and a chunky red scarf.
-const SWEATER = '#2f6b5a'
-const SWEATER_SHADE = '#1e4a3f'
-const SWEATER_LOOSE = 0.012 // the body pushed out this far from the top it is made from
-const SLEEVE_PAST_WRIST = 0.02 // the cuffs come down over the heels of the hands
-const SCARF = '#d8483d'
+// An oversized dark green tee.
+const TEE = '#2f6b5a'
+const TEE_SHADE = '#1e4a3f'
+const TEE_LOOSE = 0.012 // the body pushed out this far from the top it is made from
+const SLEEVE_FLARE = 0.02 // the sleeves widen by this much toward their hems at the elbows
 
 // Her face, after the Lofi Girl: small dark almond eyes under heavy lids, looking a little
 // down, a darker lash line, warmer skin and a round jaw in place of the pointed chin.
@@ -136,43 +135,6 @@ function addHeadwear(vrm: VRM) {
   beanie.matrix.decompose(beanie.position, beanie.quaternion, beanie.scale)
   head.add(beanie)
   return rimY + ry * 1.06
-}
-
-/** A chunky red scarf wound twice round the neck, on the neck bone. */
-function addScarf(vrm: VRM, skin: THREE.SkinnedMesh) {
-  const neck = vrm.humanoid.getRawBoneNode('neck')
-  const head = vrm.humanoid.getRawBoneNode('head')
-  if (!neck || !head) return
-  vrm.scene.updateMatrixWorld(true)
-  const y0 = neck.getWorldPosition(v3()).y
-  const y1 = head.getWorldPosition(v3()).y
-  const lo = v3().setScalar(Infinity)
-  const hi = v3().setScalar(-Infinity)
-  const p = v3()
-  const pos = skin.geometry.attributes.position
-  for (let i = 0; i < pos.count; i++) {
-    p.fromBufferAttribute(pos, i).applyMatrix4(skin.matrixWorld)
-    if (p.y < y0 || p.y > y1) continue
-    lo.min(p)
-    hi.max(p)
-  }
-  if (!Number.isFinite(lo.y)) return
-  const r = Math.max(hi.x - lo.x, hi.z - lo.z) / 2
-  const tube = r * 0.62
-  const ring = (y: number, R: number, t: number, tilt: number) => {
-    const m = new THREE.Mesh(new THREE.TorusGeometry(R, t, 12, 36), riderMat(SCARF))
-    m.rotation.set(Math.PI / 2 + tilt, 0, 0)
-    m.position.y = y
-    return m
-  }
-  // two wraps, the upper one tipped up at the back
-  const scarf = new THREE.Group()
-  scarf.add(ring(0, r * 1.45, tube, 0), ring(tube * 1.1, r * 1.3, tube * 0.85, -0.18))
-  scarf.position.set((lo.x + hi.x) / 2, y0 + (y1 - y0) * 0.2, (lo.z + hi.z) / 2)
-  scarf.updateMatrix()
-  scarf.matrix.premultiply(neck.matrixWorld.clone().invert())
-  scarf.matrix.decompose(scarf.position, scarf.quaternion, scarf.scale)
-  neck.add(scarf)
 }
 
 /** Long strands (4+ joints) squashed along their length below the first joint, so they keep their width. */
@@ -425,30 +387,30 @@ function addPants(vrm: VRM) {
 }
 
 /**
- * An oversized sweater made from the top: dark green, its body pushed out loose, with long
- * baggy sleeves from the shoulders down over the heels of the hands. In the bind T-pose the
- * arms lie along x, so the sleeves are the skin out past the shoulder joints. They start
- * under the top's short sleeves, which lift off the arm as it lowers and would show skin.
+ * An oversized tee made from the top: dark green, its body pushed out loose, with wide
+ * sleeves from the shoulders to the elbows, flaring toward their hems. In the bind T-pose
+ * the arms lie along x, so the sleeves are the skin out past the shoulder joints. They
+ * start under the top's own short sleeves, which lift off the arm as it lowers and would
+ * show skin.
  */
-function addSweater(vrm: VRM) {
+function addTee(vrm: VRM) {
   const named = meshFinder(vrm)
   const skin = named(/^body.*skin/i)
   const top = named(/tops/i)
   const shoulder = vrm.humanoid.getRawBoneNode('leftUpperArm')
-  const hand = vrm.humanoid.getRawBoneNode('leftHand')
+  const elbow = vrm.humanoid.getRawBoneNode('leftLowerArm')
   const src = top && mtoonOf(top)
   if (!top || !src) return
-  flatten(src, SWEATER, SWEATER_SHADE)
-  inflate(top, () => SWEATER_LOOSE)
-  if (!skin || !shoulder || !hand) return
+  flatten(src, TEE, TEE_SHADE)
+  inflate(top, () => TEE_LOOSE)
+  if (!skin || !shoulder || !elbow) return
   const start = Math.abs(shoulder.getWorldPosition(v3()).x)
-  const cuff = Math.abs(hand.getWorldPosition(v3()).x) + SLEEVE_PAST_WRIST
+  const hem = Math.abs(elbow.getWorldPosition(v3()).x)
   skinShell(
     skin,
-    (q) => Math.abs(q.x) >= start && Math.abs(q.x) <= cuff,
-    // baggy, and wider still at the cuffs
-    (q) => 0.016 + 0.016 * THREE.MathUtils.smoothstep((Math.abs(q.x) - start) / (cuff - start), 0.5, 1),
-    clothMat(src, SWEATER, SWEATER_SHADE),
+    (q) => Math.abs(q.x) >= start && Math.abs(q.x) <= hem,
+    (q) => 0.016 + SLEEVE_FLARE * THREE.MathUtils.smoothstep((Math.abs(q.x) - start) / (hem - start), 0.3, 1),
+    clothMat(src, TEE, TEE_SHADE),
     'Sleeves',
   )
 }
@@ -578,9 +540,7 @@ function buildRig(vrm: VRM): Rig {
   })
   puffLimbs(vrm)
   addPants(vrm)
-  addSweater(vrm)
-  const skin = meshFinder(vrm)(/^body.*skin/i)
-  if (skin) addScarf(vrm, skin)
+  addTee(vrm)
   shapeFace(vrm)
   if (vrm.lookAt) vrm.lookAt.pitch = -GAZE_DOWN
   const crown = addHeadwear(vrm) ?? headRestY + (headRestY - at('neck').y) * 2.2
