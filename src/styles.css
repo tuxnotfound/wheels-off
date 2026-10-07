@@ -952,30 +952,36 @@ kbd {
   animation: letter-drop 0.7s cubic-bezier(0.2, 1.5, 0.4, 1) calc(0.15s + var(--i) * 0.06s) both;
 }
 
+/* OFF, indented under WHEELS, with the Japanese title centered under it */
+.landing__off {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin-left: 0.85em;
+}
+
 /* OFF: in red, knocked askew like a sticker slapped on */
 .landing__word--off {
-  margin-left: 0.85em;
   color: var(--accent);
   transform: rotate(-4deg);
   transform-origin: 0 100%;
 }
 
-.landing__sub {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 12px;
-  margin: 16px 0 0;
-  animation: rise 0.5s ease-out 0.65s both;
-}
-
+/* inside the title, so it takes none of the title's type */
 .landing__jp {
+  margin-top: 14px;
   padding: 5px 10px;
   border-radius: 8px;
   background: var(--ink);
   color: var(--bubble);
   font-size: 15px;
+  line-height: 1.3;
+  letter-spacing: normal;
+  white-space: nowrap;
+  -webkit-text-stroke: 0;
+  text-shadow: none;
   transform: rotate(-3deg);
+  animation: rise 0.5s ease-out 0.65s both;
 }
 
 .landing__go {
@@ -1330,10 +1336,6 @@ kbd {
     background: linear-gradient(180deg, rgb(35 49 46 / 0.22), transparent 35%, transparent 60%, rgb(35 49 46 / 0.22));
   }
 
-  .landing__sub {
-    margin-top: 12px;
-  }
-
   .landing__modes {
     gap: 10px;
   }
@@ -1391,7 +1393,7 @@ kbd {
 
   /* the landing page appears and clears away in place, and the marquee holds still */
   .landing__word span,
-  .landing__sub,
+  .landing__jp,
   .landing__modes,
   .landing__touch,
   .landing__keys,

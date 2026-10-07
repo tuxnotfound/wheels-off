@@ -120,13 +120,12 @@ function Landing() {
             <span className="landing__word" aria-hidden="true">
               {letters('WHEELS', 0)}
             </span>
-            <span className="landing__word landing__word--off" aria-hidden="true">
-              {letters('OFF', 6)}
+            {/* OFF, with the title in Japanese centered under it */}
+            <span className="landing__off" aria-hidden="true">
+              <span className="landing__word landing__word--off">{letters('OFF', 6)}</span>
+              <span className="landing__jp">ホイールズ・オフ</span>
             </span>
           </h1>
-          <p className="landing__sub">
-            <span className="landing__jp">ホイールズ・オフ</span>
-          </p>
         </header>
         <div className="landing__go">
           <div className="landing__modes">
