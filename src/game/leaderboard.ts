@@ -7,7 +7,7 @@ export { BOARD_SIZE, NAME_MAX, cleanName, nameAllowed, typedName } from '../../s
 export type { Board, Entry } from '../../shared/leaderboard'
 
 // The high score tables, like an arcade cabinet's: the top 10 runs by score, and the top 10
-// by longest time at full speed. The API keeps them for everyone (functions/api/leaderboard.ts).
+// by longest time at full speed. The API keeps them for everyone (worker/leaderboard.ts).
 // This browser keeps the last copy it saw, so the game opens on it and plays on without the
 // API (offline, or `npm run dev` with no API running), signing runs into its own copy until the
 // API answers again. A browser that has never reached the API starts from the default table.

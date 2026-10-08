@@ -1,13 +1,13 @@
-import { BOARD_SIZE, cleanName, nameAllowed } from '../../shared/leaderboard'
-import type { Boards, Entry } from '../../shared/leaderboard'
+import { BOARD_SIZE, cleanName, nameAllowed } from '../shared/leaderboard'
+import type { Boards, Entry } from '../shared/leaderboard'
 
-// The leaderboards, kept for everyone in D1 (migrations/). GET returns both top 10s. POST signs
-// a finished run onto them and returns them. A run is one row; each board is the top 10 rows by
+// /api/leaderboard: the leaderboards, kept for everyone in D1 (migrations/). GET returns both top
+// 10s. POST signs a finished run onto them and returns them. A run is one row; each board is the top 10 rows by
 // one column. Scores come from the game in the browser, so they can only be checked for sense:
 // a name that breaks the rules, an absurd value or a flood from one address is turned away.
 // Moderation is by hand: a row with hidden = 1 drops off the boards (README, Leaderboards).
 
-type Env = { DB: D1Database; IP_SALT?: string }
+export type Env = { DB: D1Database; IP_SALT?: string }
 
 // Far past anything played: a run without a wipeout scores about n² for n obstacles cleared, at
 // most 1.6 cleared a second, so five unbroken minutes come to about 200,000.
@@ -51,9 +51,13 @@ async function addressOf(request: Request, salt: string | undefined): Promise<st
   return Array.from(new Uint8Array(digest).slice(0, 8), (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-export const onRequestGet: PagesFunction<Env> = async ({ env }) => reply({ boards: await readBoards(env.DB) })
+export function leaderboard(request: Request, env: Env): Promise<Response> | Response {
+  if (request.method === 'GET') return readBoards(env.DB).then((boards) => reply({ boards }))
+  if (request.method === 'POST') return signRun(request, env)
+  return reply({ error: 'method' }, 405)
+}
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+async function signRun(request: Request, env: Env): Promise<Response> {
   if (Number(request.headers.get('content-length')) > 1024) return reply({ error: 'too long' }, 413)
   const run = readRun(await request.json().catch(() => null))
   if (typeof run === 'string') return reply({ error: run }, 422)

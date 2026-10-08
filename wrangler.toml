@@ -1,7 +1,15 @@
-# Cloudflare Pages: the built game from dist, and the API in functions/ (/api/*).
+# A Cloudflare Worker: the built game from dist as static assets, and the API in worker/, which
+# runs only for /api/*. Workers Builds deploys it from GitHub on each push to main.
 name = "wheels-off"
-pages_build_output_dir = "dist"
-compatibility_date = "2026-10-01"
+main = "worker/index.ts"
+compatibility_date = "2026-10-06"
+
+[assets]
+directory = "./dist"
+run_worker_first = ["/api/*"]
+
+[observability]
+enabled = true
 
 # The leaderboards. The id comes from `npx wrangler d1 create wheels-off` (README, Deploy).
 [[d1_databases]]

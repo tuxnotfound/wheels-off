@@ -1,5 +1,5 @@
 // What the game (src/game/leaderboard.ts) and the API that keeps the boards for everyone
-// (functions/api/leaderboard.ts) agree on: the boards' shape and the rules for a name.
+// (worker/leaderboard.ts) agree on: the boards' shape and the rules for a name.
 
 export type Board = 'score' | 'speed'
 export type Entry = { name: string; value: number } // speed values in seconds

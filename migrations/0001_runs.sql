@@ -1,5 +1,5 @@
 -- One row per run signed onto the leaderboards: a finished arcade run that made a top 10 when it
--- was signed. Each board is the top 10 rows by one column (functions/api/leaderboard.ts).
+-- was signed. Each board is the top 10 rows by one column (worker/leaderboard.ts).
 CREATE TABLE runs (
   id INTEGER PRIMARY KEY,
   name TEXT NOT NULL,

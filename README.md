@@ -70,8 +70,8 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   made-up locals. Each table's top entry is the world record (WR), shown under the PR in the
   HUD with a crown; a run beating it shows as YOU with a blue flame. The boards are fetched
   at load, at each wipeout and when a card opens, at most once a minute.
-- **`functions/api/leaderboard.ts`, `migrations/`, `shared/`**: the API, a Cloudflare Pages
-  Function on D1 (SQLite). GET `/api/leaderboard` returns both top 10s; POST signs a run
+- **`worker/`, `migrations/`, `shared/`**: the API, a Cloudflare Worker on D1 (SQLite), run
+  only for `/api/*`. GET `/api/leaderboard` returns both top 10s; POST signs a run
   (`{ name, score, streak }`) and returns them. A run is one row in `runs`, and each board is
   the top 10 rows by one column. Scores come from the client, so the API only turns away the
   absurd (over 1,000,000 points or an hour at full speed), names that break the rules, and
@@ -171,23 +171,25 @@ Open `/?vrm=<file under public/art/>` to try a VRM character without editing the
 
 ## Deploy
 
-Cloudflare Pages builds the game and the API from GitHub: build command `npm run build`,
-output `dist`, `NODE_VERSION` 22. `wrangler.toml` holds the D1 binding. Once, before the
-first deploy:
+The game runs on a Cloudflare Worker, `wheels-off` (`wrangler.toml`): the built game in `dist`
+as static assets, and `worker/` for `/api/*` only. Workers Builds deploys it from GitHub on
+each push to `main`, with `npm run build` as the build command and `npx wrangler deploy` as
+the deploy command (both in the Worker's build settings in the dashboard). It is live at
+https://wheels-off.pinguim-informal.workers.dev. playwheelsoff.com goes in `wrangler.toml` as
+a route with `custom_domain = true` when it launches.
+
+The leaderboard database, once:
 
 1. `npx wrangler login`
-2. `npx wrangler d1 create wheels-off --location weur`, then put its id in `wrangler.toml`
-   in place of the zeros.
+2. `npx wrangler d1 create wheels-off --location weur`, then its id in `wrangler.toml` in
+   place of the zeros. A push before that fails the build.
 3. `npx wrangler d1 migrations apply wheels-off --remote`: the `runs` table and the default
-   table.
-4. Create the Pages project `wheels-off` (the `name` in `wrangler.toml`) from the GitHub
-   repo.
-5. `npx wrangler pages secret put IP_SALT --project-name wheels-off`, with a long random
-   value (`openssl rand -hex 32`). Without it the API signs runs with no rate limit and logs
-   a warning.
+   table. Run it again after each new migration, before the push that needs it.
+4. `openssl rand -hex 32 | npx wrangler secret put IP_SALT`. Without it the API signs runs
+   with no rate limit and logs a warning.
 
-Preview deployments use the same database, so a run played on a preview signs onto the real
-boards.
+Builds of other branches upload preview versions bound to the same database, so a run played
+on a preview signs onto the real boards.
 
 ### Leaderboards: moderation
 
@@ -204,7 +206,7 @@ the boards.
 ### Later: accounts and billboard sales
 
 Both go in the same API and database: a new migration per table (users, ad bookings) and a
-route per file under `functions/api/`. A run takes a nullable `user_id` then, so the anonymous
+route in `worker/index.ts` with its own module beside it. A run takes a nullable `user_id` then, so the anonymous
 runs before accounts stay on the boards. Ads come from one URL already (`loadAds` in
 `src/ads/ads.ts`, `/art/ads.json` today), so a `/api/ads` serving the sold creatives in the
 same shape is a one-line swap in the game.
