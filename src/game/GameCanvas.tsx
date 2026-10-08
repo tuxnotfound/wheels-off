@@ -105,7 +105,7 @@ function SimDriver() {
     let wipeout = false
     for (const ev of sim.events) {
       if (ev.kind === 'street') patch.street = { id: sim.time, ...streetName(sim.street.seed) }
-      else patch.toast = { id: sim.time, text: ev.text, kind: ev.kind }
+      else patch.toast = { id: sim.time, text: ev.text, kind: ev.kind, points: ev.points }
       if (ev.kind === 'hit') wipeout = true
     }
     sim.events.length = 0

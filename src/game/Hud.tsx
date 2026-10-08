@@ -100,7 +100,8 @@ export function Hud() {
       )}
       {toast && (
         <div className={`toast toast--${toast.kind}`} key={`toast-${toast.id}`}>
-          {toast.text}
+          {toast.points != null && <span className="toast__points">+{toast.points}</span>}
+          <span>{toast.text}</span>
         </div>
       )}
       {started && (

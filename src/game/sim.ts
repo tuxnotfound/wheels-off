@@ -42,6 +42,16 @@ const GRAVITY = 25
 const BOARD_HALF = 0.45
 const BODY_HALF = 0.3
 const BAIL_TIME = 0.9
+const FULL_SPEED_GAP = 5 // seconds: a streak that breaks and picks up again within this says nothing
+
+// What a wipeout says, picked at random and never the same twice running.
+const WIPEOUTS = ['WIPEOUT!', 'BAILED!', 'SLAMMED!', 'ATE IT!', 'FACEPLANT!', 'KOOKED!', 'OOF!', 'TOASTED!']
+let lastWipeout = ''
+function wipeoutWord(): string {
+  const pick = WIPEOUTS.filter((w) => w !== lastWipeout)
+  lastWipeout = pick[Math.floor(Math.random() * pick.length)]
+  return lastWipeout
+}
 
 // A push is a sequence of stages. The back foot leaves the deck and reaches for the road
 // (reach), plants and drives back (contact), kicks up behind (lift), then either swings
@@ -127,9 +137,11 @@ export const sim = {
   combo: 0,
   distance: 0,
   streak: 0, // seconds riding unbroken above STREAK_KMH (as the HUD rounds it)
+  streakEndT: -10, // time the last streak broke
   hits: new Map<string, number>(), // obstacle id -> time it was hit
   cleared: new Set<string>(),
-  events: [] as { kind: 'clear' | 'hit' | 'street'; text: string }[],
+  // for the HUD: points is what a clear scored; speed is a streak starting
+  events: [] as { kind: 'clear' | 'hit' | 'street' | 'speed'; text: string; points?: number }[],
 }
 
 function turnIntent(): number {
@@ -264,7 +276,12 @@ export function stepSim(dtRaw: number) {
     if (sim.speed > CRUISE && input.z === 0) sim.speed = damp(sim.speed, CRUISE, 0.5, dt)
     sim.speed = Math.max(0, sim.speed - (sim.topSpeed ? HOLD_FRICTION : ROLL_FRICTION) * dt)
   }
-  sim.streak = !freeRoam() && Math.round(sim.speed * 3.6) > STREAK_KMH ? sim.streak + dt : 0
+  const streaking = !freeRoam() && Math.round(sim.speed * 3.6) > STREAK_KMH
+  if (streaking && sim.streak === 0 && sim.time - sim.streakEndT > FULL_SPEED_GAP) {
+    sim.events.push({ kind: 'speed', text: 'FULL SPEED!' })
+  }
+  if (!streaking && sim.streak > 0) sim.streakEndT = sim.time
+  sim.streak = streaking ? sim.streak + dt : 0
 
   // --- lateral carve, softly held inside the lane ---
   const lim = sim.arc ? Math.min(laneLimit(sim.street.width), laneLimit(sim.arc.to.width)) : laneLimit(sim.street.width)
@@ -309,11 +326,8 @@ export function stepSim(dtRaw: number) {
       sim.vy = 0
       sim.grounded = true
       sim.landT = sim.time
-      // a flip over nothing still counts, a little
-      if (sim.flipT > sim.jumpT && !sim.airScored && !bailing) {
-        if (!freeRoam()) sim.score += 2
-        sim.events.push({ kind: 'clear', text: 'KICKFLIP!' })
-      }
+      // a flip over nothing gets its toast, but no points: the score is for tricks over obstacles
+      if (sim.flipT > sim.jumpT && !sim.airScored && !bailing) sim.events.push({ kind: 'clear', text: 'KICKFLIP!' })
     }
   }
 
@@ -370,7 +384,7 @@ function collide(uPrev: number) {
       sim.speed *= 0.35
       sim.combo = 0
       sim.score = 0 // a wipeout ends the run
-      sim.events.push({ kind: 'hit', text: 'WIPEOUT!' })
+      sim.events.push({ kind: 'hit', text: wipeoutWord() })
       return
     }
     if (uPrev < ob.u && sim.u >= ob.u && sim.y >= ob.h - 0.02) {
@@ -379,8 +393,9 @@ function collide(uPrev: number) {
       sim.cleared.add(ob.id)
       sim.airScored = true
       sim.combo += 1
-      sim.score += flip ? sim.combo * 2 : sim.combo
-      sim.events.push({ kind: 'clear', text: sim.combo > 1 ? `${trick} x${sim.combo}` : `${trick}!` })
+      const points = flip ? sim.combo * 2 : sim.combo
+      sim.score += points
+      sim.events.push({ kind: 'clear', text: sim.combo > 1 ? `${trick} x${sim.combo}` : `${trick}!`, points })
     }
   }
   if (sim.hits.size > 400) sim.hits.clear()

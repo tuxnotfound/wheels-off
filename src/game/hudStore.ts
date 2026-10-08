@@ -2,7 +2,8 @@ import { create } from 'zustand'
 import { worldRecord } from './leaderboard'
 import { records } from './records'
 
-type Toast = { id: number; text: string; kind: 'clear' | 'hit' }
+// clear: a trick (with the points it scored, if any); hit: a wipeout; speed: full speed reached
+type Toast = { id: number; text: string; kind: 'clear' | 'hit' | 'speed'; points?: number }
 type HudState = {
   started: boolean
   score: number

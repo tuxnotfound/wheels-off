@@ -22,8 +22,12 @@ button give way to a "mobile version soon" card; the attract ride and the music 
 - **W / ↑** push (speed up), **S / ↓** brake
 - **A / D** (or ←/→) carve across the lane. Hold toward a side street as you reach an
   intersection to turn into it (arrows at the bottom show which turns exist).
-- **Space** ollie. Clearing obstacles builds a combo, and hitting one is a wipeout that ends
-  the run: score and combo go back to 0.
+- **Space** ollie, twice quickly to kickflip. Only tricks over obstacles score: each clear
+  adds the combo (an ollie over the third obstacle in a row scores 3, a kickflip double), and
+  the points pop up in gold over the trick's name. A kickflip over nothing scores nothing.
+  Hitting an obstacle is a wipeout (the word varies: BAILED!, SLAMMED!, ATE IT! and more)
+  that ends the run: score and combo go back to 0. FULL SPEED! pops up when the speedster
+  clock starts (above 58 km/h), unless a streak broke less than 5 s before.
 - **P** pause: the pause card, with how to play and the top of each leaderboard
   (P or Esc to play on). The P and M chips in the corner show both keys during the ride. **R** high scores: both leaderboards in full, from anywhere (R to
   go back, Esc to ride). A run that makes a leaderboard asks for a name 1.5 s after the
