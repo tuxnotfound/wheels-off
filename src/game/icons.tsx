@@ -41,6 +41,16 @@ export function Crown({ className = 'hud-crown' }: { className?: string }) {
 }
 
 /** The music's mark: two beamed notes, struck through while it is off. */
+/** Two inked bars, on the pause key's badge. */
+export function Pause() {
+  return (
+    <svg className="hud-note" viewBox="0 0 24 24" aria-hidden="true">
+      <rect className="hud-trophy__cup" x="5.5" y="4.5" width="4.6" height="15" rx="1.2" />
+      <rect className="hud-trophy__cup" x="13.9" y="4.5" width="4.6" height="15" rx="1.2" />
+    </svg>
+  )
+}
+
 export function Note({ off }: { off: boolean }) {
   return (
     <svg className="hud-note" viewBox="0 0 24 24" aria-hidden="true">

@@ -136,7 +136,7 @@ function Landing() {
               <span className="mode-card__jp">アーケード</span>
               <span className="mode-card__what">ollie the obstacles and chain combos for the hi-scores. a wipeout ends the run.</span>
               <span className="mode-card__key">
-                <kbd>Enter</kbd> or any key
+                <kbd>Space</kbd> or any key
               </span>
             </button>
             <button className="mode-card mode-card--free" {...landingButton(() => roll('free'))}>
@@ -174,7 +174,7 @@ function Landing() {
           )}
         </div>
       </div>
-      {!covered && <p className="landing__start">PRESS START</p>}
+      {!covered && <p className="landing__start">PRESS SPACE TO START</p>}
       <div className="marquee" aria-hidden="true">
         <div className="marquee__track">
           {[0, 1].map((copy) => (

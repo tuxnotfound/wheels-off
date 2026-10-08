@@ -19,6 +19,7 @@ import { useHud } from './hudStore'
 import { beatRecords, beating, endRun, records } from './records'
 import { rankFor, refreshBoards, worldRecord } from './leaderboard'
 import { askForName, isPaused } from './arcadeStore'
+import type { PendingRun } from './arcadeStore'
 import { freeRoam } from './mode'
 import { autopilot } from './autopilot'
 import { tickAds } from '../ads/ads'
@@ -84,9 +85,14 @@ function signature(): string {
   return `${sim.street.seed}:${Math.floor(sim.u / BLOCK)}:${sim.prev ? `${sim.prev.street.seed}:${sim.prev.fromK}` : ''}`
 }
 
+const WIPEOUT_HOLD = 1.5 // seconds of the wipeout played before the run's records are announced
+
+/** What a finished run announces, and when: its name entry, or else its PR banner. */
+type Announce = { at: number; entry: PendingRun | null; record: { score: number | null; streak: number | null } | null }
+
 /** Steps the simulation first each frame, then mirrors what the HUD needs. */
 function SimDriver() {
-  const last = useRef({ t: 0, free: freeRoam() }).current
+  const last = useRef({ t: 0, free: freeRoam(), announce: null as Announce | null }).current
   useFrame(({ camera }, dt) => {
     if (isPaused()) return // the pause screen or a name being typed: the world holds still
     if (!input.started) autopilot()
@@ -119,15 +125,24 @@ function SimDriver() {
     if (sim.combo !== hud.combo) patch.combo = sim.combo
     if (!free) beatRecords(sim.score, sim.streak, sim.time)
     if (wipeout || quit) {
-      // game over for this run: a run that makes a leaderboard signs it, else a new PR gets its banner
+      // game over for this run: a run that makes a leaderboard signs it, else a new PR gets its
+      // banner, once the wipeout has played (leaving for free roam has none to play)
       const end = endRun()
       refreshBoards() // so the next run is up against the boards as they stand now
       const scoreRank = rankFor('score', end.score)
       const speedRank = rankFor('speed', end.streak)
-      if (scoreRank !== null || speedRank !== null) askForName({ id: sim.time, ...end, scoreRank, speedRank })
+      const at = sim.time + (wipeout ? WIPEOUT_HOLD : 0)
+      if (scoreRank !== null || speedRank !== null) last.announce = { at, entry: { id: at, ...end, scoreRank, speedRank }, record: null }
       else if (end.prScore || end.prStreak) {
-        patch.record = { id: sim.time, score: end.prScore ? records.score : null, streak: end.prStreak ? tenths(records.streak) : null }
+        const record = { score: end.prScore ? records.score : null, streak: end.prStreak ? tenths(records.streak) : null }
+        last.announce = { at, entry: null, record }
       }
+    }
+    const due = last.announce
+    if (due && sim.time >= due.at) {
+      last.announce = null
+      if (due.entry) askForName(due.entry)
+      else if (due.record) patch.record = { id: due.at, ...due.record }
     }
     const streak = tenths(sim.streak)
     if (streak !== hud.streak) patch.streak = streak

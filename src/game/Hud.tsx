@@ -1,6 +1,6 @@
 import { useMusic } from '../audio/music'
 import { useHud } from './hudStore'
-import { Crown, Flame, Note, Trophy, secs } from './icons'
+import { Crown, Flame, Note, Pause, Trophy, secs } from './icons'
 import { BOARD_TITLE } from './leaderboard'
 import { useMode } from './mode'
 
@@ -104,9 +104,15 @@ export function Hud() {
         </div>
       )}
       {started && (
-        <div className={musicOff ? 'hud-music hud-music--off' : 'hud-music'} role="status" aria-label={musicOff ? 'music off' : 'music on'}>
-          <Note off={musicOff} />
-          <kbd>M</kbd>
+        <div className="hud-keys">
+          <div className="hud-key" role="note" aria-label="P pauses">
+            <Pause />
+            <kbd>P</kbd>
+          </div>
+          <div className={musicOff ? 'hud-key hud-key--off' : 'hud-key'} role="status" aria-label={musicOff ? 'music off' : 'music on'}>
+            <Note off={musicOff} />
+            <kbd>M</kbd>
+          </div>
         </div>
       )}
       {started && turns && (

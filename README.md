@@ -10,8 +10,8 @@ placeholder art. **See [ART.md](ART.md) for how to replace it and add a characte
 
 The game opens on a landing page over the attract ride: the kid cruises the town on their own,
 carving and throwing ollies and kickflips, with the camera drifting around the front of them.
-It shows the title, the two modes, the keys, and the hi-scores going round on a marquee. Any key
-rolls off in arcade (**F** in free roam), or click a mode; the page clears away as the camera
+It shows the title, the two modes, the keys, and the hi-scores going round on a marquee, over
+PRESS SPACE TO START. Space (or any key) rolls off in arcade (**F** in free roam), or click a mode; the page clears away as the camera
 swings round behind the kid into the chase. **R** opens the hi-scores from there, **M** the music.
 Keys that leave or move around the page (Cmd, Ctrl, Alt, Shift, Tab, Esc) never start the ride.
 On a phone or tablet (a touch screen with no mouse), the modes, the keys and the hi-scores
@@ -25,9 +25,9 @@ button give way to a "mobile version soon" card; the attract ride and the music 
 - **Space** ollie. Clearing obstacles builds a combo, and hitting one is a wipeout that ends
   the run: score and combo go back to 0.
 - **P** pause: the pause card, with how to play and the top of each leaderboard
-  (P or Esc to play on). **R** high scores: both leaderboards in full, from anywhere (R to
-  go back, Esc to ride). A run that makes a leaderboard asks for a name at the wipeout: Enter
-  signs it, Esc signs it as John Doe.
+  (P or Esc to play on). The P and M chips in the corner show both keys during the ride. **R** high scores: both leaderboards in full, from anywhere (R to
+  go back, Esc to ride). A run that makes a leaderboard asks for a name 1.5 s after the
+  wipeout, once WIPEOUT has played: Enter signs it, Esc signs it as John Doe.
 - **M** music on or off (remembered in this browser). Before the first key press or click the
   browser keeps it silent, so M then starts it rather than turning it off.
 - **F** free roam: the same endless town with no obstacles and no scores. F on the landing page
@@ -58,7 +58,7 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   counts the live streak). The HUD shows each record, with a trophy, under its live value.
   While a run is beating a record, the record follows the live value in red, with a pulsing
   flame by the live value. A run lasts until a wipeout, and that is when its records are
-  set: the trophies pop and a "NEW RECORD!" banner with the values drops in at the top. A
+  set: 1.5 s after the wipeout (`WIPEOUT_HOLD`), the trophies pop and a "NEW RECORD!" banner with the values drops in at the top. A
   first run, with no record yet, beats nothing. Open `/?reset-records` to start over (it
   clears the records, this browser's copy of the leaderboards, the remembered name and the
   music setting).

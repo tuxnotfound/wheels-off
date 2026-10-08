@@ -582,11 +582,16 @@ kbd {
   text-shadow: 2px 2px 0 var(--ink);
 }
 
-/* the music's state, and its key, in the corner */
-.hud-music {
+/* the pause key, and the music's state with its key, in the corner */
+.hud-keys {
   position: absolute;
   right: 16px;
   bottom: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.hud-key {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -603,7 +608,7 @@ kbd {
   overflow: visible;
 }
 
-.hud-music--off .hud-note > :not(.hud-note__off) {
+.hud-key--off .hud-note > :not(.hud-note__off) {
   opacity: 0.45;
 }
 
