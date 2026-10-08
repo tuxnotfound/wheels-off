@@ -9,6 +9,7 @@ import { roll, switchMode, useMode } from './mode'
 import { Crown, Note, Trophy, secs } from './icons'
 import { records } from './records'
 import { pressMusic, useMusic } from '../audio/music'
+import { useWebGL } from './webgl'
 
 // What is drawn over the ride. First the landing page, over the attract ride, until someone
 // takes over. Then the cards, all in the title card's look, with scores and names in arcade
@@ -82,6 +83,7 @@ function Landing() {
   const started = useHud((s) => s.started)
   const covered = useArcade((s) => s.menu !== null) // the hi-scores card, opened from here
   const musicOff = useMusic((s) => s.off)
+  const no3d = !useWebGL((s) => s.ok)
   const [gone, setGone] = useState(false)
   useEffect(() => {
     if (!started) return
@@ -98,7 +100,7 @@ function Landing() {
     ['FREE PLAY'],
   ]
   return (
-    <main className={started ? 'landing landing--off' : 'landing'} aria-label="Wheels Off">
+    <main className={started ? 'landing landing--off' : no3d ? 'landing landing--no3d' : 'landing'} aria-label="Wheels Off">
       <nav className="landing__chips">
         <button className="chip chip--scores" {...landingButton(toggleRecords)}>
           <kbd>R</kbd> hi-scores
@@ -153,11 +155,23 @@ function Landing() {
             <span><kbd>Space</kbd> ollie</span>
             <span><kbd>P</kbd> pause</span>
           </p>
-          <div className="landing__touch">
-            <p className="landing__touch-title">MOBILE VERSION SOON</p>
-            <p className="landing__touch-jp">スマホ版、近日公開</p>
-            <p className="landing__touch-what">Wheels Off is made for a desktop browser. Open it on a computer to ride.</p>
-          </div>
+          {no3d ? (
+            <div className="landing__touch" role="alert">
+              <p className="landing__touch-title">3D GRAPHICS ARE OFF</p>
+              <p className="landing__touch-jp">3Dグラフィックがオフです</p>
+              <p className="landing__touch-what">
+                Your browser isn't letting the game use the graphics card, so the ride can't start. Turn on hardware
+                acceleration in its settings (in Chrome: Settings, System, Use graphics acceleration when available),
+                then relaunch the browser.
+              </p>
+            </div>
+          ) : (
+            <div className="landing__touch">
+              <p className="landing__touch-title">MOBILE VERSION SOON</p>
+              <p className="landing__touch-jp">スマホ版、近日公開</p>
+              <p className="landing__touch-what">Wheels Off is made for a desktop browser. Open it on a computer to ride.</p>
+            </div>
+          )}
         </div>
       </div>
       {!covered && <p className="landing__start">PRESS START</p>}

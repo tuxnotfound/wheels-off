@@ -1369,6 +1369,18 @@ kbd {
   }
 }
 
+/* no WebGL, so no ride can start: the card says why, in place of the ways to ride, on any
+   device. The hi-scores and the music still work. */
+.landing--no3d .landing__modes,
+.landing--no3d .landing__keys,
+.landing--no3d .landing__start {
+  display: none;
+}
+
+.landing--no3d .landing__touch {
+  display: flex;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .title-card__go,
   .hud-flame,
