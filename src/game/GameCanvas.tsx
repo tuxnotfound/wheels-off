@@ -17,7 +17,7 @@ import { childStreet, sim, stepSim, upcomingTurn } from './sim'
 import type { Street } from './sim'
 import { useHud } from './hudStore'
 import { beatRecords, beating, endRun, records } from './records'
-import { rankFor, worldRecord } from './leaderboard'
+import { rankFor, refreshBoards, worldRecord } from './leaderboard'
 import { askForName, isPaused } from './arcadeStore'
 import { freeRoam } from './mode'
 import { autopilot } from './autopilot'
@@ -121,6 +121,7 @@ function SimDriver() {
     if (wipeout || quit) {
       // game over for this run: a run that makes a leaderboard signs it, else a new PR gets its banner
       const end = endRun()
+      refreshBoards() // so the next run is up against the boards as they stand now
       const scoreRank = rankFor('score', end.score)
       const speedRank = rankFor('speed', end.streak)
       if (scoreRank !== null || speedRank !== null) askForName({ id: sim.time, ...end, scoreRank, speedRank })

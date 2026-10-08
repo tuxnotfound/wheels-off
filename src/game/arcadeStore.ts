@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { input, releaseKeys } from '../player/input'
-import { DEFAULT_NAME, cleanName, rememberName, signRun } from './leaderboard'
+import { DEFAULT_NAME, cleanName, nameAllowed, refreshBoards, rememberName, signRun } from './leaderboard'
 
 // The arcade layer over the ride: the pause screen (P), the records (R), and the name entry
 // after a run that makes a leaderboard. Each one holds the sim still and takes the keyboard
@@ -36,6 +36,7 @@ function hold(on: boolean) {
 function show(menu: Menu, back: Menu = null) {
   useArcade.setState({ menu, back })
   hold(menu !== null)
+  if (menu) refreshBoards()
 }
 
 export function togglePause() {
@@ -61,11 +62,15 @@ export function askForName(run: PendingRun) {
   hold(true)
 }
 
-/** Signs the pending run onto the boards. null (Esc) or a blank name signs as DEFAULT_NAME. */
+/**
+ * Signs the pending run onto the boards. null (Esc), a blank name or one the boards turn away
+ * signs as DEFAULT_NAME (the name entry asks for another before it gets here).
+ */
 export function signName(typed: string | null) {
   const run = useArcade.getState().pending
   if (!run) return
-  const name = typed === null ? '' : cleanName(typed)
+  const clean = typed === null ? '' : cleanName(typed)
+  const name = nameAllowed(clean) ? clean : ''
   if (name) rememberName(name)
   signRun(name || DEFAULT_NAME, run.score, run.streak)
   useArcade.setState({ pending: null })

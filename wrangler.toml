@@ -1,0 +1,10 @@
+# Cloudflare Pages: the built game from dist, and the API in functions/ (/api/*).
+name = "wheels-off"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-10-01"
+
+# The leaderboards. The id comes from `npx wrangler d1 create wheels-off` (README, Deploy).
+[[d1_databases]]
+binding = "DB"
+database_name = "wheels-off"
+database_id = "00000000-0000-0000-0000-000000000000"

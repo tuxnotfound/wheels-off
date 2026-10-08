@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ButtonHTMLAttributes, CSSProperties, MouseEvent } from 'react'
 import { resume, signName, togglePause, toggleRecords, useArcade } from './arcadeStore'
 import type { PendingRun } from './arcadeStore'
-import { BOARD_JP, BOARD_SIZE, BOARD_TITLE, NAME_MAX, boards, lastName, worldRecord } from './leaderboard'
+import { BOARD_JP, BOARD_SIZE, BOARD_TITLE, NAME_MAX, boards, cleanName, lastName, nameAllowed, typedName, useBoards, worldRecord } from './leaderboard'
 import type { Board } from './leaderboard'
 import { useHud } from './hudStore'
 import { roll, switchMode, useMode } from './mode'
@@ -278,6 +278,7 @@ function Result({ label, value, rank, pr }: { label: string; value: string; rank
 
 function NameEntry({ run }: { run: PendingRun }) {
   const [name, setName] = useState(lastName)
+  const [refused, setRefused] = useState(false) // the boards turned the typed name away
   const field = useRef<HTMLInputElement>(null)
   useEffect(() => {
     field.current?.focus()
@@ -295,7 +296,9 @@ function NameEntry({ run }: { run: PendingRun }) {
         className="title-card entry"
         onSubmit={(e) => {
           e.preventDefault()
-          signName(name)
+          const clean = cleanName(name)
+          if (clean && !nameAllowed(clean)) setRefused(true)
+          else signName(name)
         }}
       >
         {wr && <Crown className="entry__crown" />}
@@ -317,7 +320,10 @@ function NameEntry({ run }: { run: PendingRun }) {
             maxLength={NAME_MAX}
             spellCheck={false}
             autoComplete="off"
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(typedName(e.target.value))
+              setRefused(false)
+            }}
             onKeyDown={(e) => {
               if (e.key !== 'Escape') return
               e.preventDefault()
@@ -325,7 +331,7 @@ function NameEntry({ run }: { run: PendingRun }) {
             }}
           />
         </label>
-        <p className="title-card__go">press esc to continue</p>
+        <p className="title-card__go">{refused ? 'that name can’t go on the board · try another' : 'press esc to continue'}</p>
       </form>
     </div>
   )
@@ -333,6 +339,7 @@ function NameEntry({ run }: { run: PendingRun }) {
 
 export function Arcade() {
   const { menu, pending } = useArcade()
+  useBoards((s) => s.version) // draws the landing page and the cards again when the boards change
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || e.target instanceof HTMLInputElement) return

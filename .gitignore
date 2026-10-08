@@ -6,3 +6,5 @@ dist-ssr
 .vite
 node_modules/.tmp
 public/art/_dev/
+.wrangler
+.dev.vars

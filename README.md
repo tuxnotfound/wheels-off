@@ -60,13 +60,24 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   flame by the live value. A run lasts until a wipeout, and that is when its records are
   set: the trophies pop and a "NEW RECORD!" banner with the values drops in at the top. A
   first run, with no record yet, beats nothing. Open `/?reset-records` to start over (it
-  clears the records, the leaderboards, the remembered name and the music setting).
+  clears the records, this browser's copy of the leaderboards, the remembered name and the
+  music setting).
 - **`src/game/leaderboard.ts`**: the arcade high score tables, top 10 by run score
-  ("trickster") and by time at full speed ("speedster"). Like a cabinet's, they live on this machine (`localStorage`) and a
-  fresh one comes with a default table of made-up locals to beat (set low for play-testing,
-  15 points and 12 s at the top; raise it before launch). Each table's top entry
-  is the world record (WR), shown under the PR in the HUD with a crown; a run beating it
-  shows as YOU with a blue flame.
+  ("trickster") and by time at full speed ("speedster"), shared by every player through the
+  API below. The browser keeps the last copy it saw (`localStorage`), so the game opens on it
+  and plays on without the API, signing runs into that copy. A browser that has never reached
+  the API starts from the default table: TUX on top of both (200 points, 1:32.0), then
+  made-up locals. Each table's top entry is the world record (WR), shown under the PR in the
+  HUD with a crown; a run beating it shows as YOU with a blue flame. The boards are fetched
+  at load, at each wipeout and when a card opens, at most once a minute.
+- **`functions/api/leaderboard.ts`, `migrations/`, `shared/`**: the API, a Cloudflare Pages
+  Function on D1 (SQLite). GET `/api/leaderboard` returns both top 10s; POST signs a run
+  (`{ name, score, streak }`) and returns them. A run is one row in `runs`, and each board is
+  the top 10 rows by one column. Scores come from the client, so the API only turns away the
+  absurd (over 1,000,000 points or an hour at full speed), names that break the rules, and
+  more than 60 runs an hour from one address. `shared/leaderboard.ts` holds the name rules
+  both sides apply: letters, digits, spaces and `.-_!?'`, up to 12, with a word filter. The
+  name entry asks for another name when the filter turns one away.
 - **`src/game/mode.ts`**: the mode, arcade or free roam. In free roam the sim skips obstacles,
   scores nothing and counts no full speed time, and the HUD shows the speed alone. The attract
   ride runs under the same rules, whichever mode the player then picks. Blocks laid
@@ -146,8 +157,57 @@ npm run typecheck   # tsc -b --noEmit
 npm run build       # tsc -b && vite build
 ```
 
+The leaderboard API runs next to it under wrangler, which Vite proxies `/api` to. Without
+it the game plays on its own copy of the boards (and Vite logs a proxy error per fetch).
+
+```bash
+cp .dev.vars.example .dev.vars   # once: the local IP_SALT
+npm run db:migrate               # once, and after each new migration: a local D1 in .wrangler/
+npm run build && npm run api     # the API on 8788 (it also serves dist)
+```
+
 In dev, `window.__sim` exposes the live sim state for poking at from the console.
 Open `/?vrm=<file under public/art/>` to try a VRM character without editing the manifest.
+
+## Deploy
+
+Cloudflare Pages builds the game and the API from GitHub: build command `npm run build`,
+output `dist`, `NODE_VERSION` 22. `wrangler.toml` holds the D1 binding. Once, before the
+first deploy:
+
+1. `npx wrangler login`
+2. `npx wrangler d1 create wheels-off --location weur`, then put its id in `wrangler.toml`
+   in place of the zeros.
+3. `npx wrangler d1 migrations apply wheels-off --remote`: the `runs` table and the default
+   table.
+4. Create the Pages project `wheels-off` (the `name` in `wrangler.toml`) from the GitHub
+   repo.
+5. `npx wrangler pages secret put IP_SALT --project-name wheels-off`, with a long random
+   value (`openssl rand -hex 32`). Without it the API signs runs with no rate limit and logs
+   a warning.
+
+Preview deployments use the same database, so a run played on a preview signs onto the real
+boards.
+
+### Leaderboards: moderation
+
+Hide a run, and it drops off both boards; the next run in line moves up.
+
+```bash
+npx wrangler d1 execute wheels-off --remote --command "SELECT id, name, score, streak, created_at FROM runs WHERE seeded = 0 ORDER BY id DESC LIMIT 20"
+npx wrangler d1 execute wheels-off --remote --command "UPDATE runs SET hidden = 1 WHERE id = 42"
+```
+
+`UPDATE runs SET hidden = 1 WHERE seeded = 1` retires the default table once real runs fill
+the boards.
+
+### Later: accounts and billboard sales
+
+Both go in the same API and database: a new migration per table (users, ad bookings) and a
+route per file under `functions/api/`. A run takes a nullable `user_id` then, so the anonymous
+runs before accounts stay on the boards. Ads come from one URL already (`loadAds` in
+`src/ads/ads.ts`, `/art/ads.json` today), so a `/api/ads` serving the sold creatives in the
+same shape is a one-line swap in the game.
 
 ## Gotchas worth knowing
 
