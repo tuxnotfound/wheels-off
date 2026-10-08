@@ -11,8 +11,8 @@ run_worker_first = ["/api/*"]
 [observability]
 enabled = true
 
-# The leaderboards. The id comes from `npx wrangler d1 create wheels-off` (README, Deploy).
+# The leaderboards (README, Deploy).
 [[d1_databases]]
 binding = "DB"
 database_name = "wheels-off"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "46c1a91b-df0a-4f10-9da5-71d77e3e5ed8"

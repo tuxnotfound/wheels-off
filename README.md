@@ -178,11 +178,10 @@ the deploy command (both in the Worker's build settings in the dashboard). It is
 https://wheels-off.pinguim-informal.workers.dev. playwheelsoff.com goes in `wrangler.toml` as
 a route with `custom_domain = true` when it launches.
 
-The leaderboard database, once:
+The leaderboard database, set up once (done 2026-10-08):
 
 1. `npx wrangler login`
-2. `npx wrangler d1 create wheels-off --location weur`, then its id in `wrangler.toml` in
-   place of the zeros. A push before that fails the build.
+2. `npx wrangler d1 create wheels-off --location weur`, then its id in `wrangler.toml`.
 3. `npx wrangler d1 migrations apply wheels-off --remote`: the `runs` table and the default
    table. Run it again after each new migration, before the push that needs it.
 4. `openssl rand -hex 32 | npx wrangler secret put IP_SALT`. Without it the API signs runs
