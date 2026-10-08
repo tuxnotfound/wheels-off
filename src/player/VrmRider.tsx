@@ -23,8 +23,15 @@ const ARM_PUFF = 1.15
 const TEE = '#2f6b5a'
 const TEE_SHADE = '#1e4a3f'
 const TEE_LOOSE = 0.012 // the body pushed out this far from the top it is made from
-const SLEEVE_FLARE = 0.02 // the sleeves widen by this much toward their hems at the elbows
+const SLEEVE_ROOM = 0.02 // the sleeves stand this far off the arm, straight to the elbows,
+const SLEEVE_SQUEEZE = 0.7 // and the top's own sleeves are drawn in to match
 const TEE_HEM = 0.02 // the hem's height below the leg joints
+// Relaxed straight pants: below the seat each leg is a tube round its bone, this wide
+// (radius, meters, at rest) at the seat and at the hem
+const PANTS_SEAT = 0.095
+const PANTS_CUFF = 0.085
+const PANTS_HEEL = 0.03 // the hem drops this much at the back, over the shoe's low heel
+const SOCKS = '#24242c'
 
 // Her face, after the Lofi Girl: small dark almond eyes under heavy lids, looking a little
 // down, a darker lash line, warmer skin and a round jaw in place of the pointed chin.
@@ -375,13 +382,14 @@ function weightTo(m: THREE.SkinnedMesh, bone: THREE.Bone, y: number, blend: numb
 
 /**
  * A cloth shell over part of the skin: the triangles whose corners all pass `keep`, copied
- * into a new mesh on the same skeleton and pushed out along their normals by `push` (both
- * get the corner in bind space). It bends exactly with the skin under it.
+ * into a new mesh on the same skeleton and pushed out along their normals by what `push`
+ * returns (both get the corner in bind space; `push` may instead move the corner itself
+ * and return nothing). It bends exactly with the skin under it.
  */
 function skinShell(
   skin: THREE.SkinnedMesh,
   keep: (p: THREE.Vector3) => boolean,
-  push: (p: THREE.Vector3) => number,
+  push: (p: THREE.Vector3, n: THREE.Vector3) => number | void,
   mat: THREE.Material,
   name: string,
 ) {
@@ -418,7 +426,9 @@ function skinShell(
   for (const [from, to] of remap) {
     const n = normal(from)
     at(from)
-    p.addScaledVector(n, push(p)).applyMatrix4(skin.bindMatrixInverse)
+    const d = push(p, n)
+    if (typeof d === 'number') p.addScaledVector(n, d)
+    p.applyMatrix4(skin.bindMatrixInverse)
     op.setXYZ(to, p.x, p.y, p.z)
   }
 
@@ -432,8 +442,10 @@ function skinShell(
 }
 
 /**
- * Loose pants in place of the shorts: a shell over the skin from the waist to just over the
- * shoes, widening from the thighs down. The shorts go.
+ * Relaxed straight pants in place of the shorts: a shell over the skin from the waist to
+ * just over the shoes. Close at the waist; below the seat each leg becomes a straight tube
+ * round its bone, a little narrower at the hem, so the cloth hangs past the knee and calf
+ * instead of copying them. The shorts go.
  */
 function addPants(vrm: VRM) {
   const named = meshFinder(vrm)
@@ -443,27 +455,61 @@ function addPants(vrm: VRM) {
   if (!skin || !shorts) return
   const waist = bindRangeY(shorts)[1] + 0.005
   const hem = shoes ? bindRangeY(shoes)[1] - 0.02 : bindRangeY(skin)[0] + 0.1
+  // each leg's hip, knee and ankle at rest; the legs hang straight down in the bind pose
+  const joint = (name: VRMHumanBoneName) => {
+    const k = skin.skeleton.bones.indexOf(vrm.humanoid.getRawBoneNode(name) as THREE.Bone)
+    return k < 0 ? null : v3().setFromMatrixPosition(skin.skeleton.boneInverses[k].clone().invert())
+  }
+  const legs = (['left', 'right'] as const).map((s) => [joint(`${s}UpperLeg`), joint(`${s}LowerLeg`), joint(`${s}Foot`)])
+  const [hipL, kneeL] = legs[0]
+  const c = v3()
+  const d = v3()
+  const tube = v3()
+  /** The leg's axis at height y, set back behind the shin, where the calf is. */
+  const axis = (leg: THREE.Vector3[], y: number) => {
+    const [a, b] = y > leg[1].y ? [leg[0], leg[1]] : [leg[1], leg[2]]
+    c.lerpVectors(a, b, THREE.MathUtils.clamp((a.y - y) / (a.y - b.y), 0, 1))
+    c.z -= 0.02 * THREE.MathUtils.smoothstep(leg[1].y - y, -0.05, 0.1)
+    c.y = y
+    return c
+  }
+  const ok = legs.every((leg) => leg.every(Boolean)) && hipL && kneeL
+  const crotch = ok ? hipL!.y - (hipL!.y - kneeL!.y) * 0.25 : 0
+  const legOf = (p: THREE.Vector3) => (Math.sign(p.x) === Math.sign(hipL!.x) ? legs[0] : legs[1]) as THREE.Vector3[]
+  // lower behind the leg's axis than in front of it
+  const hemAt = (p: THREE.Vector3) => (ok ? hem - PANTS_HEEL * THREE.MathUtils.smoothstep(axis(legOf(p), p.y).z - p.z, 0, 0.06) : hem)
   skinShell(
     skin,
-    (p) => p.y >= hem && p.y <= waist,
-    // close at the waist, relaxed and straight down the legs, gathered a little at the ankles
-    (p) => {
-      const down = (waist - p.y) / (waist - hem)
-      return 0.008 + 0.012 * THREE.MathUtils.smoothstep(down, 0.1, 0.45) - 0.006 * THREE.MathUtils.smoothstep(down, 0.85, 1)
+    (p) => p.y >= hemAt(p) && p.y <= waist,
+    (p, n) => {
+      p.addScaledVector(n, 0.01) // the waist and seat: close over the skin
+      if (!ok) return
+      const leg = legOf(p)
+      axis(leg, p.y)
+      d.subVectors(p, c)
+      const r = Math.max(d.length(), 1e-5)
+      const R = THREE.MathUtils.lerp(PANTS_SEAT, PANTS_CUFF, THREE.MathUtils.clamp((crotch - p.y) / (crotch - hem), 0, 1))
+      tube.copy(c).addScaledVector(d, Math.max(R, r + 0.004) / r)
+      // the inseam stays on its own side of the middle
+      const side = Math.sign(leg[0].x)
+      if (side * tube.x < 0.004) tube.x = side * Math.min(0.004, side * p.x)
+      p.lerp(tube, 1 - THREE.MathUtils.smoothstep(p.y, crotch, hipL!.y + 0.02))
     },
     clothMat(mtoonOf(shorts), PANTS, PANTS_SHADE),
     'Pants',
   )
+  // dark socks, from inside the shoes up past the hems: the ankle the wide cuffs show
+  if (shoes) skinShell(skin, (p) => p.y >= hem - 0.02 && p.y <= hem + 0.1, () => 0.003, clothMat(mtoonOf(shorts), SOCKS, SOCKS), 'Socks')
   shorts.visible = false
 }
 
 /**
  * An oversized tee made from the top: dark green, its body pushed out loose and its hem
- * hung from the pelvis, with wide sleeves from the shoulders to the elbows, flaring toward
- * their hems. In the bind T-pose the arms lie along x at shoulder height, so the sleeves
- * are the skin out past the shoulder joints and level with them (the legs reach out that
- * far too, lower down). They start under the top's own short sleeves, which lift off the
- * arm as it lowers and would show skin.
+ * hung from the pelvis, with roomy straight sleeves from the shoulders to the elbows. In
+ * the bind T-pose the arms lie along x at shoulder height, so the sleeves are the skin out
+ * past the shoulder joints and level with them (the legs reach out that far too, lower
+ * down). They start under the top's own short sleeves, which lift off the arm as it lowers
+ * and would show skin; those are drawn in toward the arm so the two read as one sleeve.
  */
 function addTee(vrm: VRM) {
   const named = meshFinder(vrm)
@@ -474,6 +520,30 @@ function addTee(vrm: VRM) {
   const src = top && mtoonOf(top)
   if (!top || !src) return
   flatten(src, TEE, TEE_SHADE)
+  if (shoulder) {
+    // only what the arms carry: pulling the side panels in too would open the armpits
+    const arms = [shoulder, vrm.humanoid.getRawBoneNode('rightUpperArm')]
+    const onArm = top.skeleton.bones.map((b) => {
+      for (let o: THREE.Object3D | null = b; o; o = o.parent) if (arms.includes(o) || /upperarm/i.test(o.name)) return true
+      return false
+    })
+    const si = top.geometry.attributes.skinIndex
+    const sw = top.geometry.attributes.skinWeight
+    const a = shoulder.getWorldPosition(v3())
+    const pos = top.geometry.attributes.position
+    const q = v3()
+    for (let i = 0; i < pos.count; i++) {
+      q.fromBufferAttribute(pos, i).applyMatrix4(top.bindMatrix)
+      let armWeight = 0
+      for (let c = 0; c < 4; c++) if (onArm[si.getComponent(i, c)]) armWeight += sw.getComponent(i, c)
+      const f = armWeight * THREE.MathUtils.smoothstep(Math.abs(q.x), Math.abs(a.x), Math.abs(a.x) + 0.06)
+      if (f === 0 || q.y < a.y - 0.15) continue
+      const k = THREE.MathUtils.lerp(1, SLEEVE_SQUEEZE, f)
+      q.set(q.x, a.y + (q.y - a.y) * k, a.z + (q.z - a.z) * k).applyMatrix4(top.bindMatrixInverse)
+      pos.setXYZ(i, q.x, q.y, q.z)
+    }
+    pos.needsUpdate = true
+  }
   inflate(top, () => TEE_LOOSE)
   const hips = vrm.humanoid.getRawBoneNode('hips')
   const thigh = vrm.humanoid.getRawBoneNode('leftUpperLeg')
@@ -490,7 +560,7 @@ function addTee(vrm: VRM) {
   skinShell(
     skin,
     (q) => Math.abs(q.x) >= start && Math.abs(q.x) <= hem && Math.abs(q.y - arm.y) < 0.1,
-    (q) => 0.016 + SLEEVE_FLARE * THREE.MathUtils.smoothstep((Math.abs(q.x) - start) / (hem - start), 0.3, 1),
+    () => SLEEVE_ROOM,
     clothMat(src, TEE, TEE_SHADE),
     'Sleeves',
   )
