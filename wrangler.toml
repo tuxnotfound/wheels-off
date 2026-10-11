@@ -1,5 +1,7 @@
-# A Cloudflare Worker: the built game from dist as static assets, and the API in worker/, which
-# runs only for /api/*. Workers Builds deploys it from GitHub on each push to main.
+# A Cloudflare Worker: the built game from dist as static assets, and the API in worker/. The
+# Worker sees every request (run_worker_first), so plain http and www redirect to the one URL
+# in code; /api/* answers from worker/, everything else from the assets. Workers Builds deploys
+# it from GitHub on each push to main.
 name = "wheels-off"
 main = "worker/index.ts"
 compatibility_date = "2026-10-06"
@@ -15,7 +17,8 @@ workers_dev = false
 
 [assets]
 directory = "./dist"
-run_worker_first = ["/api/*"]
+binding = "ASSETS"
+run_worker_first = true
 
 [observability]
 enabled = true
