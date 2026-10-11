@@ -1,5 +1,5 @@
 import { input } from '../player/input'
-import { blockObstacles, childSeed, hasBranch, laneLimit, widthForSeed } from '../world/streetGen'
+import { START_SEED, blockObstacles, childSeed, hasBranch, laneLimit, widthForSeed } from '../world/streetGen'
 import { BEHIND_LANDING, BLOCK, DIR, TURN_R } from '../world/worldConfig'
 import { freeRoam, hasObstacles } from './mode'
 import { STREAK_KMH } from './records'
@@ -90,8 +90,8 @@ const idleGap = () => 2.6 + Math.random() * 3.0
 
 const damp = (a: number, b: number, lambda: number, dt: number) => a + (b - a) * (1 - Math.exp(-lambda * dt))
 
-// the first street reaches back as far as the landing shot looks (BEHIND_LANDING)
-const START: Street = { seed: 1, ox: 0, oz: 0, dir: 0, width: widthForSeed(1), minK: -BEHIND_LANDING, u0: 0 }
+// the first street, this week's (START_SEED), reaches back as far as the landing shot looks (BEHIND_LANDING)
+const START: Street = { seed: START_SEED, ox: 0, oz: 0, dir: 0, width: widthForSeed(START_SEED), minK: -BEHIND_LANDING, u0: 0 }
 
 export const sim = {
   time: 0,

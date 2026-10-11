@@ -1,18 +1,21 @@
 import { create } from 'zustand'
 import { input, releaseKeys } from '../player/input'
 import { DEFAULT_NAME, cleanName, nameAllowed, refreshBoards, rememberName, signRun } from './leaderboard'
+import type { Board, Period } from './leaderboard'
 
 // The arcade layer over the ride: the pause screen (P), the records (R), and the name entry
 // after a run that makes a leaderboard. Each one holds the sim still and takes the keyboard
 // from it.
+
+/** Where a run places on each board (0 is first), null where it misses the top 10. */
+export type Ranks = Record<Period, Record<Board, number | null>>
 
 /** A finished run waiting for its name: what it scored and where it places. */
 export type PendingRun = {
   id: number
   score: number
   streak: number
-  scoreRank: number | null // 0 is first, null when it misses the top 10
-  speedRank: number | null
+  ranks: Ranks
   prScore: boolean
   prStreak: boolean
 }

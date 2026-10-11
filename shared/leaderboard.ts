@@ -1,12 +1,28 @@
 // What the game (src/game/leaderboard.ts) and the API that keeps the boards for everyone
-// (worker/leaderboard.ts) agree on: the boards' shape and the rules for a name.
+// (worker/leaderboard.ts) agree on: the boards' shape, the weeks and the rules for a name.
 
 export type Board = 'score' | 'speed'
 export type Entry = { name: string; value: number } // speed values in seconds
 export type Boards = Record<Board, Entry[]>
+/** This week's boards, which start empty every Monday, and the week they are for. */
+export type Week = Boards & { id: string }
 
 export const BOARD_SIZE = 10
 export const NAME_MAX = 12
+
+const DAY = 86_400_000
+
+/**
+ * The week a moment falls in, named the ISO way (2026-W42). Weeks run Monday to Sunday in UTC,
+ * and the Thursday of a week names it: its year, and which week of that year it is.
+ */
+export function weekOf(date: Date): string {
+  const fromMonday = (date.getUTCDay() + 6) % 7
+  const thursday = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - fromMonday + 3)
+  const year = new Date(thursday).getUTCFullYear()
+  const week = Math.floor((thursday - Date.UTC(year, 0, 1)) / (7 * DAY)) + 1
+  return `${year}-W${String(week).padStart(2, '0')}`
+}
 
 // A name holds letters, digits, spaces and . - _ ! ? ' only: what the arcade type can draw, and
 // nothing that can hide a word from the filter below.

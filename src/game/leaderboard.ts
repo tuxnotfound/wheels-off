@@ -1,17 +1,23 @@
 import { create } from 'zustand'
-import { BOARD_SIZE } from '../../shared/leaderboard'
-import type { Board, Boards, Entry } from '../../shared/leaderboard'
+import { BOARD_SIZE, weekOf } from '../../shared/leaderboard'
+import type { Board, Boards, Entry, Week } from '../../shared/leaderboard'
 import { readJson, writeJson } from './storage'
 
-export { BOARD_SIZE, NAME_MAX, cleanName, nameAllowed, typedName } from '../../shared/leaderboard'
+export { BOARD_SIZE, NAME_MAX, cleanName, nameAllowed, typedName, weekOf } from '../../shared/leaderboard'
 export type { Board, Entry } from '../../shared/leaderboard'
 
 // The high score tables, like an arcade cabinet's: the top 10 runs by score, and the top 10
-// by longest time at full speed. The API keeps them for everyone (worker/leaderboard.ts).
+// by longest time at full speed, each kept twice: of all time, and of this week, which starts
+// empty every Monday (00:00 UTC). The API keeps them for everyone (worker/leaderboard.ts).
 // This browser keeps the last copy it saw, so the game opens on it and plays on without the
 // API (offline, or `npm run dev` with no API running), signing runs into its own copy until the
-// API answers again. A browser that has never reached the API starts from the default table.
-// The top entry of each is the world record.
+// API answers again. A browser that has never reached the API starts from the default table,
+// and an empty week. The top entry of each all-time board is the world record.
+
+/** Which runs a board ranks: all of them, or this week's. */
+export type Period = 'week' | 'all'
+export const PERIODS: Period[] = ['week', 'all']
+export const PERIOD_TITLE: Record<Period, string> = { week: 'this week', all: 'all time' }
 
 /** What each board is called in the game, and in Japanese (as the title card does for the game). */
 export const BOARD_TITLE: Record<Board, string> = { score: 'trickster', speed: 'speedster' }
@@ -21,6 +27,7 @@ export const DEFAULT_NAME = 'John Doe'
 
 const API = '/api/leaderboard'
 const KEY = 'wheelsoff:boards' // the last copy (the local-only tables lived under wheelsoff:leaderboard)
+const WEEK_KEY = 'wheelsoff:week' // the last copy of a week's boards, with the week they are for
 const NAME_KEY = 'wheelsoff:name'
 const REFRESH_EVERY = 60_000 // ms between fetches of the boards, at most
 
@@ -49,14 +56,42 @@ function parse(raw: unknown): Boards | null {
   return { score: pick(data.score), speed: pick(data.speed) }
 }
 
-export const boards: Boards = parse(readJson(KEY)) ?? structuredClone(SEED)
+const empty = (): Boards => ({ score: [], speed: [] })
+
+/** The week whose boards this copy holds: this one, unless the API says otherwise (a wrong clock here). */
+let week = weekOf(new Date())
+
+/** The boards of this week kept in storage, or empty ones when what is kept is for another week. */
+function storedWeek(): Boards {
+  const raw = readJson(WEEK_KEY) as { id?: unknown } | null
+  return (raw?.id === week && parse(raw)) || empty()
+}
+
+export const tables: Record<Period, Boards> = {
+  all: parse(readJson(KEY)) ?? structuredClone(SEED),
+  week: storedWeek(),
+}
 
 /** Bumped whenever the boards change, so the cards that show them draw again. */
 export const useBoards = create(() => ({ version: 0 }))
 
 function changed() {
-  writeJson(KEY, boards)
+  writeJson(KEY, tables.all)
+  writeJson(WEEK_KEY, { id: week, ...tables.week } satisfies Week)
   useBoards.setState((s) => ({ version: s.version + 1 }))
+}
+
+/** The week by this browser's clock, the last time it was looked at. */
+let clockWeek = week
+
+/** A new week here (the page left open over Monday): its boards start empty, until the API answers. */
+function turnWeek() {
+  const now = weekOf(new Date())
+  if (now === clockWeek) return
+  clockWeek = now
+  week = now
+  tables.week = empty()
+  changed()
 }
 
 // Only the answer to the last request sent is taken. A fetch sent at the wipeout and answered
@@ -67,10 +102,15 @@ async function ask(init?: RequestInit) {
   const n = ++sent
   try {
     const res = await fetch(API, init)
-    const next = res.ok ? parse(((await res.json()) as { boards?: unknown }).boards) : null
-    if (!next || n !== sent) return
-    boards.score = next.score
-    boards.speed = next.speed
+    const data = res.ok ? ((await res.json()) as { boards?: unknown; week?: { id?: unknown } }) : null
+    const all = parse(data?.boards)
+    if (!all || n !== sent) return
+    tables.all = all
+    const thisWeek = parse(data?.week)
+    if (thisWeek && typeof data?.week?.id === 'string') {
+      week = data.week.id
+      tables.week = thisWeek
+    }
     changed()
   } catch {
     // offline, or no API: this copy stands
@@ -81,6 +121,7 @@ let fetchedAt = -Infinity
 
 /** Fetches the boards from the API, at most once a minute. */
 export function refreshBoards() {
+  turnWeek()
   const now = performance.now()
   if (now - fetchedAt < REFRESH_EVERY) return
   fetchedAt = now
@@ -89,15 +130,20 @@ export function refreshBoards() {
 
 refreshBoards()
 
-/** The world record on a board: its top entry. */
+/** The world record on a board: the top entry of all time. */
 export function worldRecord(board: Board): Entry | null {
-  return boards[board][0] ?? null
+  return tables.all[board][0] ?? null
+}
+
+/** The top entry of a board this week, or null while it is empty. */
+export function weekTop(board: Board): Entry | null {
+  return tables.week[board][0] ?? null
 }
 
 /** Where a run's value would place on a board (0 is first), or null if it misses the top 10. */
-export function rankFor(board: Board, value: number): number | null {
+export function rankFor(period: Period, board: Board, value: number): number | null {
   if (!(value > 0)) return null
-  const list = boards[board]
+  const list = tables[period][board]
   const i = list.findIndex((e) => value > e.value)
   if (i >= 0) return i
   return list.length < BOARD_SIZE ? list.length : null
@@ -105,14 +151,18 @@ export function rankFor(board: Board, value: number): number | null {
 
 /** Signs a finished run onto every board it makes: in this copy at once, then with the API. */
 export function signRun(name: string, score: number, streak: number) {
-  for (const [board, value] of [
-    ['score', score],
-    ['speed', streak],
-  ] as const) {
-    const rank = rankFor(board, value)
-    if (rank === null) continue
-    boards[board].splice(rank, 0, { name, value })
-    boards[board].length = Math.min(boards[board].length, BOARD_SIZE)
+  turnWeek()
+  for (const period of PERIODS) {
+    for (const [board, value] of [
+      ['score', score],
+      ['speed', streak],
+    ] as const) {
+      const rank = rankFor(period, board, value)
+      if (rank === null) continue
+      const list = tables[period][board]
+      list.splice(rank, 0, { name, value })
+      list.length = Math.min(list.length, BOARD_SIZE)
+    }
   }
   changed()
   void ask({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, score, streak }) })

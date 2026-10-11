@@ -660,6 +660,48 @@ kbd {
   text-align: left;
 }
 
+/* this week or all time: two tabs over the boards, the one shown in ink */
+.periods {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 0 16px;
+}
+
+.periods__tab {
+  padding: 4px 12px;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 14px;
+  text-transform: uppercase;
+  background: var(--bubble);
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 2px 3px 0 var(--ink);
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.periods__tab--on {
+  color: var(--bubble);
+  background: var(--ink);
+  opacity: 1;
+}
+
+.periods__tab:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* when this week's boards start over */
+.periods__when {
+  margin: 0 0 12px;
+  font-family: system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
 /* each leaderboard headed like the game: its name in the title type, then in Japanese */
 .board__title {
   margin: 0;
@@ -757,7 +799,12 @@ kbd {
   font-weight: normal;
 }
 
+/* where the run places, this week and of all time, on a line under its value */
 .entry__rank {
+  display: block;
+  margin-top: -6px;
+  font-size: 9px;
+  line-height: 1.8;
   color: var(--accent);
 }
 
@@ -773,6 +820,25 @@ kbd {
 .entry__label {
   display: block;
   font-size: 14px;
+}
+
+/* the run to share, under the name */
+.entry__share {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.entry__share-what {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.entry__share .chip {
+  padding: 4px 10px;
+  text-decoration: none;
 }
 
 .entry__field {

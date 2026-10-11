@@ -28,10 +28,12 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   Hitting an obstacle is a wipeout (the word varies: BAILED!, SLAMMED!, ATE IT! and more)
   that ends the run: score and combo go back to 0. FULL SPEED! pops up when the speedster
   clock starts (above 58 km/h), unless a streak broke less than 5 s before.
-- **P** pause: the pause card, with how to play and the top of each leaderboard
-  (P or Esc to play on). The P and M chips in the corner show both keys during the ride. **R** high scores: both leaderboards in full, from anywhere (R to
-  go back, Esc to ride). A run that makes a leaderboard asks for a name 1.5 s after the
-  wipeout, once WIPEOUT has played: Enter signs it, Esc signs it as John Doe.
+- **P** pause: the pause card, with how to play and the top of each leaderboard, of all time
+  and this week (P or Esc to play on). The P and M chips in the corner show both keys during the ride. **R** high scores: both leaderboards in full, from anywhere,
+  this week's first (← → or A D switch to all time; R to go back, Esc to ride). A run that
+  makes a leaderboard asks for a name 1.5 s after the wipeout, once WIPEOUT has played: Enter
+  signs it, Esc signs it as John Doe. The same card offers the run to share: a post on X with
+  the line and the link filled in, or the same copied for anywhere else.
 - **M** music on or off (remembered in this browser). Before the first key press or click the
   browser keeps it silent, so M then starts it rather than turning it off.
 - **F** free roam: the same endless town with no obstacles and no scores. F on the landing page
@@ -68,16 +70,21 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   music setting).
 - **`src/game/leaderboard.ts`**: the arcade high score tables, top 10 by run score
   ("trickster") and by time at full speed ("speedster"), shared by every player through the
-  API below. The browser keeps the last copy it saw (`localStorage`), so the game opens on it
-  and plays on without the API, signing runs into that copy. A browser that has never reached
-  the API starts from the default table: TUX on top of both (200 points, 1:32.0), then
-  made-up locals. Each table's top entry is the world record (WR), shown under the PR in the
-  HUD with a crown; a run beating it shows as YOU with a blue flame. The boards are fetched
-  at load, at each wipeout and when a card opens, at most once a minute.
+  API below. Each is kept twice: of all time, and of this week, which starts empty every
+  Monday at 00:00 UTC (weeks named the ISO way, 2026-W42, by `weekOf` in
+  `shared/leaderboard.ts`). The browser keeps the last copy it saw (`localStorage`), so the
+  game opens on it and plays on without the API, signing runs into that copy. A browser that
+  has never reached the API starts from the default table: TUX on top of both (200 points,
+  1:32.0), then made-up locals, and an empty week. Each all-time table's top entry is the
+  world record (WR), shown under the PR in the HUD with a crown; a run beating it shows as YOU
+  with a blue flame. The boards are fetched at load, at each wipeout and when a card opens, at
+  most once a minute.
 - **`worker/`, `migrations/`, `shared/`**: the API, a Cloudflare Worker on D1 (SQLite), run
-  only for `/api/*`. GET `/api/leaderboard` returns both top 10s; POST signs a run
-  (`{ name, score, streak }`) and returns them. A run is one row in `runs`, and each board is
-  the top 10 rows by one column. Scores come from the client, so the API only turns away the
+  only for `/api/*`. GET `/api/leaderboard` returns both top 10s of all time (`boards`) and of
+  this week (`week`, with its `id`); POST signs a run (`{ name, score, streak }`) and returns
+  them. A run is one row in `runs`, signed into the week it reaches the API in (`week`), and
+  each board is the top 10 rows by one column, of all time or of this week. The default table
+  belongs to no week. Scores come from the client, so the API only turns away the
   absurd (over 1,000,000 points or an hour at full speed), names that break the rules, and
   more than 60 runs an hour from one address. `shared/leaderboard.ts` holds the name rules
   both sides apply: letters, digits, spaces and `.-_!?'`, up to 12, with a word filter. The
@@ -89,11 +96,14 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   front of the rider: they return with the blocks that rise over the horizon.
 - **`src/game/arcadeStore.ts`, `Arcade.tsx`**: the landing page, then the cards over the ride,
   all in the title card's look, with scores and names in arcade type (Press Start 2P). The
-  pause card (P) shows the top of each leaderboard; the hi-scores card (R) shows both in full,
-  with your PRs. The HUD
+  pause card (P) shows the top of each leaderboard, of all time and this week; the hi-scores
+  card (R) shows both in full, with your PRs, this week's or of all time; the landing page's
+  marquee leads with this week's leaders. The HUD
   panels are labelled with the board they feed (TRICKSTER, SPEEDSTER). Pause and the name entry hold the sim still and take the
   keyboard from it (`input.blocked`). A run that makes a table gets the name entry instead
-  of the PR banner; a world record gets a burst (rays, flash, stars) behind it.
+  of the PR banner, with where it places this week and of all time and the run to share
+  (`shareLine`: its best place and a dare, posted on X through the intent link or copied); a
+  world record gets a burst (rays, flash, stars) behind it.
 - **`src/audio/`**: the music, with no audio files. `lofi.ts` composes lo-fi hip hop live in
   Web Audio: each tune picks a key, a tempo and a loop of four jazz chords, played on an FM
   electric piano over a boom-bap beat and a bass that follows the kick. A tune runs 32 bars
@@ -107,7 +117,9 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   its own shading) plus a shadow-pass material that respects cut-out silhouettes.
 - **`src/world/streetGen.ts`**: the town as a deterministic function of street seeds:
   side-streets, lots picked from the building art that fits, walls and trees for the gaps,
-  sidewalk props, obstacles, street names.
+  sidewalk props, obstacles, street names. Every street grows from the start street, whose
+  seed (`START_SEED`) comes from the week, so the town changes every Monday with the weekly
+  boards and everyone rides the same one all week.
 - **`src/ads/`**: advertising. Slots (rooftop billboards, over-street banners, wall posters,
   nobori flags, van sides) are filled from `public/art/ads.json`, and impressions are
   counted and dispatched as `wheelsoff:ad-impression` events. **See [ADS.md](ADS.md).**
@@ -170,7 +182,8 @@ npm run db:migrate               # once, and after each new migration: a local D
 npm run build && npm run api     # the API on 8788 (it also serves dist)
 ```
 
-In dev, `window.__sim` exposes the live sim state for poking at from the console.
+In dev, `window.__sim` exposes the live sim state for poking at from the console, and
+`/?week=2026-W43` opens another week's town (the boards stay this week's).
 Open `/?vrm=<file under public/art/>` to try a VRM character without editing the manifest.
 
 ## Deploy
@@ -179,8 +192,7 @@ The game runs on a Cloudflare Worker, `wheels-off` (`wrangler.toml`): the built 
 as static assets, and `worker/` for `/api/*` only. Workers Builds deploys it from GitHub on
 each push to `main`, with `npm run build` as the build command and `npx wrangler deploy` as
 the deploy command (both in the Worker's build settings in the dashboard). It is live at
-https://wheels-off.pinguim-informal.workers.dev. playwheelsoff.com goes in `wrangler.toml` as
-a route with `custom_domain = true` when it launches.
+https://playwheelsoff.com, a custom domain in `wrangler.toml`; workers.dev is off.
 
 The leaderboard database, set up once (done 2026-10-08):
 
@@ -205,6 +217,16 @@ npx wrangler d1 execute wheels-off --remote --command "UPDATE runs SET hidden = 
 
 `UPDATE runs SET hidden = 1 WHERE seeded = 1` retires the default table once real runs fill
 the boards.
+
+### Leaderboards: past weeks and months
+
+A week's runs stay in `runs` after its boards start over, so any week or month reads back.
+The top of a week, and the best run of each month:
+
+```bash
+npx wrangler d1 execute wheels-off --remote --command "SELECT name, score, streak FROM runs WHERE hidden = 0 AND week = '2026-W42' ORDER BY score DESC LIMIT 10"
+npx wrangler d1 execute wheels-off --remote --command "SELECT substr(created_at, 1, 7) AS month, name, max(score) AS score FROM runs WHERE hidden = 0 AND seeded = 0 GROUP BY month"
+```
 
 ### Later: accounts and billboard sales
 

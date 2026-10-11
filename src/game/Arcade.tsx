@@ -2,8 +2,23 @@ import { useEffect, useRef, useState } from 'react'
 import type { ButtonHTMLAttributes, CSSProperties, MouseEvent } from 'react'
 import { resume, signName, togglePause, toggleRecords, useArcade } from './arcadeStore'
 import type { PendingRun } from './arcadeStore'
-import { BOARD_JP, BOARD_SIZE, BOARD_TITLE, NAME_MAX, boards, cleanName, lastName, nameAllowed, typedName, useBoards, worldRecord } from './leaderboard'
-import type { Board } from './leaderboard'
+import {
+  BOARD_JP,
+  BOARD_SIZE,
+  BOARD_TITLE,
+  NAME_MAX,
+  PERIODS,
+  PERIOD_TITLE,
+  cleanName,
+  lastName,
+  nameAllowed,
+  tables,
+  typedName,
+  useBoards,
+  weekTop,
+  worldRecord,
+} from './leaderboard'
+import type { Board, Period } from './leaderboard'
 import { useHud } from './hudStore'
 import { roll, switchMode, useMode } from './mode'
 import { Crown, Note, Trophy, secs } from './icons'
@@ -14,14 +29,23 @@ import { useWebGL } from './webgl'
 // What is drawn over the ride. First the landing page, over the attract ride, until someone
 // takes over. Then the cards, all in the title card's look, with scores and names in arcade
 // type: the pause card (P) with the top of each leaderboard and the switch to free roam (F);
-// the hi-scores card (R) with both leaderboards in full; the name entry after a run that makes
-// a leaderboard; and the burst behind it for a world record.
+// the hi-scores card (R) with both leaderboards in full, this week's or of all time; the name
+// entry after a run that makes a leaderboard, with the run to share; and the burst behind it
+// for a world record.
 
 const ordinal = (i: number) => ['1ST', '2ND', '3RD'][i] ?? `${i + 1}TH`
 const shown = (board: Board, value: number) => (board === 'score' ? String(value) : secs(Math.floor(value * 10) / 10))
 
-function Leaderboard({ board }: { board: Board }) {
-  const list = boards[board]
+/** How long until the weekly boards start over, at Monday 00:00 UTC. */
+function untilMonday(): string {
+  const now = new Date()
+  const monday = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 7 - ((now.getUTCDay() + 6) % 7))
+  const hours = Math.ceil((monday - now.getTime()) / 3_600_000)
+  return hours > 48 ? `${Math.floor(hours / 24)} days` : hours > 1 ? `${hours} hours` : 'under an hour'
+}
+
+function Leaderboard({ period, board }: { period: Period; board: Board }) {
+  const list = tables[period][board]
   const pr = board === 'score' ? records.score : records.streak
   return (
     <section className="board">
@@ -70,9 +94,18 @@ const landingButton = (act: () => void): ButtonHTMLAttributes<HTMLButtonElement>
   },
 })
 
-/** A board's top three, for the marquee. */
+/** A board's top three of all time, for the marquee. */
 const topThree = (board: Board) =>
-  boards[board].slice(0, 3).map((e, i) => `${ordinal(i)} ${shown(board, e.value)} ${e.name.toUpperCase()}`)
+  tables.all[board].slice(0, 3).map((e, i) => `${ordinal(i)} ${shown(board, e.value)} ${e.name.toUpperCase()}`)
+
+/** This week's leader on each board, for the marquee, or the call to be the first. */
+function weekLeaders(): string[] {
+  const tops = (['score', 'speed'] as const).flatMap((board) => {
+    const top = weekTop(board)
+    return top ? [`${BOARD_TITLE[board].toUpperCase()} ${shown(board, top.value)} ${top.name.toUpperCase()}`] : []
+  })
+  return tops.length ? tops : ['NO RUNS YET', 'BE THE FIRST']
+}
 
 /**
  * The landing page, over the attract ride: the title, the two ways to ride, the keys, and the
@@ -92,6 +125,7 @@ function Landing() {
   }, [started])
   if (gone) return null
   const marquee = [
+    ['THIS WEEK', ...weekLeaders()],
     [BOARD_TITLE.score.toUpperCase(), ...topThree('score')],
     [BOARD_TITLE.speed.toUpperCase(), ...topThree('speed')],
     ...(records.score > 0 || records.streak > 0
@@ -207,10 +241,12 @@ function PauseCard() {
         <div className="title-card__tops">
           {(['score', 'speed'] as const).map((board) => {
             const top = worldRecord(board)
+            const week = weekTop(board)
             return (
               <div key={board} className="title-card__top">
                 <span className="title-card__board">{BOARD_TITLE[board]}</span>
                 <span className="title-card__hi">HI-SCORE {top ? `${shown(board, top.value)} ${top.name.toUpperCase()}` : '---'}</span>
+                <span className="title-card__hi">THIS WEEK {week ? `${shown(board, week.value)} ${week.name.toUpperCase()}` : '---'}</span>
               </div>
             )
           })}
@@ -243,18 +279,53 @@ function PauseCard() {
   )
 }
 
-/** The hi-scores card (R): both leaderboards in full, with your own PR under each. */
+const SWITCH_KEYS = ['arrowleft', 'arrowright', 'a', 'd']
+
+/**
+ * The hi-scores card (R): both leaderboards in full, with your own PR under each. This week's
+ * first, which start empty every Monday; the arrows (or a click) switch to all time and back.
+ */
 function HiScoresCard() {
+  const [period, setPeriod] = useState<Period>('week')
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!SWITCH_KEYS.includes(e.key.toLowerCase()) || e.metaKey || e.ctrlKey || e.altKey) return
+      e.preventDefault()
+      setPeriod((p) => (p === 'week' ? 'all' : 'week'))
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   return (
     <div className="overlay" role="dialog" aria-label="Hi-scores">
       <div className="title-card">
         <h1>HI-SCORES</h1>
         <p className="title-card__jp">ハイスコア</p>
-        <div className="title-card__boards">
-          <Leaderboard board="score" />
-          <Leaderboard board="speed" />
+        <div className="periods" role="tablist">
+          {PERIODS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              role="tab"
+              aria-selected={p === period}
+              className={p === period ? 'periods__tab periods__tab--on' : 'periods__tab'}
+              onClick={(e) => {
+                if (e.detail) e.currentTarget.blur()
+                setPeriod(p)
+              }}
+            >
+              {PERIOD_TITLE[p]}
+            </button>
+          ))}
         </div>
-        <p className="title-card__go">press R to go back</p>
+        <div className="title-card__boards">
+          <Leaderboard period={period} board="score" />
+          <Leaderboard period={period} board="speed" />
+        </div>
+        <p className="periods__when">
+          {period === 'week' ? `new boards every monday · ${untilMonday()} to go` : 'every run since the start'}
+        </p>
+        <p className="title-card__go">← → switch · press R to go back</p>
       </div>
     </div>
   )
@@ -281,12 +352,63 @@ function WorldRecordBurst() {
   )
 }
 
-function Result({ label, value, rank, pr }: { label: string; value: string; rank: number; pr: boolean }) {
+/** A run's line on one board: its value, then where it places this week and of all time. */
+function Result({ run, board, pr }: { run: PendingRun; board: Board; pr: boolean }) {
+  const week = run.ranks.week[board]
+  const all = run.ranks.all[board]
+  const places = [
+    week !== null && `${ordinal(week)} THIS WEEK`,
+    all !== null && (all === 0 ? 'WORLD RECORD' : `${ordinal(all)} ALL TIME`),
+  ].filter(Boolean)
   return (
     <li>
-      {label} <b>{value}</b> <span className="entry__rank">{rank === 0 ? 'WR' : ordinal(rank)}</span>
+      {BOARD_TITLE[board].toUpperCase()} <b>{shown(board, board === 'score' ? run.score : run.streak)}</b>
       {pr && <span className="entry__pr">NEW PR</span>}
+      <span className="entry__rank">{places.join(' · ')}</span>
     </li>
+  )
+}
+
+const GAME_URL = 'https://playwheelsoff.com'
+
+const nth = (i: number) => `${i + 1}${['st', 'nd', 'rd'][i] ?? 'th'}`
+
+/** What a player shares about a run: its best place (a world record, or where it stands this week), and a dare. */
+function shareLine(run: PendingRun): string {
+  const board: Board = run.ranks.week.score !== null || run.ranks.all.score !== null ? 'score' : 'speed'
+  const what = board === 'score' ? `${run.score} point${run.score === 1 ? '' : 's'}` : `${shown('speed', run.streak)} at full speed`
+  const week = run.ranks.week[board]
+  const all = run.ranks.all[board]
+  if (all === 0) return `New world record on Wheels Off: ${what}. Can you beat it?`
+  const place = week !== null ? `${nth(week)} this week` : `${nth(all ?? 0)} of all time`
+  return `${what} on Wheels Off, ${place}. Can you beat it?`
+}
+
+/**
+ * The run to share, under the name: a post on X with the line and the game's link filled in, or
+ * the same copied, for anywhere else (WhatsApp, Discord). Mouse only: the keys type the name.
+ */
+function Share({ run }: { run: PendingRun }) {
+  const [copy, setCopy] = useState<'ready' | 'done' | 'failed'>('ready')
+  const line = shareLine(run)
+  const post = `https://x.com/intent/tweet?text=${encodeURIComponent(line)}&url=${encodeURIComponent(GAME_URL)}`
+  const copyLine = () => {
+    const done = navigator.clipboard?.writeText(`${line} ${GAME_URL}`) ?? Promise.reject(new Error('no clipboard'))
+    done.then(
+      () => setCopy('done'),
+      () => setCopy('failed'),
+    )
+  }
+  return (
+    <div className="entry__share">
+      <span className="entry__share-what">share it</span>
+      <a className="chip" href={post} target="_blank" rel="noopener noreferrer">
+        post on X
+      </a>
+      <button className="chip" type="button" onClick={copyLine}>
+        {copy === 'done' ? 'copied!' : copy === 'failed' ? 'can’t copy' : 'copy'}
+      </button>
+    </div>
   )
 }
 
@@ -302,7 +424,8 @@ function NameEntry({ run }: { run: PendingRun }) {
   const keepFocus = (e: MouseEvent) => {
     if (e.target !== field.current) e.preventDefault()
   }
-  const wr = run.scoreRank === 0 || run.speedRank === 0
+  const wr = run.ranks.all.score === 0 || run.ranks.all.speed === 0
+  const weekFirst = run.ranks.week.score === 0 || run.ranks.week.speed === 0
   return (
     <div className={wr ? 'overlay overlay--wr' : 'overlay'} role="dialog" aria-label="Enter your name" onMouseDown={keepFocus}>
       {wr && <WorldRecordBurst />}
@@ -316,14 +439,12 @@ function NameEntry({ run }: { run: PendingRun }) {
         }}
       >
         {wr && <Crown className="entry__crown" />}
-        <h1 className={wr ? 'entry__title--wr' : undefined}>{wr ? 'NEW WORLD RECORD!' : 'HIGH SCORE!'}</h1>
+        <h1 className={wr ? 'entry__title--wr' : undefined}>
+          {wr ? 'NEW WORLD RECORD!' : weekFirst ? 'TOP OF THE WEEK!' : 'HIGH SCORE!'}
+        </h1>
         <ul className="entry__results">
-          {run.scoreRank !== null && (
-            <Result label={BOARD_TITLE.score.toUpperCase()} value={String(run.score)} rank={run.scoreRank} pr={run.prScore} />
-          )}
-          {run.speedRank !== null && (
-            <Result label={BOARD_TITLE.speed.toUpperCase()} value={shown('speed', run.streak)} rank={run.speedRank} pr={run.prStreak} />
-          )}
+          {(run.ranks.week.score !== null || run.ranks.all.score !== null) && <Result run={run} board="score" pr={run.prScore} />}
+          {(run.ranks.week.speed !== null || run.ranks.all.speed !== null) && <Result run={run} board="speed" pr={run.prStreak} />}
         </ul>
         <label className="entry__label">
           enter your name
@@ -345,6 +466,7 @@ function NameEntry({ run }: { run: PendingRun }) {
             }}
           />
         </label>
+        <Share run={run} />
         <p className="title-card__go">{refused ? 'that name can’t go on the board · try another' : 'press esc to continue'}</p>
       </form>
     </div>

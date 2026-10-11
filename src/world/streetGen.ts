@@ -1,4 +1,5 @@
 import { hash2 } from './hash'
+import { weekOf } from '../../shared/leaderboard'
 import { BLOCK, OBST_MAX, OBST_MIN, SIDEWALK } from './worldConfig'
 import { art, propArt } from '../art/art'
 import { BILLBOARD_BRACE, BILLBOARD_FRAME_W, BILLBOARD_YAW } from '../ads/ads'
@@ -28,6 +29,19 @@ function pick<T>(arr: readonly T[], r: number): T {
 export function widthForSeed(seed: number): number {
   return 5 + Math.floor(h(seed, 0, 7) * 4) // 5 (alley) .. 8 (main street)
 }
+
+/** A week's town: the seed of its start street, from the week's name (FNV-1a). */
+export function townSeed(week: string): number {
+  let n = 0x811c9dc5
+  for (const c of week) n = Math.imul(n ^ c.charCodeAt(0), 0x01000193) >>> 0
+  return (n % 1_000_000) + 2
+}
+
+// The town changes every Monday with the weekly boards (shared/leaderboard.ts): every street grows
+// from the start street, whose seed comes from the week, so everyone rides the same town all
+// week. In dev, ?week=2026-W43 opens another week's town.
+const devWeek = import.meta.env.DEV ? new URLSearchParams(location.search).get('week') : null
+export const START_SEED = townSeed(devWeek ?? weekOf(new Date()))
 
 /** Side-street presence at intersection k. None at the very start of a street. */
 export function hasBranch(seed: number, k: number, side: number): boolean {
@@ -86,7 +100,7 @@ export function blockObstacles(seed: number, k: number, width: number): Obstacle
   if (hit) return hit
   const out: Obstacle[] = []
   // calm start: nothing in the first blocks of the very first street
-  if (!(seed === 1 && k < 1)) {
+  if (!(seed === START_SEED && k < 1)) {
     const n = Math.floor(h(seed, k, 401) * 3.2) // 0..3
     const span = OBST_MAX - OBST_MIN
     for (let i = 0; i < n; i++) {

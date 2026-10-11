@@ -19,7 +19,7 @@ import { useHud } from './hudStore'
 import { beatRecords, beating, endRun, records } from './records'
 import { rankFor, refreshBoards, worldRecord } from './leaderboard'
 import { askForName, isPaused } from './arcadeStore'
-import type { PendingRun } from './arcadeStore'
+import type { PendingRun, Ranks } from './arcadeStore'
 import { freeRoam } from './mode'
 import { autopilot } from './autopilot'
 import { tickAds } from '../ads/ads'
@@ -129,10 +129,13 @@ function SimDriver() {
       // banner, once the wipeout has played (leaving for free roam has none to play)
       const end = endRun()
       refreshBoards() // so the next run is up against the boards as they stand now
-      const scoreRank = rankFor('score', end.score)
-      const speedRank = rankFor('speed', end.streak)
+      const ranks: Ranks = {
+        week: { score: rankFor('week', 'score', end.score), speed: rankFor('week', 'speed', end.streak) },
+        all: { score: rankFor('all', 'score', end.score), speed: rankFor('all', 'speed', end.streak) },
+      }
       const at = sim.time + (wipeout ? WIPEOUT_HOLD : 0)
-      if (scoreRank !== null || speedRank !== null) last.announce = { at, entry: { id: at, ...end, scoreRank, speedRank }, record: null }
+      const places = Object.values(ranks).some((r) => r.score !== null || r.speed !== null)
+      if (places) last.announce = { at, entry: { id: at, ...end, ranks }, record: null }
       else if (end.prScore || end.prStreak) {
         const record = { score: end.prScore ? records.score : null, streak: end.prStreak ? tenths(records.streak) : null }
         last.announce = { at, entry: null, record }
