@@ -52,11 +52,9 @@ export async function loadTextures(paths: string[], loader = new THREE.TextureLo
   )
 }
 
-/** Fetch the manifest and preload every image, so nothing pops in while riding. */
-export async function loadArt(base = '/art/'): Promise<ArtManifest> {
+/** Fetch the manifest alone: cheap, and everything else (textures, the character) lists itself in it. */
+export async function loadManifest(base = '/art/'): Promise<ArtManifest> {
   const m = (await (await fetch(`${base}manifest.json`)).json()) as ArtManifest
-  const loader = new THREE.TextureLoader().setPath(base)
-  await loadTextures([...m.buildings.map((b) => b.front), ...m.props.map((p) => p.image)], loader)
   art = m
   props.clear()
   for (const p of m.props) props.set(p.id, p)

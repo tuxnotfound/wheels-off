@@ -809,13 +809,13 @@ const ready = new Map<string, Rig | null>() // settled loads, readable synchrono
  * Load (once) and rig a VRM. Called at boot, so the 10 MB parse never lands mid-ride;
  * cached, so remounts (and StrictMode's double effects) reuse the same rigged model.
  */
-export function loadRig(url: string): Promise<Rig | null> {
+export function loadRig(url: string, onProgress?: (e: ProgressEvent) => void): Promise<Rig | null> {
   let p = rigs.get(url)
   if (!p) {
     const loader = new GLTFLoader()
     loader.register((parser) => new VRMLoaderPlugin(parser))
     p = loader
-      .loadAsync(url)
+      .loadAsync(url, onProgress)
       .then((gltf) => {
         const vrm = gltf.userData.vrm as VRM | undefined
         if (!vrm) throw new Error('not a VRM file')
