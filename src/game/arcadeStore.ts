@@ -66,16 +66,23 @@ export function askForName(run: PendingRun) {
 }
 
 /**
- * Signs the pending run onto the boards. null (Esc), a blank name or one the boards turn away
- * signs as DEFAULT_NAME (the name entry asks for another before it gets here).
+ * Signs the pending run onto the boards. A blank name, or one the boards turn away, signs as
+ * DEFAULT_NAME (the name entry asks for another before it gets here).
  */
-export function signName(typed: string | null) {
+export function signName(typed: string) {
   const run = useArcade.getState().pending
   if (!run) return
-  const clean = typed === null ? '' : cleanName(typed)
+  const clean = cleanName(typed)
   const name = nameAllowed(clean) ? clean : ''
   if (name) rememberName(name)
   signRun(name || DEFAULT_NAME, run.score, run.streak)
+  useArcade.setState({ pending: null })
+  hold(false)
+}
+
+/** Esc on the name entry: the run goes on no board. */
+export function skipRun() {
+  if (!useArcade.getState().pending) return
   useArcade.setState({ pending: null })
   hold(false)
 }

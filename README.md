@@ -32,7 +32,7 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   and this week (P or Esc to play on). The P and M chips in the corner show both keys during the ride. **R** high scores: both leaderboards in full, from anywhere,
   this week's first (← → or A D switch to all time; R to go back, Esc to ride). A run that
   makes a leaderboard asks for a name 1.5 s after the wipeout, once WIPEOUT has played: Enter
-  signs it, Esc signs it as John Doe. The same card offers the run to share: a post on X with
+  signs it (as John Doe when blank), Esc skips it and the run goes on no board. The same card offers the run to share: a post on X with
   the line and the link filled in, or the same copied for anywhere else.
 - **M** music on or off (remembered in this browser). Before the first key press or click the
   browser keeps it silent, so M then starts it rather than turning it off.
@@ -103,7 +103,7 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   keyboard from it (`input.blocked`). A run that makes a table gets the name entry instead
   of the PR banner, with where it places this week and of all time and the run to share
   (`shareLine`: its best place and a dare, posted on X through the intent link or copied); a
-  world record gets a burst (rays, flash, stars) behind it.
+  world record or the week's first place gets a burst (rays, flash, stars) behind it.
 - **`src/audio/`**: the music, with no audio files. `lofi.ts` composes lo-fi hip hop live in
   Web Audio: each tune picks a key, a tempo and a loop of four jazz chords, played on an FM
   electric piano over a boom-bap beat and a bass that follows the kick. A tune runs 32 bars

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ButtonHTMLAttributes, CSSProperties, MouseEvent } from 'react'
-import { resume, signName, togglePause, toggleRecords, useArcade } from './arcadeStore'
+import { resume, signName, skipRun, togglePause, toggleRecords, useArcade } from './arcadeStore'
 import type { PendingRun } from './arcadeStore'
 import {
   BOARD_JP,
@@ -31,7 +31,7 @@ import { useWebGL } from './webgl'
 // type: the pause card (P) with the top of each leaderboard and the switch to free roam (F);
 // the hi-scores card (R) with both leaderboards in full, this week's or of all time; the name
 // entry after a run that makes a leaderboard, with the run to share; and the burst behind it
-// for a world record.
+// for a world record or the week's first place.
 
 const ordinal = (i: number) => ['1ST', '2ND', '3RD'][i] ?? `${i + 1}TH`
 const shown = (board: Board, value: number) => (board === 'score' ? String(value) : secs(Math.floor(value * 10) / 10))
@@ -426,9 +426,10 @@ function NameEntry({ run }: { run: PendingRun }) {
   }
   const wr = run.ranks.all.score === 0 || run.ranks.all.speed === 0
   const weekFirst = run.ranks.week.score === 0 || run.ranks.week.speed === 0
+  const party = wr || weekFirst // a world record and the week's first place get the same burst
   return (
-    <div className={wr ? 'overlay overlay--wr' : 'overlay'} role="dialog" aria-label="Enter your name" onMouseDown={keepFocus}>
-      {wr && <WorldRecordBurst />}
+    <div className={party ? 'overlay overlay--wr' : 'overlay'} role="dialog" aria-label="Enter your name" onMouseDown={keepFocus}>
+      {party && <WorldRecordBurst />}
       <form
         className="title-card entry"
         onSubmit={(e) => {
@@ -438,8 +439,8 @@ function NameEntry({ run }: { run: PendingRun }) {
           else signName(name)
         }}
       >
-        {wr && <Crown className="entry__crown" />}
-        <h1 className={wr ? 'entry__title--wr' : undefined}>
+        {party && <Crown className="entry__crown" />}
+        <h1 className={party ? 'entry__title--wr' : undefined}>
           {wr ? 'NEW WORLD RECORD!' : weekFirst ? 'TOP OF THE WEEK!' : 'HIGH SCORE!'}
         </h1>
         <ul className="entry__results">
@@ -462,12 +463,12 @@ function NameEntry({ run }: { run: PendingRun }) {
             onKeyDown={(e) => {
               if (e.key !== 'Escape') return
               e.preventDefault()
-              signName(null)
+              skipRun()
             }}
           />
         </label>
         <Share run={run} />
-        <p className="title-card__go">{refused ? 'that name can’t go on the board · try another' : 'press esc to continue'}</p>
+        <p className="title-card__go">{refused ? 'that name can’t go on the board · try another' : 'press esc to skip'}</p>
       </form>
     </div>
   )
