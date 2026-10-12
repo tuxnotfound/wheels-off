@@ -184,6 +184,11 @@ npm run build && npm run api     # the API on 8788 (it also serves dist)
 
 In dev, `window.__sim` exposes the live sim state for poking at from the console, and
 `/?week=2026-W43` opens another week's town (the boards stay this week's).
+
+`public/preview.jpg` is the link preview the page's head points X, WhatsApp and Discord to
+(Open Graph tags, a large image card). It is a 1200×630 headless screenshot of the landing page
+on `/?week=2026-W50` (the cherry tree town), with `.landing__go`, `.landing__chips`,
+`.landing__start` and `.marquee` hidden so only the title stays over the ride.
 Open `/?vrm=<file under public/art/>` to try a VRM character without editing the manifest.
 
 ## Deploy
