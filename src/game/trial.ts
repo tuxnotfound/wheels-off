@@ -11,15 +11,16 @@ import { readJson, writeJson } from './storage'
 // The time trial (mode.ts): the week's course through the week's town (course.ts), against the
 // clock. Each attempt starts on the start line after a countdown; a wipeout only costs speed,
 // and a missed turn puts the kid back before it (the clock runs on). The run is recorded as a
-// ghost; your best of the week is kept in this browser and rides along as a ghost, and so does
-// the week's fastest from the API (worker/trial.ts), which keeps the board: the week's 10
-// fastest times.
+// ghost. One ghost rides along: the fastest run you know of this week, the board's leader from
+// the API (worker/trial.ts, the week's 10 fastest times) or your own best, kept in this browser
+// when it is faster (a best you didn't sign). G turns it off and on, remembered here.
 
 const COUNTDOWN = 3 // seconds before GO
 const RESULT_AFTER = 1 // seconds of rolling on past the finish before the result card
 const MISS_HOLD = 0.9 // seconds of the crash into the wall before the respawn
 const API = '/api/trial'
 const PB_KEY = 'wheelsoff:trial-course' // this week's best: { week, time, ghost } (the straight course's runs lived under wheelsoff:trial)
+const GHOST_OFF_KEY = 'wheelsoff:ghost-off'
 const REFRESH_EVERY = 60_000 // ms between fetches of the board, at most
 
 export type Phase = 'countdown' | 'riding' | 'done'
@@ -107,9 +108,20 @@ export function trialClock(): number {
   return live.phase === 'countdown' ? 0 : sim.time - live.goAt
 }
 
-/** The ghosts to race: your best this week, and the week's fastest. */
-export function ghosts(): { pb: Ghost | null; leader: Ghost | null } {
-  return { pb: pb?.ghost ?? null, leader: leaderGhost }
+/** The ghost to race: the fastest run you know of this week, the board's leader or your own best. */
+export function ghost(): Ghost | null {
+  const leaderTime = useTrial.getState().leader?.value ?? Infinity
+  if (leaderGhost && leaderTime <= (pb?.time ?? Infinity)) return leaderGhost
+  return pb?.ghost ?? leaderGhost
+}
+
+/** Whether the ghost is turned off (G), remembered in this browser. */
+export const useGhost = create(() => ({ off: readJson(GHOST_OFF_KEY) === true }))
+
+export function toggleGhost() {
+  const off = !useGhost.getState().off
+  useGhost.setState({ off })
+  writeJson(GHOST_OFF_KEY, off)
 }
 
 /** Where a time would place on the week's board (0 is first), or null if it misses the top 10. */

@@ -50,8 +50,9 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   GO; a wipeout only costs speed. T mid-ride goes back to the start line, as does the restart
   chip in the corner (it can be clicked, and never takes the keyboard's focus). At the
   finish, a time that makes the week's top 10 asks for a name (Enter signs, Esc skips), with
-  the run to share. Your best of the week rides along as a teal ghost, the week's fastest as a
-  gold one. On the pause card, A, F and T switch between the three modes.
+  the run to share. A gold ghost rides along: the fastest run you know of this week, the
+  board's leader or your own best if it's faster (a best you didn't sign). G turns it off and
+  on (remembered in this browser; the ghost chip in the corner too). On the pause card, A, F and T switch between the three modes.
 
 ## How it's built
 
@@ -125,7 +126,7 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   crossed. Times are sim time,
   so frame rate doesn't change them: the same push-held run on the first, straight course came
   out at 27.81 to 27.83 s at 45, 98 and 121 fps. Your best of the week and its ghost stay in `localStorage`; the week's
-  board and the fastest run's ghost come from `/api/trial`. A ghost is the kid's own
+  board and the fastest run's ghost come from `/api/trial`; the faster of the two rides along. A ghost is the kid's own
   silhouette (`src/world/silhouette.ts`): the character and board as they stand on the start
   line, frozen once per session into one static mesh, drawn see-through in one flat layer
   (a depth-only pass first), bent with the world's curve. It hides through the countdown, then

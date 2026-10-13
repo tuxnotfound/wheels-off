@@ -8,22 +8,22 @@ import { legs } from '../game/course'
 import { useMode } from '../game/mode'
 import { START, sim } from '../game/sim'
 import type { Street } from '../game/sim'
-import { ghosts, trialClock, useTrial } from '../game/trial'
+import { ghost, trialClock, useGhost, useTrial } from '../game/trial'
 import { patchCurve } from '../look/materials'
 import { skater } from '../player/Skater'
 import { bakeSilhouette } from './silhouette'
 import { DIR } from './worldConfig'
 
 // The time trial in the world (src/game/trial.ts): the start line across the start street, the
-// checkered finish across the course's last street (course.ts), and the ghosts riding the course
-// with you, wherever it turns: your best this week in teal, the
-// week's fastest in gold. A ghost is the kid's own silhouette (silhouette.ts): the character on
+// checkered finish across the course's last street (course.ts), and the ghost riding the course
+// with you, wherever it turns, in gold: the fastest run you know of this week (trial.ts), unless
+// G has turned it off. A ghost is the kid's own silhouette (silhouette.ts): the character on
 // the board as it stands on the start line, taken once, two seconds into the first countdown,
 // and drawn see-through in one flat layer: a depth-only pass first, so only the nearest surface
 // takes the color. A ghost hides through the countdown (it would stand right on the kid), then
 // never hides: whole while it is ahead, faint once level with the kid or behind, where it would
-// sit between the camera and the kid and tint them. Both bend down with the world's curve
-// (patchCurve), or far off they would float over the road.
+// sit between the camera and the kid and tint them. It bends down with the world's curve
+// (patchCurve), or far off it would float over the road.
 
 const OPACITY = 0.55 // a ghost ahead
 const FAINT = 0.15 // level with the kid, or behind (the depth pass keeps it to one layer, even on the kid)
@@ -115,13 +115,6 @@ function GhostRider({ ghost, color, shape }: { ghost: () => Ghost | null; color:
   )
 }
 
-const pbGhost = () => ghosts().pb
-// the week's fastest, unless it is your own best (the same run twice would ride as one)
-const leaderGhost = () => {
-  const { pb, leader } = ghosts()
-  return leader && pb && leader.x.length === pb.x.length && leader.x.every((v, i) => v === pb.x[i]) ? null : leader
-}
-
 /** Takes the kid's silhouette once they have stood still on the start line for a while. */
 function useSilhouette(): THREE.BufferGeometry | null {
   const [got, setGot] = useState(shape)
@@ -137,12 +130,12 @@ function useSilhouette(): THREE.BufferGeometry | null {
 
 function Course() {
   const silhouette = useSilhouette()
+  const off = useGhost((s) => s.off)
   return (
     <>
       <Line street={START} u={TRIAL_START} finish={false} />
       <Line street={lastLeg.street} u={lastLeg.toU} finish />
-      {silhouette && <GhostRider ghost={pbGhost} color="#2fa596" shape={silhouette} />}
-      {silhouette && <GhostRider ghost={leaderGhost} color="#f0b429" shape={silhouette} />}
+      {silhouette && !off && <GhostRider ghost={ghost} color="#f0b429" shape={silhouette} />}
     </>
   )
 }

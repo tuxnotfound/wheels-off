@@ -3,7 +3,7 @@ import { useHud } from './hudStore'
 import { Crown, Flame, Note, Pause, Restart, Trophy, lap, secs } from './icons'
 import { BOARD_TITLE } from './leaderboard'
 import { useMode } from './mode'
-import { startAttempt, useTrial } from './trial'
+import { startAttempt, toggleGhost, useGhost, useTrial } from './trial'
 
 /**
  * The record under a live value. While the run is beating it, it follows the value in red.
@@ -93,6 +93,7 @@ function TurnSign({ left }: { left: boolean }) {
 export function Hud() {
   const { started, score, combo, speed, streak, best, wr, turns, toast, street, record } = useHud()
   const musicOff = useMusic((s) => s.off)
+  const ghostOff = useGhost((s) => s.off)
   // free roam scores nothing: the speed alone, under the mode's name; the time trial has its clock
   const mode = useMode((s) => s.mode)
   const free = mode === 'free'
@@ -164,6 +165,18 @@ export function Hud() {
       )}
       {started && (
         <div className="hud-keys">
+          {mode === 'trial' && (
+            <button
+              type="button"
+              className={ghostOff ? 'hud-key hud-key--button hud-key--dim' : 'hud-key hud-key--button'}
+              aria-label={ghostOff ? 'G turns the ghost on' : 'G turns the ghost off'}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={toggleGhost}
+            >
+              <span className="hud-key__what">{ghostOff ? 'ghost off' : 'ghost'}</span>
+              <kbd>G</kbd>
+            </button>
+          )}
           {mode === 'trial' && (
             // clickable too; it never takes the focus, so Space stays an ollie
             <button

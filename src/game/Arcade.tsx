@@ -22,7 +22,7 @@ import type { Board, Period } from './leaderboard'
 import { useHud } from './hudStore'
 import { roll, setMode, switchMode, useMode } from './mode'
 import type { Mode } from './mode'
-import { enterTrial, startAttempt, useTrial } from './trial'
+import { enterTrial, startAttempt, toggleGhost, useTrial } from './trial'
 import type { TrialRun } from './trial'
 import { Crown, Note, Trophy, lap, secs } from './icons'
 import { records } from './records'
@@ -310,6 +310,9 @@ function PauseCard() {
             <p className="title-card__mode">
               <span>
                 <kbd>T</kbd> restart the run
+              </span>
+              <span>
+                <kbd>G</kbd> ghost on/off
               </span>
             </p>
           )}
@@ -657,6 +660,7 @@ export function Arcade() {
       // P does nothing on the landing page; R opens the records from anywhere
       if (k === 'p' && useHud.getState().started) togglePause()
       else if (k === 'r') toggleRecords()
+      else if (k === 'g') toggleGhost() // the time trial's ghost, off and on, from anywhere
       else if (k === 'escape') resume()
       else if (k === 'f') {
         // only on the landing page, which rolls off in free roam, or the pause screen, which

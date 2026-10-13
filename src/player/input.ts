@@ -15,9 +15,9 @@ const LEFT = ['a', 'arrowleft']
 const RIGHT = ['d', 'arrowright']
 const UP = ['w', 'arrowup']
 const DOWN = ['s', 'arrowdown']
-// pause, records and music never start the ride, nor do keys that leave the page or move
+// pause, records, music and the ghost never start the ride, nor do keys that leave the page or move
 // around it (Cmd+Tab, Tab to the landing page's buttons)
-const NEVER_START = ['p', 'r', 'm', 'tab', 'escape', 'shift', 'meta', 'control', 'alt', 'capslock']
+const NEVER_START = ['p', 'r', 'm', 'g', 'tab', 'escape', 'shift', 'meta', 'control', 'alt', 'capslock']
 
 function recompute() {
   const has = (ks: string[]) => ks.some((k) => held.has(k))

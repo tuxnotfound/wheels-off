@@ -782,6 +782,11 @@ kbd {
   margin-left: 2px;
 }
 
+/* a setting chip turned off (the time trial's ghost) */
+.hud-key--dim .hud-key__what {
+  opacity: 0.5;
+}
+
 .hud-note {
   width: 20px;
   height: 20px;
