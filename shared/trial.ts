@@ -29,7 +29,11 @@ const isInts = (a: unknown, n: number): a is number[] => Array.isArray(a) && a.l
  * Why a time and its ghost cannot be true, or null when they can. The ghost has to start on the
  * start line, reach the finish when the time says, never ride faster than the top speed, never
  * gain speed faster than a push can give it, and get going no faster than the kid can from a
- * standstill. So no ghost beats a flawless run (about 20.5 s on 2026-10-13's numbers).
+ * standstill. That floors a made-up ghost at about 20.6 s: the measured start, then top speed
+ * all the way. A real run can't hold top speed through the jumps: a bot that clears every
+ * obstacle with perfect timing rode 22.6 s (2026-10-13). The obstacles live in the game, not
+ * here, so those 2 s are open to a forged ghost; closing them means checking the ghost's jumps
+ * against the course.
  */
 export function checkTrial(time: unknown, ghost: unknown): string | null {
   if (typeof time !== 'number' || !(time >= TRIAL_LENGTH / TOP_SPEED && time <= TRIAL_MAX_TIME)) return 'time'

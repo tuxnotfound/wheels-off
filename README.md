@@ -99,7 +99,9 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   fastest times and the fastest run's ghost; POST signs a time with its ghost, which has to
   back it up (`checkTrial` in `shared/trial.ts`): start on the line, reach the finish when the
   time says, never pass the top speed, gain no more speed per sample than a push can, and get
-  going no faster than the measured start. So no ghost beats a flawless run.
+  going no faster than the measured start. That floors a forged ghost at about 20.6 s, while a
+  bot that jumps every obstacle perfectly rides 22.6 s: the check doesn't know the obstacles,
+  so those 2 s stay open to a forgery.
 - **`src/game/trial.ts`, `src/world/TrialView.tsx`, `shared/trial.ts`**: the time trial. The
   kid waits on the start line (`resetToStart` in the sim) through a 3 s countdown; from GO the
   run is recorded as a ghost, the kid's place every 0.1 s of sim time (interpolated between
