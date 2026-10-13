@@ -17,13 +17,14 @@ import { DIR } from './worldConfig'
 // week's fastest in gold. A ghost is the kid's own silhouette (silhouette.ts): the character on
 // the board as it stands on the start line, taken once, two seconds into the first countdown,
 // and drawn see-through in one flat layer: a depth-only pass first, so only the nearest surface
-// takes the color. A ghost fades out within a few meters of the kid, so on the start line and
-// side by side it never tints them. Both bend down with the world's curve (patchCurve), or far
-// off they would float over the road.
+// takes the color. A ghost hides through the countdown (it would stand right on the kid), then
+// never hides: whole while it is ahead, faint once level with the kid or behind, where it would
+// sit between the camera and the kid and tint them. Both bend down with the world's curve
+// (patchCurve), or far off they would float over the road.
 
-const OPACITY = 0.55
-const FADE_NEAR = 1.2 // meters from the kid where a ghost is gone
-const FADE_FAR = 3.5 // and where it is whole
+const OPACITY = 0.55 // a ghost ahead
+const FAINT = 0.15 // level with the kid, or behind (the depth pass keeps it to one layer, even on the kid)
+const AHEAD = [0.5, 2] // meters ahead of the kid over which a ghost goes from faint to whole
 
 const f = DIR[START.dir]
 const r = DIR[(START.dir + 1) % 4]
@@ -90,11 +91,11 @@ function GhostRider({ ghost, color, shape }: { ghost: () => Ghost | null; color:
   useEffect(() => () => mat.dispose(), [mat])
   useFrame(() => {
     const g = ghost()
-    const p = g && ghostAt(g, trialClock())
-    const fade = p ? THREE.MathUtils.smoothstep(Math.hypot(p.u - sim.u, p.lat - sim.lat), FADE_NEAR, FADE_FAR) : 0
-    ref.current.visible = fade > 0.01
-    if (!p || fade <= 0.01) return
-    mat.opacity = OPACITY * fade
+    const running = useTrial.getState().phase !== 'countdown'
+    ref.current.visible = g !== null && running
+    if (!g || !running) return
+    const p = ghostAt(g, trialClock())
+    mat.opacity = FAINT + (OPACITY - FAINT) * THREE.MathUtils.smoothstep(p.u - sim.u, AHEAD[0], AHEAD[1])
     ref.current.position.set(START.ox + f[0] * p.u + r[0] * p.lat, p.y, START.oz + f[1] * p.u + r[1] * p.lat)
   })
   return (

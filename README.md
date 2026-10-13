@@ -111,8 +111,8 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   board and the fastest run's ghost come from `/api/trial`. A ghost is the kid's own
   silhouette (`src/world/silhouette.ts`): the character and board as they stand on the start
   line, frozen once per session into one static mesh, drawn see-through in one flat layer
-  (a depth-only pass first), bent with the world's curve, and faded out within a few meters
-  of the kid. The acceleration starts at GO: the countdown holds the sim, so W held early
+  (a depth-only pass first), bent with the world's curve. It hides through the countdown, then
+  never hides: whole while ahead, faint once level with the kid or behind. The acceleration starts at GO: the countdown holds the sim, so W held early
   only saves the reaction time.
 - **`src/game/mode.ts`**: the mode: arcade, free roam or the time trial. In free roam the sim skips obstacles,
   scores nothing and counts no full speed time, and the HUD shows the speed alone. The attract
