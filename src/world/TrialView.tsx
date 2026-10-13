@@ -1,19 +1,29 @@
 import { useFrame } from '@react-three/fiber'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { TRIAL_FINISH, TRIAL_START, ghostAt } from '../../shared/trial'
 import type { Ghost } from '../../shared/trial'
 import { input } from '../player/input'
 import { useMode } from '../game/mode'
-import { START } from '../game/sim'
-import { ghosts, trialClock } from '../game/trial'
+import { START, sim } from '../game/sim'
+import { ghosts, trialClock, useTrial } from '../game/trial'
 import { patchCurve } from '../look/materials'
+import { skater } from '../player/Skater'
+import { bakeSilhouette } from './silhouette'
 import { DIR } from './worldConfig'
 
 // The time trial in the world (src/game/trial.ts): the start line and the checkered finish across
 // the start street, and the ghosts riding the course with you: your best this week in teal, the
-// week's fastest in gold. A ghost is a see-through kid on a board, unlit and cheap to draw. Both
-// bend down with the world's curve (patchCurve), or far off they would float over the road.
+// week's fastest in gold. A ghost is the kid's own silhouette (silhouette.ts): the character on
+// the board as it stands on the start line, taken once, two seconds into the first countdown,
+// and drawn see-through in one flat layer: a depth-only pass first, so only the nearest surface
+// takes the color. A ghost fades out within a few meters of the kid, so on the start line and
+// side by side it never tints them. Both bend down with the world's curve (patchCurve), or far
+// off they would float over the road.
+
+const OPACITY = 0.55
+const FADE_NEAR = 1.2 // meters from the kid where a ghost is gone
+const FADE_FAR = 3.5 // and where it is whole
 
 const f = DIR[START.dir]
 const r = DIR[(START.dir + 1) % 4]
@@ -70,28 +80,27 @@ function Line({ u, finish }: { u: number; finish: boolean }) {
   return <mesh geometry={geo} material={mat} position={at(u, 0, 0.02)} rotation-y={YAW} />
 }
 
-function GhostRider({ ghost, color }: { ghost: () => Ghost | null; color: string }) {
+// the kid's silhouette, kept for the session: the character doesn't change
+let shape: THREE.BufferGeometry | null = null
+const depthOnly = curved({ colorWrite: false })
+
+function GhostRider({ ghost, color, shape }: { ghost: () => Ghost | null; color: string; shape: THREE.BufferGeometry }) {
   const ref = useRef<THREE.Group>(null!)
-  const mat = useMemo(() => curved({ color, transparent: true, opacity: 0.6, depthWrite: false }), [color])
+  const mat = useMemo(() => curved({ color, transparent: true, opacity: OPACITY, depthWrite: false }), [color])
   useEffect(() => () => mat.dispose(), [mat])
   useFrame(() => {
     const g = ghost()
-    ref.current.visible = g !== null
-    if (!g) return
-    const p = ghostAt(g, trialClock())
+    const p = g && ghostAt(g, trialClock())
+    const fade = p ? THREE.MathUtils.smoothstep(Math.hypot(p.u - sim.u, p.lat - sim.lat), FADE_NEAR, FADE_FAR) : 0
+    ref.current.visible = fade > 0.01
+    if (!p || fade <= 0.01) return
+    mat.opacity = OPACITY * fade
     ref.current.position.set(START.ox + f[0] * p.u + r[0] * p.lat, p.y, START.oz + f[1] * p.u + r[1] * p.lat)
   })
   return (
     <group ref={ref} rotation-y={YAW} visible={false}>
-      <mesh material={mat} position={[0, 0.09, 0]}>
-        <boxGeometry args={[0.24, 0.05, 0.82]} />
-      </mesh>
-      <mesh material={mat} position={[0, 0.66, 0]}>
-        <capsuleGeometry args={[0.2, 0.5, 4, 10]} />
-      </mesh>
-      <mesh material={mat} position={[0, 1.22, 0]}>
-        <sphereGeometry args={[0.24, 14, 10]} />
-      </mesh>
+      <mesh geometry={shape} material={depthOnly} renderOrder={10} dispose={null} />
+      <mesh geometry={shape} material={mat} renderOrder={11} dispose={null} />
     </group>
   )
 }
@@ -103,15 +112,33 @@ const leaderGhost = () => {
   return leader && pb && leader.u.length === pb.u.length && leader.u.every((v, i) => v === pb.u[i]) ? null : leader
 }
 
-export function TrialView() {
-  const trial = useMode((s) => s.mode === 'trial')
-  if (!trial || !input.started) return null
+/** Takes the kid's silhouette once they have stood still on the start line for a while. */
+function useSilhouette(): THREE.BufferGeometry | null {
+  const [got, setGot] = useState(shape)
+  useFrame(() => {
+    if (shape || !skater.root) return
+    const { phase, count } = useTrial.getState()
+    if (phase !== 'countdown' || count > 1) return
+    shape = bakeSilhouette(skater.root)
+    if (shape) setGot(shape)
+  })
+  return got
+}
+
+function Course() {
+  const silhouette = useSilhouette()
   return (
     <>
       <Line u={TRIAL_START} finish={false} />
       <Line u={TRIAL_FINISH} finish />
-      <GhostRider ghost={pbGhost} color="#2fa596" />
-      <GhostRider ghost={leaderGhost} color="#f0b429" />
+      {silhouette && <GhostRider ghost={pbGhost} color="#2fa596" shape={silhouette} />}
+      {silhouette && <GhostRider ghost={leaderGhost} color="#f0b429" shape={silhouette} />}
     </>
   )
+}
+
+export function TrialView() {
+  const trial = useMode((s) => s.mode === 'trial')
+  if (!trial || !input.started) return null
+  return <Course />
 }

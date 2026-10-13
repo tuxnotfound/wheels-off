@@ -108,8 +108,12 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   frames), until the clock stops on the frame the finish line is crossed. Times are sim time,
   so frame rate doesn't change them: the same push-held run came out at 27.81 to 27.83 s at
   45, 98 and 121 fps. Your best of the week and its ghost stay in `localStorage`; the week's
-  board and the fastest run's ghost come from `/api/trial`. The ghosts are see-through kids,
-  unlit, bent with the world's curve.
+  board and the fastest run's ghost come from `/api/trial`. A ghost is the kid's own
+  silhouette (`src/world/silhouette.ts`): the character and board as they stand on the start
+  line, frozen once per session into one static mesh, drawn see-through in one flat layer
+  (a depth-only pass first), bent with the world's curve, and faded out within a few meters
+  of the kid. The acceleration starts at GO: the countdown holds the sim, so W held early
+  only saves the reaction time.
 - **`src/game/mode.ts`**: the mode: arcade, free roam or the time trial. In free roam the sim skips obstacles,
   scores nothing and counts no full speed time, and the HUD shows the speed alone. The attract
   ride runs under the same rules, whichever mode the player then picks. Blocks laid

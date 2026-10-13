@@ -11,6 +11,9 @@ import { ProceduralRider } from './ProceduralRider'
 import { VrmRider } from './VrmRider'
 
 export type ApplyPose = (p: Pose, dt: number) => void
+
+/** The skater's root group in the scene, for the time trial's ghost to take its shape from. */
+export const skater = { root: null as THREE.Group | null }
 /** A rider registers how it applies the per-frame pose; the skater drives it. */
 export type RiderProps = { bind: (apply: ApplyPose | null) => void }
 
@@ -22,6 +25,10 @@ export type RiderProps = { bind: (apply: ApplyPose | null) => void }
  */
 export function Skater() {
   const root = useRef<THREE.Group>(null!)
+  const keep = useCallback((g: THREE.Group | null) => {
+    root.current = g!
+    skater.root = g
+  }, [])
   const st = useRef(createPoseState()).current
   // dev-only handle for test scripts (animation probes)
   if (import.meta.env.DEV) Object.assign(window, { __pose: st })
@@ -45,7 +52,7 @@ export function Skater() {
   })
 
   return (
-    <group ref={root}>
+    <group ref={keep}>
       <Board bind={bindBoard} />
       {url ? <VrmRider url={url} bind={bindRider} /> : <ProceduralRider bind={bindRider} />}
     </group>
