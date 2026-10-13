@@ -1,7 +1,7 @@
 import { input } from '../player/input'
-import { START_SEED, blockObstacles, childSeed, hasBranch, laneLimit, widthForSeed } from '../world/streetGen'
+import { START_SEED, childSeed, hasBranch, laneLimit, obstaclesFor, widthForSeed } from '../world/streetGen'
 import { BEHIND_LANDING, BLOCK, DIR, TURN_R } from '../world/worldConfig'
-import { TOP_SPEED, TRIAL_START } from '../../shared/trial'
+import { CARVE_SPEED, TOP_SPEED, TRIAL_START } from '../../shared/trial'
 import { freeRoam, hasObstacles, onCourse } from './mode'
 import { STREAK_KMH } from './records'
 
@@ -37,7 +37,7 @@ export function childStreet(s: Street, k: number, side: number): Street {
 const CRUISE = 10
 const MAX_SPEED = TOP_SPEED // shared with the check on a time trial's ghost
 const MIN_SPEED = 3
-const LAT_SPEED = 6.5
+const LAT_SPEED = CARVE_SPEED // shared with the check on a time trial's ghost
 const JUMP_V = 7.6
 const GRAVITY = 25
 const BOARD_HALF = 0.45
@@ -146,8 +146,18 @@ export const sim = {
   resets: 0, // bumped by resetToStart, so the camera and the blocks jump with the kid
 }
 
+// The time trial's course (course.ts) says which turns may be taken on it: only its own.
+let turnRule: ((street: Street, k: number, side: number) => boolean) | null = null
+export function setTurnRule(rule: (street: Street, k: number, side: number) => boolean) {
+  turnRule = rule
+}
+
+/** Whether a side street can be taken: it's there, and on the time trial's course it's the course's turn. */
+function canTurn(street: Street, k: number, side: number): boolean {
+  return hasBranch(street.seed, k, side) && (!onCourse() || !turnRule || turnRule(street, k, side))
+}
+
 function turnIntent(): number {
-  if (onCourse()) return 0 // the time trial's course runs straight through every intersection
   if (input.x !== 0) return input.x
   if (input.steerBuffer > 0) return input.steerSide
   return 0
@@ -164,7 +174,7 @@ function approachingTurn(): { side: number; to: Street } | null {
   if (!side) return null
   const k = Math.floor((sim.u + TURN_R) / BLOCK) + 1
   const dist = k * BLOCK - TURN_R - sim.u
-  if (dist > Math.max(sim.speed, 4) * 0.8 || !hasBranch(sim.street.seed, k, side)) return null
+  if (dist > Math.max(sim.speed, 4) * 0.8 || !canTurn(sim.street, k, side)) return null
   return { side, to: childStreet(sim.street, k, side) }
 }
 
@@ -197,23 +207,24 @@ function place() {
 
 /** The next intersection's turn options, when it is close enough to matter. */
 export function upcomingTurn(): { left: boolean; right: boolean } | null {
-  if (sim.arc || sim.speed < 1 || onCourse()) return null
+  if (sim.arc || sim.speed < 1) return null
   const k = Math.floor((sim.u + TURN_R) / BLOCK) + 1
   const dist = k * BLOCK - TURN_R - sim.u
-  if (dist / Math.max(sim.speed, 1) > 1.4) return null
-  const left = hasBranch(sim.street.seed, k, -1)
-  const right = hasBranch(sim.street.seed, k, 1)
+  // the time trial's turn shows sooner: missing it costs a respawn
+  if (dist / Math.max(sim.speed, 1) > (onCourse() ? 2.4 : 1.4)) return null
+  const left = canTurn(sim.street, k, -1)
+  const right = canTurn(sim.street, k, 1)
   return left || right ? { left, right } : null
 }
 
-/** Puts the kid back on the start line of the week's town, standing still: a time trial's start. */
-export function resetToStart() {
+/** Puts the kid on a street at a speed, out of any turn, jump or wipeout; the camera jumps with them. */
+function placeKid(street: Street, u: number, speed: number) {
   Object.assign(sim, {
-    street: START,
-    u: TRIAL_START,
+    street,
+    u,
     lat: 0,
     latVel: 0,
-    speed: 0,
+    speed,
     arc: null,
     prev: null,
     y: 0,
@@ -235,8 +246,18 @@ export function resetToStart() {
   sim.hits.clear() // the course's obstacles stand again
   sim.cleared.clear()
   sim.resets += 1
-  sim.events.push({ kind: 'street', text: '' })
   place()
+}
+
+/** Puts the kid back on the start line of the week's town, standing still: a time trial's start. */
+export function resetToStart() {
+  placeKid(START, TRIAL_START, 0)
+  sim.events.push({ kind: 'street', text: '' })
+}
+
+/** Puts the kid back on the course before a turn they missed, rolling: a time trial's respawn. */
+export function respawnAt(street: Street, u: number, speed: number) {
+  placeKid(street, u, speed)
 }
 
 export function stepSim(dtRaw: number) {
@@ -390,7 +411,7 @@ export function stepSim(dtRaw: number) {
     const kPrev = Math.floor((uPrev + TURN_R) / BLOCK)
     const kT = Math.floor((sim.u + TURN_R) / BLOCK)
     const side = turnIntent()
-    if (kT > kPrev && side !== 0 && hasBranch(sim.street.seed, kT, side)) {
+    if (kT > kPrev && side !== 0 && canTurn(sim.street, kT, side)) {
       input.steerBuffer = 0
       const rho = TURN_R - side * sim.lat
       sim.arc = { to: childStreet(sim.street, kT, side), side, k: kT, phi: (sim.u - (kT * BLOCK - TURN_R)) / rho }
@@ -409,7 +430,7 @@ function collide(uPrev: number) {
   const s = sim.street
   const kb = Math.floor(sim.u / BLOCK)
   if (!hasObstacles(`${s.seed}:${kb}`)) return
-  for (const ob of blockObstacles(s.seed, kb, s.width)) {
+  for (const ob of obstaclesFor(s.seed, kb, s.width, onCourse())) {
     if (sim.hits.has(ob.id) || sim.cleared.has(ob.id)) continue
     const latHit = Math.abs(sim.lat - ob.s) < ob.w / 2 + BODY_HALF
     if (!latHit) continue

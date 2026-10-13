@@ -39,9 +39,12 @@ button give way to a "mobile version soon" card; the attract ride and the music 
 - **F** free roam: the same endless town with no obstacles and no scores. F on the landing page
   rolls off in free roam; F on the pause screen rolls on in the other mode. Leaving arcade for
   free roam ends the run, as a wipeout does. F mid-ride does nothing.
-- **T** time trial: this week's course, straight down the start street of the week's town for
-  320 m to a checkered finish, against the clock. A countdown, then GO; a wipeout only costs
-  speed, and no side street can be taken. T mid-ride goes back to the start line. At the
+- **T** time trial: this week's course, 600 m through the week's town to a checkered finish,
+  against the clock: straights of 2 to 4 blocks, each ending in a turn into a side street that
+  the turn arrow shows early. Only the course's turns can be taken. Past each one, three rows
+  of barriers close the road ahead, so riding straight on ends in the wall, "MISSED THE TURN!",
+  and a respawn 25 m before the turn at cruising speed (the clock runs on). A countdown, then
+  GO; a wipeout only costs speed. T mid-ride goes back to the start line. At the
   finish, a time that makes the week's top 10 asks for a name (Enter signs, Esc skips), with
   the run to share. Your best of the week rides along as a teal ghost, the week's fastest as a
   gold one. On the pause card, A, F and T switch between the three modes.
@@ -97,17 +100,25 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   name entry asks for another name when the filter turns one away. `/api/trial`
   (`worker/trial.ts`, the `trials` table) keeps the time trial's week: GET returns the 10
   fastest times and the fastest run's ghost; POST signs a time with its ghost, which has to
-  back it up (`checkTrial` in `shared/trial.ts`): start on the line, reach the finish when the
-  time says, never pass the top speed, gain no more speed per sample than a push can, and get
-  going no faster than the measured start. That floors a forged ghost at about 20.6 s, while a
-  bot that jumps every obstacle perfectly rides 22.6 s: the check doesn't know the obstacles,
-  so those 2 s stay open to a forgery.
+  back it up (`checkTrial` in `shared/trial.ts`): start on the line, get going no faster than
+  the measured start, cover no more ground in any 3 s than top speed allows (carving across the
+  street can't add to that, its width caps it), and ride the course's length, with a respawn's
+  jump back never counted as progress. That floors a forged ghost at the measured start and top
+  speed all the way, about 36 s; a bot that clears every obstacle and makes every turn rode
+  38.8 s on 2026-W42's course. The check doesn't know the obstacles or the turns.
+- **`src/game/course.ts`**: the time trial's course, laid out from the week's seed: legs of 2
+  to 4 blocks, each turning at the first intersection with a side street (a side picked by the
+  seed, the other if it has none), until 600 m; the last straight at least 2 blocks. It sets
+  the sim's turn rule (on the course only its own turns can be taken) and the walls past each
+  turn (`obstaclesFor` in `streetGen.ts` adds them to a block's obstacles, on the course only),
+  and tells the trial where the kid is along it, when they missed a turn and where they go back.
 - **`src/game/trial.ts`, `src/world/TrialView.tsx`, `shared/trial.ts`**: the time trial. The
   kid waits on the start line (`resetToStart` in the sim) through a 3 s countdown; from GO the
-  run is recorded as a ghost, the kid's place every 0.1 s of sim time (interpolated between
-  frames), until the clock stops on the frame the finish line is crossed. Times are sim time,
-  so frame rate doesn't change them: the same push-held run came out at 27.81 to 27.83 s at
-  45, 98 and 121 fps. Your best of the week and its ghost stay in `localStorage`; the week's
+  run is recorded as a ghost, the kid's world position every 0.1 s of sim time (interpolated
+  between frames, a respawn marked), until the clock stops on the frame the finish line is
+  crossed. Times are sim time,
+  so frame rate doesn't change them: the same push-held run on the first, straight course came
+  out at 27.81 to 27.83 s at 45, 98 and 121 fps. Your best of the week and its ghost stay in `localStorage`; the week's
   board and the fastest run's ghost come from `/api/trial`. A ghost is the kid's own
   silhouette (`src/world/silhouette.ts`): the character and board as they stand on the start
   line, frozen once per session into one static mesh, drawn see-through in one flat layer

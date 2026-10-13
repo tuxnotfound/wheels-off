@@ -11,7 +11,7 @@ import type { Env } from './leaderboard'
 // up (checkTrial): a run that rides faster than the kid can, or picks up speed faster than a push
 // gives it, is turned away. Moderation is by hand, as on the other boards: hidden = 1.
 
-const MAX_BODY = 64 * 1024 // a five-minute ghost is about 45 KB
+const MAX_BODY = 128 * 1024 // a minute's ghost is about 13 KB, the longest (five minutes) about 70 KB
 
 /** The week's fastest run, raced as a ghost: its name, time and replay. */
 export type Leader = Entry & { ghost: Ghost }
@@ -42,7 +42,7 @@ async function signTrial(request: Request, env: Env): Promise<Response> {
   if (!nameAllowed(name)) return reply({ error: 'name' }, 422)
   const wrong = checkTrial(body?.time, body?.ghost)
   if (wrong) return reply({ error: wrong }, 422)
-  const { u, lat, y } = body!.ghost as Ghost
+  const { x, z, y, r } = body!.ghost as Ghost
   const address = await addressOf(request, env.IP_SALT)
   if (address) {
     const recent = await env.DB.prepare(
@@ -58,7 +58,7 @@ async function signTrial(request: Request, env: Env): Promise<Response> {
     name,
     week,
     time,
-    JSON.stringify({ u, lat, y }),
+    JSON.stringify({ x, z, y, r }),
     address,
   )
   return reply({ week: await readWeek(env.DB, week, [insert]) }, 201)

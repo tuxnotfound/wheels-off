@@ -8,7 +8,7 @@ import { M } from './parts'
 import { sim } from '../game/sim'
 import { hasObstacles, keepClear, useMode } from '../game/mode'
 import { input } from '../player/input'
-import { blockObstacles } from './streetGen'
+import { obstaclesFor } from './streetGen'
 import type { Obstacle } from './streetGen'
 import { BLOCK } from './worldConfig'
 
@@ -122,7 +122,9 @@ export function BlockObstacles({ seed, k, width }: { seed: number; k: number; wi
   const key = `${seed}:${k}`
   const mode = useMode((s) => s.mode)
   const free = mode === 'free' || !input.started // free roam, or the landing page's attract ride
-  const obstacles = useMemo(() => blockObstacles(seed, k, width), [seed, k, width])
+  // on the time trial's course, its walls stand here too
+  const course = mode === 'trial' && input.started
+  const obstacles = useMemo(() => obstaclesFor(seed, k, width, course), [seed, k, width, course])
   // re-marked on every switch of mode, since switching into free roam forgets the marks
   useLayoutEffect(() => {
     if (free) keepClear(key)

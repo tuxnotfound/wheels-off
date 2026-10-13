@@ -1,22 +1,25 @@
 import { create } from 'zustand'
 import { BOARD_SIZE, weekOf } from '../../shared/leaderboard'
 import type { Entry } from '../../shared/leaderboard'
-import { GHOST_HZ, TRIAL_FINISH, TRIAL_LENGTH, TRIAL_MAX_TIME } from '../../shared/trial'
+import { GHOST_HZ, RESPAWN_SPEED, TRIAL_LENGTH, TRIAL_MAX_TIME } from '../../shared/trial'
 import type { Ghost } from '../../shared/trial'
+import { finish as finishLine, missedTurn, progress, respawnPoint } from './course'
 import { roll } from './mode'
-import { resetToStart, sim } from './sim'
+import { resetToStart, respawnAt, sim } from './sim'
 import { readJson, writeJson } from './storage'
 
-// The time trial (mode.ts): the week's course, straight down the start street of the week's
-// town (shared/trial.ts), against the clock. Each attempt starts on the start line after a
-// countdown, and a wipeout only costs speed. The run is recorded as a ghost; your best of the
-// week is kept in this browser and rides along as a ghost, and so does the week's fastest from
-// the API (worker/trial.ts), which keeps the board: the week's 10 fastest times.
+// The time trial (mode.ts): the week's course through the week's town (course.ts), against the
+// clock. Each attempt starts on the start line after a countdown; a wipeout only costs speed,
+// and a missed turn puts the kid back before it (the clock runs on). The run is recorded as a
+// ghost; your best of the week is kept in this browser and rides along as a ghost, and so does
+// the week's fastest from the API (worker/trial.ts), which keeps the board: the week's 10
+// fastest times.
 
 const COUNTDOWN = 3 // seconds before GO
 const RESULT_AFTER = 1 // seconds of rolling on past the finish before the result card
+const MISS_HOLD = 0.9 // seconds of the crash into the wall before the respawn
 const API = '/api/trial'
-const PB_KEY = 'wheelsoff:trial' // this week's best: { week, time, ghost }
+const PB_KEY = 'wheelsoff:trial-course' // this week's best: { week, time, ghost } (the straight course's runs lived under wheelsoff:trial)
 const REFRESH_EVERY = 60_000 // ms between fetches of the board, at most
 
 export type Phase = 'countdown' | 'riding' | 'done'
@@ -48,7 +51,7 @@ const week = weekOf(new Date())
 
 function storedPb(): { time: number; ghost: Ghost } | null {
   const raw = readJson(PB_KEY) as { week?: unknown; time?: unknown; ghost?: Ghost } | null
-  if (raw?.week !== week || typeof raw.time !== 'number' || !Array.isArray(raw.ghost?.u)) return null
+  if (raw?.week !== week || typeof raw.time !== 'number' || !Array.isArray(raw.ghost?.x)) return null
   return { time: raw.time, ghost: raw.ghost }
 }
 
@@ -62,16 +65,22 @@ const live = {
   goAt: 0, // sim time of GO
   finishedAt: 0,
   next: 1, // the next ghost sample due
-  last: { t: 0, u: 0, lat: 0, y: 0 }, // the kid before this frame's step
-  rec: { u: [], lat: [], y: [] } as Ghost,
+  last: { t: 0, x: 0, z: 0, y: 0, u: 0, seed: 0 }, // the kid before this frame's step
+  rec: { x: [], z: [], y: [], r: [] } as Ghost,
+  respawnAt: 0, // sim time of the respawn due after a missed turn, 0 for none
+  jumped: false, // the next sample comes right after a respawn
   run: null as TrialRun | null,
 }
 
 const cm = (m: number) => Math.round(m * 100)
 
-function sample(u: number, lat: number, y: number) {
-  live.rec.u.push(cm(u))
-  live.rec.lat.push(cm(lat))
+function sample(x: number, z: number, y: number) {
+  if (live.jumped) {
+    live.rec.r.push(live.rec.x.length)
+    live.jumped = false
+  }
+  live.rec.x.push(cm(x))
+  live.rec.z.push(cm(z))
   live.rec.y.push(cm(y))
 }
 
@@ -81,6 +90,8 @@ export function startAttempt() {
   live.phase = 'countdown'
   live.count = COUNTDOWN
   live.run = null
+  live.respawnAt = 0
+  live.jumped = false
   useTrial.setState({ phase: 'countdown', count: COUNTDOWN, clock: 0, toGo: TRIAL_LENGTH })
 }
 
@@ -124,17 +135,18 @@ export function trialTick(dt: number): boolean {
     live.phase = 'riding'
     live.goAt = sim.time
     live.next = 1
-    live.rec = { u: [], lat: [], y: [] }
-    sample(sim.u, sim.lat, sim.y)
+    live.rec = { x: [], z: [], y: [], r: [] }
+    sample(sim.px, sim.pz, sim.y)
     useTrial.setState({ phase: 'riding', count: 0 })
   }
-  live.last = { t: sim.time, u: sim.u, lat: sim.lat, y: sim.y }
+  live.last = { t: sim.time, x: sim.px, z: sim.pz, y: sim.y, u: sim.u, seed: sim.street.seed }
   return true
 }
 
 /**
- * After the sim steps: records the ghost's samples that fell in this frame, and stops the
- * clock at the finish line. Returns the finished run once, when its result card is due.
+ * After the sim steps: records the ghost's samples that fell in this frame, stops the clock at
+ * the finish line, and puts a kid who missed a turn back before it. Returns the finished run
+ * once, when its result card is due.
  */
 export function trialAfterStep(): TrialRun | null {
   if (live.phase === 'done') {
@@ -148,19 +160,35 @@ export function trialAfterStep(): TrialRun | null {
   if (live.phase !== 'riding') return null
   const a = live.last
   const span = sim.time - a.t
-  // the moment the line was crossed, between the last frame and this one
-  const crossed = sim.u >= TRIAL_FINISH && a.u < TRIAL_FINISH
-  const until = crossed ? a.t + ((TRIAL_FINISH - a.u) / (sim.u - a.u)) * span : sim.time
+  // the moment the finish line was crossed, between the last frame and this one
+  const onLine = sim.street.seed === finishLine.seed && a.seed === finishLine.seed && !sim.arc
+  const crossed = onLine && sim.u >= finishLine.u && a.u < finishLine.u
+  const until = crossed ? a.t + ((finishLine.u - a.u) / (sim.u - a.u)) * span : sim.time
   for (let ts = live.goAt + live.next / GHOST_HZ; ts <= until + 1e-9; ts = live.goAt + live.next / GHOST_HZ) {
     const f = span > 0 ? (ts - a.t) / span : 1
-    sample(a.u + (sim.u - a.u) * f, a.lat + (sim.lat - a.lat) * f, a.y + (sim.y - a.y) * f)
+    sample(a.x + (sim.px - a.x) * f, a.z + (sim.pz - a.z) * f, a.y + (sim.y - a.y) * f)
     live.next += 1
   }
   const clock = Math.floor((until - live.goAt) * 10) / 10
-  const toGo = Math.max(0, Math.ceil(TRIAL_FINISH - sim.u))
+  const s = progress()
+  const toGo = s === null ? useTrial.getState().toGo : Math.max(0, Math.ceil(TRIAL_LENGTH - s))
   const now = useTrial.getState()
   if (clock !== now.clock || toGo !== now.toGo) useTrial.setState({ clock, toGo })
-  if (crossed) finish(until - live.goAt)
+  if (crossed) {
+    finish(until - live.goAt)
+    return null
+  }
+  // straight on past a turn: the wall stops the kid; a moment later, back before the turn
+  if (!live.respawnAt && missedTurn()) live.respawnAt = sim.time + MISS_HOLD
+  if (live.respawnAt && sim.time >= live.respawnAt) {
+    live.respawnAt = 0
+    const back = respawnPoint()
+    if (back) {
+      respawnAt(back.street, back.u, RESPAWN_SPEED)
+      live.jumped = true
+      sim.events.push({ kind: 'hit', text: 'MISSED THE TURN!' })
+    }
+  }
   return null
 }
 
@@ -190,7 +218,7 @@ async function ask(init?: RequestInit) {
     const data = res.ok ? ((await res.json()) as { week?: { id?: string; board?: Entry[]; leader?: Leader | null } }) : null
     if (!data?.week || !Array.isArray(data.week.board) || n !== sent) return
     const leader = data.week.leader ?? null
-    leaderGhost = leader && Array.isArray(leader.ghost?.u) ? leader.ghost : null
+    leaderGhost = leader && Array.isArray(leader.ghost?.x) ? leader.ghost : null
     useTrial.setState({ board: data.week.board.slice(0, BOARD_SIZE), leader: leader && { name: leader.name, value: leader.value } })
   } catch {
     // offline, or no API: the board stays as it was, and your own ghost still rides

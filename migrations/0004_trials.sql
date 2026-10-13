@@ -7,7 +7,7 @@ CREATE TABLE trials (
   name TEXT NOT NULL,
   week TEXT NOT NULL, -- 2026-W42, as weekOf in shared/leaderboard.ts names it
   time REAL NOT NULL, -- seconds from GO to the finish line
-  ghost TEXT NOT NULL, -- JSON: { u, lat, y } in centimeters, GHOST_HZ samples a second
+  ghost TEXT NOT NULL, -- JSON: { x, z, y, r }: world centimeters, GHOST_HZ samples a second, respawns
   hidden INTEGER NOT NULL DEFAULT 0, -- 1 takes the run off the board (moderation)
   ip_hash TEXT, -- the sender's address, salted and hashed, for the rate limit
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))

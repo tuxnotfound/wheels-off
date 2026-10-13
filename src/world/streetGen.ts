@@ -117,6 +117,30 @@ export function blockObstacles(seed: number, k: number, width: number): Obstacle
   return out
 }
 
+// The time trial's walls (src/game/course.ts): rows of barriers across the road just past each
+// turn of the course, so it can't be ridden straight on. They stand only on the course.
+let walls = new Map<string, Obstacle[]>()
+const withWalls = new Map<string, Obstacle[]>()
+
+export function setCourseWalls(next: Map<string, Obstacle[]>) {
+  walls = next
+  withWalls.clear()
+}
+
+/** A block's obstacles: blockObstacles, plus the time trial's walls when on the course. */
+export function obstaclesFor(seed: number, k: number, width: number, course: boolean): Obstacle[] {
+  const base = blockObstacles(seed, k, width)
+  const key = `${seed}:${k}`
+  const extra = course ? walls.get(key) : undefined
+  if (!extra) return base
+  let all = withWalls.get(key)
+  if (!all) {
+    all = [...base, ...extra]
+    withWalls.set(key, all)
+  }
+  return all
+}
+
 // ---------- block plan (everything static in one block) ----------
 export type Lot =
   | { kind: 'building'; side: number; a: number; len: number; art: BuildingArt }
