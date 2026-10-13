@@ -1,5 +1,5 @@
 import { input } from '../player/input'
-import { START_SEED, childSeed, hasBranch, laneLimit, obstaclesFor, widthForSeed } from '../world/streetGen'
+import { START_SEED, branchOpen, childSeed, laneLimit, obstaclesFor, widthForSeed } from '../world/streetGen'
 import { BEHIND_LANDING, BLOCK, DIR, TURN_R } from '../world/worldConfig'
 import { CARVE_SPEED, TOP_SPEED, TRIAL_START } from '../../shared/trial'
 import { freeRoam, hasObstacles, onCourse } from './mode'
@@ -146,15 +146,9 @@ export const sim = {
   resets: 0, // bumped by resetToStart, so the camera and the blocks jump with the kid
 }
 
-// The time trial's course (course.ts) says which turns may be taken on it: only its own.
-let turnRule: ((street: Street, k: number, side: number) => boolean) | null = null
-export function setTurnRule(rule: (street: Street, k: number, side: number) => boolean) {
-  turnRule = rule
-}
-
-/** Whether a side street can be taken: it's there, and on the time trial's course it's the course's turn. */
+/** Whether a side street can be taken: it opens there (on the time trial's course, only its own turns do). */
 function canTurn(street: Street, k: number, side: number): boolean {
-  return hasBranch(street.seed, k, side) && (!onCourse() || !turnRule || turnRule(street, k, side))
+  return branchOpen(street.seed, k, side, onCourse())
 }
 
 function turnIntent(): number {

@@ -41,7 +41,8 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   free roam ends the run, as a wipeout does. F mid-ride does nothing.
 - **T** time trial: this week's course, 600 m through the week's town to a checkered finish,
   against the clock: straights of 2 to 4 blocks, each ending in a turn into a side street that
-  the turn arrow shows early. Only the course's turns can be taken. Past each one, three rows
+  the turn arrow shows early. Along the course every other side street is built over, so its
+  turns are the only ones there. Past each one, three rows
   of barriers close the road ahead, so riding straight on ends in the wall, "MISSED THE TURN!",
   and a respawn 25 m before the turn at cruising speed (the clock runs on). A countdown, then
   GO; a wipeout only costs speed. T mid-ride goes back to the start line. At the
@@ -108,9 +109,11 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   38.8 s on 2026-W42's course. The check doesn't know the obstacles or the turns.
 - **`src/game/course.ts`**: the time trial's course, laid out from the week's seed: legs of 2
   to 4 blocks, each turning at the first intersection with a side street (a side picked by the
-  seed, the other if it has none), until 600 m; the last straight at least 2 blocks. It sets
-  the sim's turn rule (on the course only its own turns can be taken) and the walls past each
-  turn (`obstaclesFor` in `streetGen.ts` adds them to a block's obstacles, on the course only),
+  seed, the other if it has none), until 600 m; the last straight at least 2 blocks. It tells
+  the street generator the course's turns (`branchOpen` in `streetGen.ts`: on a course street,
+  in the time trial, only the course's own side street opens; the others are built over in the
+  block plans, left out of the drawn side streets, and can't be turned into) and the walls past
+  each turn (`obstaclesFor` adds them to a block's obstacles, on the course only),
   and tells the trial where the kid is along it, when they missed a turn and where they go back.
 - **`src/game/trial.ts`, `src/world/TrialView.tsx`, `shared/trial.ts`**: the time trial. The
   kid waits on the start line (`resetToStart` in the sim) through a 3 s countdown; from GO the

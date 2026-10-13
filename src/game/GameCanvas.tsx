@@ -11,7 +11,7 @@ import { Petals } from '../look/Petals'
 import { setTreeSun } from '../world/Tree3D'
 import { toonMat } from '../look/materials'
 import { FOG, LIGHT, SUN_DIR } from '../look/timeOfDay'
-import { hasBranch, streetName } from '../world/streetGen'
+import { branchOpen, streetName } from '../world/streetGen'
 import { AHEAD, BEHIND, BEHIND_LANDING, BLOCK, BRANCH_DEPTH, DIR } from '../world/worldConfig'
 import { childStreet, sim, stepSim, upcomingTurn } from './sim'
 import type { Street } from './sim'
@@ -20,7 +20,7 @@ import { beatRecords, beating, endRun, records } from './records'
 import { rankFor, refreshBoards, worldRecord } from './leaderboard'
 import { askForName, isPaused, showResult } from './arcadeStore'
 import type { PendingRun, Ranks } from './arcadeStore'
-import { freeRoam, useMode } from './mode'
+import { freeRoam, onCourse, useMode } from './mode'
 import { trialAfterStep, trialTick } from './trial'
 import { autopilot } from './autopilot'
 import { tickAds } from '../ads/ads'
@@ -61,7 +61,7 @@ function addStreet(out: Map<string, BlockDesc>, s: Street, k0: number, k1: numbe
   for (let i = Math.max(k0 + 1, 1); i <= k1; i++) {
     for (const side of [-1, 1]) {
       if (skip && skip.k === i && skip.side === side) continue
-      if (!hasBranch(s.seed, i, side)) continue
+      if (!branchOpen(s.seed, i, side, onCourse())) continue
       const c = childStreet(s, i, side)
       const depth = i <= near ? BRANCH_DEPTH : 1
       for (let j = 0; j < depth; j++) {
@@ -84,7 +84,8 @@ function buildBlocks(): BlockDesc[] {
 }
 
 function signature(): string {
-  return `${sim.street.seed}:${Math.floor(sim.u / BLOCK)}:${sim.prev ? `${sim.prev.street.seed}:${sim.prev.fromK}` : ''}`
+  // the time trial's course closes side streets, so going on or off it lays the blocks out again
+  return `${sim.street.seed}:${Math.floor(sim.u / BLOCK)}:${sim.prev ? `${sim.prev.street.seed}:${sim.prev.fromK}` : ''}:${onCourse() ? 'course' : ''}`
 }
 
 const WIPEOUT_HOLD = 1.5 // seconds of the wipeout played before the run's records are announced

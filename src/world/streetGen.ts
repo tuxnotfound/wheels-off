@@ -49,6 +49,26 @@ export function hasBranch(seed: number, k: number, side: number): boolean {
   return h(seed, k, side < 0 ? 11 : 23) > BRANCH_T
 }
 
+// The time trial's course (src/game/course.ts): on its streets, by seed, the one turn the course
+// takes (null on its last street). There, every other side street is closed and built over.
+let courseTurns: Map<number, { k: number; side: number } | null> = new Map()
+
+export function setCourseTurns(turns: Map<number, { k: number; side: number } | null>) {
+  courseTurns = turns
+  planCache.clear()
+}
+
+/**
+ * Whether a side street opens at intersection k: hasBranch, and on the time trial's course
+ * (`course`) only where the course turns, so the course offers no turn it doesn't take.
+ */
+export function branchOpen(seed: number, k: number, side: number, course: boolean): boolean {
+  if (!hasBranch(seed, k, side)) return false
+  if (!course || !courseTurns.has(seed)) return true
+  const turn = courseTurns.get(seed)
+  return !!turn && turn.k === k && turn.side === side
+}
+
 /** The seed of the street that branches off intersection k on the given side. */
 export function childSeed(seed: number, k: number, side: number): number {
   return Math.floor(h(seed, k, side < 0 ? 101 : 202) * 1e6) + 1
@@ -222,18 +242,20 @@ function fitBuilding(r: number, room: number): BuildingArt | null {
   return null
 }
 
-export function blockPlan(seed: number, k: number, width: number, u0: number): BlockPlan {
-  const key = `${seed}:${k}:${width}:${u0}`
+export function blockPlan(seed: number, k: number, width: number, u0: number, course = false): BlockPlan {
+  const closed = course && courseTurns.has(seed) // a course street: its other side streets built over
+  const key = `${seed}:${k}:${width}:${u0}${closed ? ':course' : ''}`
   const hit = planCache.get(key)
   if (hit) return hit
-  const plan = makePlan(seed, k, width, u0)
+  const plan = makePlan(seed, k, width, u0, closed)
   if (planCache.size > 400) planCache.clear()
   planCache.set(key, plan)
   return plan
 }
 const planCache = new Map<string, BlockPlan>()
 
-function makePlan(seed: number, k: number, width: number, u0: number): BlockPlan {
+function makePlan(seed: number, k: number, width: number, u0: number, course: boolean): BlockPlan {
+  const open = (kk: number, side: number) => branchOpen(seed, kk, side, course)
   const roadFrom = k === 0 && u0 > 0 ? u0 : 0
   const poleSide = h(seed, 0, 601) > 0.5 ? 1 : -1
   const sides: BlockPlan['sides'] = []
@@ -250,8 +272,8 @@ function makePlan(seed: number, k: number, width: number, u0: number): BlockPlan
   const half = width / 2
   const front = half + SIDEWALK + 0.3 // where facades stand
 
-  const aheadL = hasBranch(seed, k + 1, -1) ? widthForSeed(childSeed(seed, k + 1, -1)) / 2 : 0
-  const aheadR = hasBranch(seed, k + 1, 1) ? widthForSeed(childSeed(seed, k + 1, 1)) / 2 : 0
+  const aheadL = open(k + 1, -1) ? widthForSeed(childSeed(seed, k + 1, -1)) / 2 : 0
+  const aheadR = open(k + 1, 1) ? widthForSeed(childSeed(seed, k + 1, 1)) / 2 : 0
   const cross = Math.max(aheadL, aheadR)
   const overpass = width >= 6 && h(seed, k, 603) > 0.86
 
@@ -275,8 +297,8 @@ function makePlan(seed: number, k: number, width: number, u0: number): BlockPlan
   }
 
   for (const side of [-1, 1]) {
-    const gs = hasBranch(seed, k, side) ? widthForSeed(childSeed(seed, k, side)) / 2 : 0
-    const ge = hasBranch(seed, k + 1, side) ? widthForSeed(childSeed(seed, k + 1, side)) / 2 : 0
+    const gs = open(k, side) ? widthForSeed(childSeed(seed, k, side)) / 2 : 0
+    const ge = open(k + 1, side) ? widthForSeed(childSeed(seed, k + 1, side)) / 2 : 0
     // a side-street's own first block starts past its parent's sidewalk
     const start = roadFrom > 0 ? roadFrom : gs
     const walk = { a: start, b: BLOCK - ge }
