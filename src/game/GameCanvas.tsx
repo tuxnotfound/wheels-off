@@ -18,11 +18,13 @@ import type { Street } from './sim'
 import { useHud } from './hudStore'
 import { beatRecords, beating, endRun, records } from './records'
 import { rankFor, refreshBoards, worldRecord } from './leaderboard'
-import { askForName, isPaused } from './arcadeStore'
+import { askForName, isPaused, showResult } from './arcadeStore'
 import type { PendingRun, Ranks } from './arcadeStore'
-import { freeRoam } from './mode'
+import { freeRoam, useMode } from './mode'
+import { trialAfterStep, trialTick } from './trial'
 import { autopilot } from './autopilot'
 import { tickAds } from '../ads/ads'
+import { TrialView } from '../world/TrialView'
 
 const damp = (a: number, b: number, lambda: number, dt: number) => a + (b - a) * (1 - Math.exp(-lambda * dt))
 const tenths = (s: number) => Math.floor(s * 10) / 10
@@ -92,20 +94,33 @@ type Announce = { at: number; entry: PendingRun | null; record: { score: number 
 
 /** Steps the simulation first each frame, then mirrors what the HUD needs. */
 function SimDriver() {
-  const last = useRef({ t: 0, free: freeRoam(), announce: null as Announce | null }).current
+  const last = useRef({ t: 0, arcade: false, resets: 0, announce: null as Announce | null }).current
   useFrame(({ camera }, dt) => {
-    if (isPaused()) return // the pause screen or a name being typed: the world holds still
+    if (isPaused()) return // the pause screen, a name being typed or a result: the world holds still
     if (!input.started) autopilot()
-    stepSim(dt)
+    const mode = useMode.getState().mode
+    if (input.started && mode === 'trial') {
+      // the time trial holds the kid on the start line until GO, then times the run
+      if (trialTick(dt)) {
+        stepSim(dt)
+        const run = trialAfterStep()
+        if (run) showResult(run)
+      }
+    } else stepSim(dt)
     // the attract ride behind the landing page counts no ad impressions and pops no toasts
     if (input.started) tickAds(camera, Math.min(dt, 1 / 20))
     else sim.events.length = 0
+    // only arcade scores; leaving it for free roam or the time trial ends the run, as a wipeout does
+    const arcade = !freeRoam() && mode === 'arcade'
+    const quit = !arcade && last.arcade
+    const back = arcade && !last.arcade
+    last.arcade = arcade
     const hud = useHud.getState()
     const patch: Partial<ReturnType<typeof useHud.getState>> = {}
     let wipeout = false
     for (const ev of sim.events) {
       if (ev.kind === 'street') patch.street = { id: sim.time, ...streetName(sim.street.seed) }
-      else patch.toast = { id: sim.time, text: ev.text, kind: ev.kind, points: ev.points }
+      else patch.toast = { id: sim.time, text: ev.text, kind: ev.kind, points: arcade ? ev.points : undefined }
       if (ev.kind === 'hit') wipeout = true
     }
     sim.events.length = 0
@@ -113,20 +128,16 @@ function SimDriver() {
       patch.started = true
       patch.street = { id: sim.time, ...streetName(sim.street.seed) }
     }
-    // leaving arcade for free roam ends the run, as a wipeout does
-    const free = freeRoam()
-    const quit = free && !last.free
-    last.free = free
-    if (quit) {
+    if (quit || back) {
       sim.score = 0
       sim.combo = 0
     }
     if (sim.score !== hud.score) patch.score = sim.score
     if (sim.combo !== hud.combo) patch.combo = sim.combo
-    if (!free) beatRecords(sim.score, sim.streak, sim.time)
-    if (wipeout || quit) {
+    if (arcade) beatRecords(sim.score, sim.streak, sim.time)
+    if ((arcade && wipeout) || quit) {
       // game over for this run: a run that makes a leaderboard signs it, else a new PR gets its
-      // banner, once the wipeout has played (leaving for free roam has none to play)
+      // banner, once the wipeout has played (leaving for another mode has none to play)
       const end = endRun()
       refreshBoards() // so the next run is up against the boards as they stand now
       const ranks: Ranks = {
@@ -169,8 +180,10 @@ function SimDriver() {
     if (differs(wr, hud.wr)) patch.wr = wr
     const turns = upcomingTurn()
     if (JSON.stringify(turns) !== JSON.stringify(hud.turns)) patch.turns = turns
-    if (sim.time - last.t > 0.2) {
+    // every 0.2 s, and at once when the kid is put back on the start line (the clock holds there)
+    if (sim.time - last.t > 0.2 || sim.resets !== last.resets) {
       last.t = sim.time
+      last.resets = sim.resets
       const kmh = Math.round(sim.speed * 3.6)
       if (kmh !== hud.speed) patch.speed = kmh
     }
@@ -185,11 +198,21 @@ function World() {
   const sky = useRef<THREE.Group>(null!)
   const ground = useRef<THREE.Mesh>(null!)
   const sig = useRef(signature())
+  const resets = useRef(sim.resets)
   const [blocks, setBlocks] = useState<BlockDesc[]>(buildBlocks)
   const groundGeo = useMemo(() => new THREE.PlaneGeometry(300, 300, 60, 60).rotateX(-Math.PI / 2), [])
 
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 1 / 20)
+    if (sim.resets !== resets.current) {
+      // the kid was put back on the start line: the camera and the blocks jump with them
+      resets.current = sim.resets
+      anchor.x = sim.px
+      anchor.z = sim.pz
+      anchor.yaw = sim.heading
+      sig.current = signature()
+      setBlocks(buildBlocks())
+    }
     anchor.x = damp(anchor.x, sim.px, 7, dt)
     anchor.z = damp(anchor.z, sim.pz, 7, dt)
     anchor.yaw += wrap(sim.heading - anchor.yaw) * (1 - Math.exp(-4.5 * dt))
@@ -218,6 +241,7 @@ function World() {
           <BlockView key={key} {...b} />
         ))}
         <Skater />
+        <TrialView />
         <Petals anchor={anchor} />
       </group>
     </>

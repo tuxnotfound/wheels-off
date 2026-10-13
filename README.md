@@ -39,6 +39,12 @@ button give way to a "mobile version soon" card; the attract ride and the music 
 - **F** free roam: the same endless town with no obstacles and no scores. F on the landing page
   rolls off in free roam; F on the pause screen rolls on in the other mode. Leaving arcade for
   free roam ends the run, as a wipeout does. F mid-ride does nothing.
+- **T** time trial: this week's course, straight down the start street of the week's town for
+  320 m to a checkered finish, against the clock. A countdown, then GO; a wipeout only costs
+  speed, and no side street can be taken. T mid-ride goes back to the start line. At the
+  finish, a time that makes the week's top 10 asks for a name (Enter signs, Esc skips), with
+  the run to share. Your best of the week rides along as a teal ghost, the week's fastest as a
+  gold one. On the pause card, A, F and T switch between the three modes.
 
 ## How it's built
 
@@ -88,8 +94,21 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   absurd (over 1,000,000 points or an hour at full speed), names that break the rules, and
   more than 60 runs an hour from one address. `shared/leaderboard.ts` holds the name rules
   both sides apply: letters, digits, spaces and `.-_!?'`, up to 12, with a word filter. The
-  name entry asks for another name when the filter turns one away.
-- **`src/game/mode.ts`**: the mode, arcade or free roam. In free roam the sim skips obstacles,
+  name entry asks for another name when the filter turns one away. `/api/trial`
+  (`worker/trial.ts`, the `trials` table) keeps the time trial's week: GET returns the 10
+  fastest times and the fastest run's ghost; POST signs a time with its ghost, which has to
+  back it up (`checkTrial` in `shared/trial.ts`): start on the line, reach the finish when the
+  time says, never pass the top speed, gain no more speed per sample than a push can, and get
+  going no faster than the measured start. So no ghost beats a flawless run.
+- **`src/game/trial.ts`, `src/world/TrialView.tsx`, `shared/trial.ts`**: the time trial. The
+  kid waits on the start line (`resetToStart` in the sim) through a 3 s countdown; from GO the
+  run is recorded as a ghost, the kid's place every 0.1 s of sim time (interpolated between
+  frames), until the clock stops on the frame the finish line is crossed. Times are sim time,
+  so frame rate doesn't change them: the same push-held run came out at 27.81 to 27.83 s at
+  45, 98 and 121 fps. Your best of the week and its ghost stay in `localStorage`; the week's
+  board and the fastest run's ghost come from `/api/trial`. The ghosts are see-through kids,
+  unlit, bent with the world's curve.
+- **`src/game/mode.ts`**: the mode: arcade, free roam or the time trial. In free roam the sim skips obstacles,
   scores nothing and counts no full speed time, and the HUD shows the speed alone. The attract
   ride runs under the same rules, whichever mode the player then picks. Blocks laid
   out during free roam keep no obstacles for good, so back in arcade none drops in right in
@@ -204,7 +223,8 @@ The leaderboard database, set up once (done 2026-10-08):
 1. `npx wrangler login`
 2. `npx wrangler d1 create wheels-off --location weur`, then its id in `wrangler.toml`.
 3. `npx wrangler d1 migrations apply wheels-off --remote`: the `runs` table and the default
-   table. Run it again after each new migration, before the push that needs it.
+   table. Run it again after each new migration, before the push that needs it
+   (`0004_trials.sql`, the time trial's table, before the time trial ships).
 4. `openssl rand -hex 32 | npx wrangler secret put IP_SALT`. Without it the API signs runs
    with no rate limit and logs a warning.
 

@@ -4,6 +4,10 @@
 export const secs = (s: number) =>
   s < 60 ? `${s.toFixed(1)}s` : `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`
 
+/** A time trial's time, to the hundredth. */
+export const lap = (s: number) =>
+  s < 60 ? `${s.toFixed(2)}s` : `${Math.floor(s / 60)}:${(s % 60).toFixed(2).padStart(5, '0')}`
+
 /** Lit next to a live value while it is beating a record; hotter while it is beating the world record. */
 export function Flame({ wr = false }: { wr?: boolean }) {
   return (
