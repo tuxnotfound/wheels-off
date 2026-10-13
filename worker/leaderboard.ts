@@ -15,9 +15,9 @@ export type Env = { DB: D1Database; IP_SALT?: string }
 // most 1.6 cleared a second, so five unbroken minutes come to about 200,000.
 const MAX_SCORE = 1_000_000
 const MAX_STREAK = 3600 // seconds
-const PER_HOUR = 60 // runs one address may sign in an hour
+export const PER_HOUR = 60 // runs one address may sign in an hour (on each board)
 
-const reply = (data: unknown, status = 200) =>
+export const reply = (data: unknown, status = 200) =>
   Response.json(data, { status, headers: { 'cache-control': 'no-store' } })
 
 /** A board: the top 10 rows by one column, of all time (week null) or of one week. */
@@ -52,7 +52,7 @@ function readRun(body: unknown): Run | string {
 }
 
 /** The sender's address, salted and hashed, for the rate limit; null with no salt set. */
-async function addressOf(request: Request, salt: string | undefined): Promise<string | null> {
+export async function addressOf(request: Request, salt: string | undefined): Promise<string | null> {
   const ip = request.headers.get('cf-connecting-ip')
   if (!salt) console.warn('IP_SALT is not set: runs are signed with no rate limit')
   if (!ip || !salt) return null
