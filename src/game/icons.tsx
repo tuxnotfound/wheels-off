@@ -55,6 +55,16 @@ export function Pause() {
   )
 }
 
+/** A circular arrow: the time trial's restart. */
+export function Restart() {
+  return (
+    <svg className="hud-note" viewBox="0 0 24 24" aria-hidden="true">
+      <polyline className="hud-trophy__handles" points="21 4 21 10 15 10" />
+      <path className="hud-trophy__handles" d="M18.5 15a9 9 0 1 1-2.1-9.4L21 10" />
+    </svg>
+  )
+}
+
 export function Note({ off }: { off: boolean }) {
   return (
     <svg className="hud-note" viewBox="0 0 24 24" aria-hidden="true">

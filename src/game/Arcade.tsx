@@ -248,62 +248,88 @@ const RULE: Record<Mode, string> = {
   trial: 'time trial · a wipeout only slows you down',
 }
 
+/** The three ways to ride, as the pause screen offers the other two: in the landing page's cards, smaller. */
+const MODES: { mode: Mode; name: string; jp: string; what: string; key: string }[] = [
+  { mode: 'arcade', name: 'ARCADE', jp: 'アーケード', what: 'ollie the obstacles and chain combos for the hi-scores.', key: 'A' },
+  { mode: 'free', name: 'FREE ROAM', jp: 'フリーローム', what: 'the same endless town with no obstacles and no scores.', key: 'F' },
+  { mode: 'trial', name: 'TIME TRIAL', jp: 'タイムトライアル', what: 'this week’s course against the clock and the ghosts.', key: 'T' },
+]
+
+/** Switches to a mode from the pause screen, as its key does, and rolls on. */
+function pick(mode: Mode) {
+  if (mode === 'trial') enterTrial()
+  else setMode(mode)
+  resume()
+}
+
+/**
+ * The pause card (P): the title card, with how to play and the top of each leaderboard; below
+ * it, the other two modes to try, each a card with its key (A, F, T), clickable too.
+ */
 function PauseCard() {
   const mode = useMode((s) => s.mode)
   return (
     <div className="overlay" role="dialog" aria-label="Paused">
-      <div className="title-card">
-        <h1>WHEELS OFF</h1>
-        <p className="title-card__jp">ホイールズ・オフ</p>
-        <div className="title-card__tops">
-          {(['score', 'speed'] as const).map((board) => {
-            const top = worldRecord(board)
-            const week = weekTop(board)
-            return (
-              <div key={board} className="title-card__top">
-                <span className="title-card__board">{BOARD_TITLE[board]}</span>
-                <span className="title-card__hi">HI-SCORE {top ? `${shown(board, top.value)} ${top.name.toUpperCase()}` : '---'}</span>
-                <span className="title-card__hi">THIS WEEK {week ? `${shown(board, week.value)} ${week.name.toUpperCase()}` : '---'}</span>
-              </div>
-            )
-          })}
+      <div className="pause">
+        <div className="title-card">
+          <h1>WHEELS OFF</h1>
+          <p className="title-card__jp">ホイールズ・オフ</p>
+          <div className="title-card__tops">
+            {(['score', 'speed'] as const).map((board) => {
+              const top = worldRecord(board)
+              const week = weekTop(board)
+              return (
+                <div key={board} className="title-card__top">
+                  <span className="title-card__board">{BOARD_TITLE[board]}</span>
+                  <span className="title-card__hi">HI-SCORE {top ? `${shown(board, top.value)} ${top.name.toUpperCase()}` : '---'}</span>
+                  <span className="title-card__hi">THIS WEEK {week ? `${shown(board, week.value)} ${week.name.toUpperCase()}` : '---'}</span>
+                </div>
+              )
+            })}
+          </div>
+          <dl className="controls">
+            <dt><kbd>W</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">↑</kbd></dt>
+            <dd>push</dd>
+            <dt><kbd>S</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">↓</kbd></dt>
+            <dd>brake</dd>
+            <dt>
+              <kbd>A</kbd><kbd>D</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">←</kbd><kbd className="kbd--arrow">→</kbd>
+            </dt>
+            <dd>carve · hold into a side street to turn</dd>
+            <dt><kbd>Space</kbd></dt>
+            <dd>ollie · tap twice to kickflip</dd>
+            <dt><kbd>P</kbd></dt>
+            <dd>pause</dd>
+            <dt><kbd>R</kbd></dt>
+            <dd>high scores</dd>
+            <dt><kbd>M</kbd></dt>
+            <dd>music on/off</dd>
+          </dl>
+          <p className="title-card__rule">{RULE[mode]}</p>
+          {mode === 'trial' && (
+            <p className="title-card__mode">
+              <span>
+                <kbd>T</kbd> restart the run
+              </span>
+            </p>
+          )}
+          <p className="title-card__go">paused · press P to roll on</p>
         </div>
-        <dl className="controls">
-          <dt><kbd>W</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">↑</kbd></dt>
-          <dd>push</dd>
-          <dt><kbd>S</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">↓</kbd></dt>
-          <dd>brake</dd>
-          <dt>
-            <kbd>A</kbd><kbd>D</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">←</kbd><kbd className="kbd--arrow">→</kbd>
-          </dt>
-          <dd>carve · hold into a side street to turn</dd>
-          <dt><kbd>Space</kbd></dt>
-          <dd>ollie · tap twice to kickflip</dd>
-          <dt><kbd>P</kbd></dt>
-          <dd>pause</dd>
-          <dt><kbd>R</kbd></dt>
-          <dd>high scores</dd>
-          <dt><kbd>M</kbd></dt>
-          <dd>music on/off</dd>
-        </dl>
-        <p className="title-card__rule">{RULE[mode]}</p>
-        <p className="title-card__mode">
-          {mode !== 'arcade' && (
-            <span>
-              <kbd>A</kbd> arcade
-            </span>
-          )}
-          {mode !== 'free' && (
-            <span>
-              <kbd>F</kbd> free roam
-            </span>
-          )}
-          <span>
-            <kbd>T</kbd> {mode === 'trial' ? 'restart' : 'time trial'}
-          </span>
-          {mode === 'arcade' && <span className="title-card__note">· ends this run</span>}
-        </p>
-        <p className="title-card__go">paused · press P to roll on</p>
+        <section className="other-modes" aria-label="Other modes">
+          <p className="other-modes__title">try another mode{mode === 'arcade' ? ' · ends this run' : ''}</p>
+          <div className="other-modes__cards">
+            {MODES.filter((m) => m.mode !== mode).map((m) => (
+              <button key={m.mode} className={`mode-card mode-card--small mode-card--${m.mode}`} {...landingButton(() => pick(m.mode))}>
+                <span className="mode-card__name">{m.name}</span>
+                <span className="mode-card__jp">{m.jp}</span>
+                <span className="mode-card__what">{m.what}</span>
+                <span className="mode-card__key">
+                  play · press <kbd>{m.key}</kbd>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   )

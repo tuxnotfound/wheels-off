@@ -1,9 +1,9 @@
 import { useMusic } from '../audio/music'
 import { useHud } from './hudStore'
-import { Crown, Flame, Note, Pause, Trophy, lap, secs } from './icons'
+import { Crown, Flame, Note, Pause, Restart, Trophy, lap, secs } from './icons'
 import { BOARD_TITLE } from './leaderboard'
 import { useMode } from './mode'
-import { useTrial } from './trial'
+import { startAttempt, useTrial } from './trial'
 
 /**
  * The record under a live value. While the run is beating it, it follows the value in red.
@@ -68,6 +68,21 @@ function TrialPanel() {
         </div>
       )}
     </>
+  )
+}
+
+/**
+ * The time trial's turn, big, on the side it goes: the course turns at the next intersection
+ * and riding straight on ends in the wall. Shown from about 2.4 s out (upcomingTurn).
+ */
+function TurnSign({ left }: { left: boolean }) {
+  return (
+    <div className={left ? 'turn-sign turn-sign--left' : 'turn-sign'} role="status">
+      <svg className="turn-sign__arrow" viewBox="0 0 100 60" aria-hidden="true">
+        <path d="M8 21h50V6l36 24-36 24V39H8z" />
+      </svg>
+      <span className="turn-sign__what">{left ? 'TURN LEFT' : 'TURN RIGHT'}</span>
+    </div>
   )
 }
 
@@ -149,6 +164,20 @@ export function Hud() {
       )}
       {started && (
         <div className="hud-keys">
+          {mode === 'trial' && (
+            // clickable too; it never takes the focus, so Space stays an ollie
+            <button
+              type="button"
+              className="hud-key hud-key--button"
+              aria-label="T restarts the run"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={startAttempt}
+            >
+              <Restart />
+              <span className="hud-key__what">restart</span>
+              <kbd>T</kbd>
+            </button>
+          )}
           <div className="hud-key" role="note" aria-label="P pauses">
             <Pause />
             <kbd>P</kbd>
@@ -159,7 +188,8 @@ export function Hud() {
           </div>
         </div>
       )}
-      {started && turns && (
+      {started && mode === 'trial' && turns && <TurnSign left={turns.left} />}
+      {started && mode !== 'trial' && turns && (
         <div className="turns">
           <span className={turns.left ? 'on' : ''}>◀</span>
           <span className={turns.right ? 'on' : ''}>▶</span>

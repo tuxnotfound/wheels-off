@@ -29,7 +29,9 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   that ends the run: score and combo go back to 0. FULL SPEED! pops up when the speedster
   clock starts (above 58 km/h), unless a streak broke less than 5 s before.
 - **P** pause: the pause card, with how to play and the top of each leaderboard, of all time
-  and this week (P or Esc to play on). The P and M chips in the corner show both keys during the ride. **R** high scores: both leaderboards in full, from anywhere,
+  and this week (P or Esc to play on); below it, the other two modes to try, as smaller copies
+  of the landing page's cards with their keys (A arcade, F free roam, T time trial), which can
+  also be clicked. The P and M chips in the corner show both keys during the ride. **R** high scores: both leaderboards in full, from anywhere,
   this week's first (← → or A D switch to all time; R to go back, Esc to ride). A run that
   makes a leaderboard asks for a name 1.5 s after the wipeout, once WIPEOUT has played: Enter
   signs it (as John Doe when blank), Esc skips it and the run goes on no board. The same card offers the run to share: a post on X with
@@ -41,11 +43,12 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   free roam ends the run, as a wipeout does. F mid-ride does nothing.
 - **T** time trial: this week's course, 600 m through the week's town to a checkered finish,
   against the clock: straights of 2 to 4 blocks, each ending in a turn into a side street that
-  the turn arrow shows early. Along the course every other side street is built over, so its
+  a big arrow on that side of the screen (TURN LEFT, TURN RIGHT) shows about 2.4 s out. Along the course every other side street is built over, so its
   turns are the only ones there. Past each one, three rows
   of barriers close the road ahead, so riding straight on ends in the wall, "MISSED THE TURN!",
   and a respawn 25 m before the turn at cruising speed (the clock runs on). A countdown, then
-  GO; a wipeout only costs speed. T mid-ride goes back to the start line. At the
+  GO; a wipeout only costs speed. T mid-ride goes back to the start line, as does the restart
+  chip in the corner (it can be clicked, and never takes the keyboard's focus). At the
   finish, a time that makes the week's top 10 asks for a name (Enter signs, Esc skips), with
   the run to share. Your best of the week rides along as a teal ghost, the week's fastest as a
   gold one. On the pause card, A, F and T switch between the three modes.

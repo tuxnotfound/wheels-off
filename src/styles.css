@@ -119,6 +119,53 @@ canvas {
   opacity: 0.6;
 }
 
+/* the pause screen: the title card, then the other two modes to try below it */
+.pause {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 100%;
+}
+
+.other-modes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(520px, 100%);
+}
+
+.other-modes__title {
+  margin: 0;
+  padding: 2px 12px;
+  font-size: 15px;
+  color: #fbfaf3;
+  -webkit-text-stroke: 1px var(--ink);
+  text-shadow: 2px 2px 0 var(--ink);
+}
+
+.other-modes__cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+/* the landing page's mode cards, smaller */
+.mode-card--small {
+  padding: 14px 14px 10px;
+}
+
+.mode-card--small .mode-card__name {
+  font-size: 20px;
+}
+
+.mode-card--small .mode-card__what {
+  margin: 4px 0 8px;
+  font-size: 12px;
+}
+
 kbd {
   display: inline-block;
   min-width: 24px;
@@ -624,6 +671,72 @@ kbd {
   transition: opacity 0.2s;
 }
 
+/* the time trial's turn: a big arrow on the side the course goes, pulsing until the turn */
+.turn-sign {
+  position: absolute;
+  top: 34%;
+  left: 72%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: translateX(-50%);
+  animation: turn-in 0.25s ease-out both;
+}
+
+.turn-sign--left {
+  left: 28%;
+}
+
+.turn-sign__arrow {
+  width: clamp(110px, 13vw, 170px);
+  overflow: visible;
+  animation: turn-pulse 0.6s ease-in-out infinite alternate;
+}
+
+.turn-sign--left .turn-sign__arrow {
+  transform: scaleX(-1);
+}
+
+.turn-sign__arrow path {
+  fill: var(--gold);
+  stroke: var(--ink);
+  stroke-width: 4;
+  stroke-linejoin: round;
+  filter: drop-shadow(4px 4px 0 var(--ink));
+}
+
+.turn-sign__what {
+  font-size: clamp(20px, 2.6vw, 30px);
+  color: #fbfaf3;
+  -webkit-text-stroke: 1.5px var(--ink);
+  text-shadow: 3px 3px 0 var(--ink);
+  white-space: nowrap;
+}
+
+@keyframes turn-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.6);
+  }
+}
+
+@keyframes turn-pulse {
+  to {
+    translate: 8px 0;
+  }
+}
+
+.turn-sign--left .turn-sign__arrow {
+  animation-name: turn-pulse-left;
+}
+
+@keyframes turn-pulse-left {
+  to {
+    translate: -8px 0;
+  }
+}
+
 .turns span.on {
   opacity: 0.9;
   color: #fbfaf3;
@@ -649,6 +762,24 @@ kbd {
   border-radius: 14px;
   box-shadow: 2px 3px 0 var(--ink);
   padding: 4px 6px 4px 10px;
+}
+
+/* the time trial's restart: a key chip you can also click */
+.hud-key--button {
+  pointer-events: auto;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.hud-key--button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+.hud-key__what {
+  margin-left: 2px;
 }
 
 .hud-note {
