@@ -23,6 +23,7 @@ import type { PendingRun, Ranks } from './arcadeStore'
 import { freeRoam, onCourse, useMode } from './mode'
 import { trialAfterStep, trialTick } from './trial'
 import { autopilot } from './autopilot'
+import { pacer } from './pacer'
 import { tickAds } from '../ads/ads'
 import { TrialView } from '../world/TrialView'
 
@@ -368,10 +369,37 @@ function CameraRig() {
   return null
 }
 
+/**
+ * Drives the frames (the canvas runs frameloop="never"): one every few display refreshes, at 60
+ * a second or the nearest rate above (pacer.ts), so a 120 Hz screen doesn't draw twice as many.
+ * While the game is paused (the pause screen, the records, a name being typed, a result) nothing
+ * is drawn and the last frame stays on screen, unless the canvas is resized, which clears it.
+ */
+function FrameLoop() {
+  const advance = useThree((s) => s.advance)
+  const canvas = useThree((s) => s.gl.domElement)
+  // dev-only handle for test scripts: draws a frame at a given time (seconds)
+  if (import.meta.env.DEV) Object.assign(window, { __advance: advance })
+  useEffect(() => {
+    const due = pacer(60)
+    let drawn = ''
+    let raf = requestAnimationFrame(function loop(t) {
+      raf = requestAnimationFrame(loop)
+      const size = `${canvas.width}x${canvas.height}`
+      if (!due(t) || (isPaused() && size === drawn)) return
+      drawn = size
+      advance(t / 1000)
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [advance, canvas])
+  return null
+}
+
 export default function GameCanvas() {
   useEffect(installInput, [])
   return (
     <Canvas
+      frameloop="never"
       className="game-canvas"
       flat
       shadows="percentage"
@@ -385,6 +413,7 @@ export default function GameCanvas() {
       <World />
       <CameraRig />
       <PostFX />
+      <FrameLoop />
     </Canvas>
   )
 }
