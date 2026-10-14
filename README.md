@@ -68,7 +68,9 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   side, kept over the road, and on a wide screen aimed so the kid rides right of the title. It
   renders three blocks behind (`BEHIND_LANDING`) instead of one, since it looks back down the
   street. Taking over swings it round the kid, on the side of the street with more room, into
-  the chase in 1.5 s.
+  the chase in 1.5 s. Frames come from `FrameLoop` and `pacer.ts`: 60 a second, or the nearest
+  rate above it (every other refresh on a 120 Hz screen, so it isn't drawn twice as often), and
+  none while the game is paused, when the last frame stays on screen.
 - **`src/game/autopilot.ts`**: the attract ride behind the landing page. It drives the same
   input as the keyboard: straight down the first street (no carving near an intersection, so it
   never turns), a carve every few seconds, and an ollie or a kickflip every 3.5 to 7.5 s. The
@@ -175,7 +177,10 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   component per street block (keyed `seed:k`). Only new blocks mount and nothing
   re-renders. Each building is its painted front as a cut-out card plus a plain 3D body
   behind it. Props and obstacles are cards or crossed cards. Road, sidewalks, paint, poles
-  and wires stay 3D.
+  and wires stay 3D. Once a block mounts, `bake.ts` merges its static parts into a few meshes:
+  one for every plain toon part, its color moved into the vertices, and one per textured
+  material, so a block is a few draw calls instead of a hundred. Obstacles (each merged on its
+  own, since a hit knocks it flying), nobori flags and ad faces are marked `LIVE` and stay apart.
 - **`src/look/`**: the look.
   - Cel shading: `gradientMap.ts` is a hard two-tone ramp (lit or shade, no gradient).
     Shade gets no direct light, so a cool tinted ambient alone colors it. One sun casts
@@ -189,8 +194,10 @@ button give way to a "mobile version soon" card; the attract ride and the music 
     the vertex shader and wrapped in a box that follows the camera anchor.
   - `PostFX.tsx` is one full-screen pass for the fisheye lens, the ink lines (from depth
     discontinuities and color steps), the golden-hour grade and the vignette. The scene is
-    rendered supersampled (up to 1.75x, within a pixel budget that drops on slow frames)
-    and filtered down here, and ink weight tapers with distance so far objects stay clean.
+    rendered supersampled (up to 1.75x, within a pixel budget) into an 8-bit sRGB target, with
+    no MSAA, and filtered down here, and ink weight tapers with distance so far objects stay
+    clean. On a machine that can't hold the frame rate, quality steps down: the supersampling
+    first, then the resolution, to 1x on a high-DPI screen (0.75x on a 1x one).
 - **`src/player/`**: the skater.
   - `pose.ts` turns the sim into one pose per frame (including an occasional kick while
     coasting with no keys held) (sideways stance, push cycle, carve
