@@ -158,12 +158,16 @@ function riderBox(camera: THREE.PerspectiveCamera, grow: THREE.Vector2, out: THR
 
 const SS_MAX = 1.75 // at most 1.75x the drawing buffer per axis
 const SS_BUDGET = 7.5e6 // pixels rendered per frame at best
-const SS_MIN_BUDGET = 1.5e6
+const SLOW = 0.021 // seconds: frames averaging slower than this run under about 48 a second
+const SUSTAIN = 60 // frames that slow, one after another, before quality steps down
+const SETTLE = 2 // seconds of frames before any counts: shaders compile, the art uploads
+const STEP = 0.8 // each step keeps this much of the supersampling budget, then of the resolution
 
 export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; thickness?: number }) {
   const gl = useThree((s) => s.gl)
   const size = useThree((s) => s.size)
   const dpr = useThree((s) => s.viewport.dpr)
+  const setDpr = useThree((s) => s.setDpr)
 
   const { target, mid, quad, fxaa, cam, mat, fxaaMat } = useMemo(() => {
     // 8-bit sRGB: stored encoded and read back linear, so the darks stay smooth at half the
@@ -207,12 +211,18 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
     return { target, mid, quad, fxaa, cam, mat, fxaaMat }
   }, [barrel, thickness])
 
-  // Render the scene above screen resolution (supersampling) within a pixel budget, and
-  // back off if the frame rate can't hold it.
-  const quality = useMemo(() => ({ budget: SS_BUDGET, slow: 0, v: new THREE.Vector2(), grow: new THREE.Vector2() }), [])
+  // Render the scene above screen resolution (supersampling) within a pixel budget, and step
+  // quality down on a machine that can't hold the frame rate (frames averaging slower than
+  // SLOW, SUSTAIN of them in a row): first the supersampling, a fifth of its budget at a time,
+  // down to the screen's own resolution; then the resolution itself (the canvas DPR), a fifth at
+  // a time, down to 1x on a high-DPI screen and 0.75x on a 1x one. It never steps back up.
+  const quality = useMemo(
+    () => ({ budget: SS_BUDGET, ss: true, avg: 1 / 60, slow: 0, age: 0, v: new THREE.Vector2(), grow: new THREE.Vector2() }),
+    [],
+  )
   const resize = useCallback(() => {
     const v = gl.getDrawingBufferSize(quality.v)
-    const ss = THREE.MathUtils.clamp(Math.sqrt(quality.budget / (v.x * v.y)), 1, SS_MAX)
+    const ss = quality.ss ? THREE.MathUtils.clamp(Math.sqrt(quality.budget / (v.x * v.y)), 1, SS_MAX) : 1
     target.setSize(Math.round(v.x * ss), Math.round(v.y * ss))
     mid.setSize(v.x, v.y)
     mat.uniforms.uOut.value.copy(v)
@@ -220,6 +230,23 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
     fxaaMat.uniforms.uRcp.value.set(1 / v.x, 1 / v.y)
   }, [gl, dpr, target, mid, mat, fxaaMat, thickness, quality])
   useEffect(resize, [resize, size])
+
+  const stepDown = () => {
+    const v = gl.getDrawingBufferSize(quality.v)
+    const pixels = v.x * v.y
+    const floor = Math.max(0.75, Math.min(window.devicePixelRatio, 2) / 2)
+    if (quality.ss && quality.budget > pixels) {
+      // from the budget in use: on a small screen the cap holds it below the full budget
+      quality.budget = Math.max(pixels, Math.min(quality.budget, SS_MAX * SS_MAX * pixels) * STEP)
+      quality.ss = quality.budget > pixels
+      resize()
+    } else if (dpr > floor) {
+      quality.ss = false // off for good: a smaller canvas would take it back up
+      setDpr(Math.max(floor, dpr * STEP)) // the canvas resizes, then resize() runs
+    }
+  }
+  // dev-only handle for test scripts: the quality state, and a step down on demand
+  if (import.meta.env.DEV) Object.assign(window, { __quality: { state: quality, dpr, stepDown } })
 
   useEffect(
     () => () => {
@@ -231,12 +258,15 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
 
   // priority 1: this callback owns rendering (r3f stops auto-rendering)
   useFrame(({ scene, camera }, dt) => {
-    // sustained slow frames (>21 ms) drop the supersampling budget by a fifth
-    quality.slow = dt > 0.021 ? quality.slow + 1 : Math.max(0, quality.slow - 1)
-    if (quality.slow > 90 && quality.budget > SS_MIN_BUDGET) {
-      quality.budget *= 0.8
+    // a pause or a hidden tab shows up as one long frame: capped, it can't count as many
+    const t = Math.min(dt, 0.1)
+    quality.age += t
+    quality.avg += (t - quality.avg) * 0.05
+    quality.slow = quality.age > SETTLE && quality.avg > SLOW ? quality.slow + 1 : 0
+    if (quality.slow > SUSTAIN) {
       quality.slow = 0
-      resize()
+      quality.avg = 1 / 60 // the next step waits for a second of fresh evidence
+      stepDown()
     }
     const pc = camera as THREE.PerspectiveCamera
     mat.uniforms.uNear.value = pc.near
