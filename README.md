@@ -195,8 +195,10 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   - `PostFX.tsx` is one full-screen pass for the fisheye lens, the ink lines (from depth
     discontinuities and color steps), the golden-hour grade and the vignette. The scene is
     rendered supersampled (up to 1.75x, within a pixel budget), with no MSAA, and filtered
-    down here, and ink weight tapers with distance so far objects stay clean. On a machine that can't hold the frame rate, quality steps down: the supersampling
-    first, then the resolution, to 1x on a high-DPI screen (0.75x on a 1x one).
+    down here, and ink weight tapers with distance so far objects stay clean. On a machine that
+    can't hold the frame rate, quality steps down: the supersampling first, then the
+    resolution, to 1x on a high-DPI screen (0.75x on a 1x one). The canvas follows the
+    screen's pixel ratio when the window moves to another screen.
 - **`src/player/`**: the skater.
   - `pose.ts` turns the sim into one pose per frame (including an occasional kick while
     coasting with no keys held) (sideways stance, push cycle, carve

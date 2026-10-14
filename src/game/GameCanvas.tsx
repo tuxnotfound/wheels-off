@@ -6,7 +6,7 @@ import type { BlockDesc } from '../world/Block'
 import { Skater } from '../player/Skater'
 import { input, installInput } from '../player/input'
 import { Sky } from '../look/Sky'
-import { PostFX } from '../look/PostFX'
+import { PostFX, canvasDpr, useResolution } from '../look/PostFX'
 import { Petals } from '../look/Petals'
 import { setTreeSun } from '../world/Tree3D'
 import { toonMat } from '../look/materials'
@@ -397,6 +397,7 @@ function FrameLoop() {
 
 export default function GameCanvas() {
   useEffect(installInput, [])
+  const dpr = useResolution(canvasDpr)
   return (
     <Canvas
       frameloop="never"
@@ -405,7 +406,7 @@ export default function GameCanvas() {
       shadows="percentage"
       gl={{ antialias: false }}
       camera={{ fov: 74, near: 0.3, far: 420, position: [0, 3.0, 7.6] }}
-      dpr={[1, 2]}
+      dpr={dpr}
     >
       <fog attach="fog" args={[FOG.color, FOG.near, FOG.far]} />
       <Lights />

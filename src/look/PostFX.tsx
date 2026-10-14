@@ -1,6 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useCallback, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
+import { create } from 'zustand'
 import { GRADE } from './timeOfDay'
 import { skater } from '../player/Skater'
 
@@ -156,6 +157,25 @@ function riderBox(camera: THREE.PerspectiveCamera, grow: THREE.Vector2, out: THR
   return out.set(u - rx - grow.x, v - ry - grow.y, u + rx + grow.x, v + ry + grow.y)
 }
 
+/**
+ * The canvas resolution (its DPR): the screen's pixel ratio, at least 1, under a cap the back-off
+ * lowers. The ratio is followed as the window moves to a screen with another one, which r3f
+ * doesn't notice on its own: a window dragged from a 2x screen to a 1x one kept drawing 2x.
+ */
+export const useResolution = create(() => ({ ratio: window.devicePixelRatio, cap: 2 }))
+export const canvasDpr = (s: { ratio: number; cap: number }) => Math.min(Math.max(s.ratio, 1), s.cap)
+function followRatio() {
+  matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener(
+    'change',
+    () => {
+      useResolution.setState({ ratio: window.devicePixelRatio })
+      followRatio()
+    },
+    { once: true },
+  )
+}
+followRatio()
+
 const SS_MAX = 1.75 // at most 1.75x the drawing buffer per axis
 const SS_BUDGET = 7.5e6 // pixels rendered per frame at best
 const SLOW = 0.021 // seconds: frames averaging slower than this run under about 48 a second
@@ -167,7 +187,6 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
   const gl = useThree((s) => s.gl)
   const size = useThree((s) => s.size)
   const dpr = useThree((s) => s.viewport.dpr)
-  const setDpr = useThree((s) => s.setDpr)
 
   const { target, mid, quad, fxaa, cam, mat, fxaaMat } = useMemo(() => {
     // half-float: sunlit glowing art (ads, foliage) goes past 1.0 and the grade brings it back,
@@ -234,7 +253,7 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
   const stepDown = () => {
     const v = gl.getDrawingBufferSize(quality.v)
     const pixels = v.x * v.y
-    const floor = Math.max(0.75, Math.min(window.devicePixelRatio, 2) / 2)
+    const floor = Math.max(0.75, Math.min(useResolution.getState().ratio, 2) / 2)
     if (quality.ss && quality.budget > pixels) {
       // from the budget in use: on a small screen the cap holds it below the full budget
       quality.budget = Math.max(pixels, Math.min(quality.budget, SS_MAX * SS_MAX * pixels) * STEP)
@@ -242,7 +261,7 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
       resize()
     } else if (dpr > floor) {
       quality.ss = false // off for good: a smaller canvas would take it back up
-      setDpr(Math.max(floor, dpr * STEP)) // the canvas resizes, then resize() runs
+      useResolution.setState({ cap: Math.max(floor, dpr * STEP) }) // the canvas resizes, then resize() runs
     }
   }
   // dev-only handle for test scripts: the quality state, and a step down on demand
