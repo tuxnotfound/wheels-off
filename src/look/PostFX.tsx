@@ -2,6 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useCallback, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { GRADE } from './timeOfDay'
+import { skater } from '../player/Skater'
 
 // The scene renders into an 8-bit sRGB target, then one full-screen pass over it:
 //  - fisheye (barrel) lens, the wide-angle look of the reference shots
@@ -24,6 +25,7 @@ const frag = /* glsl */ `
   uniform float uNear, uFar, uBarrel, uThick;
   uniform vec3 uInk, uGradeShadow, uGradeHigh;
   uniform float uGrade;
+  uniform vec4 uRider; // the rider's box in the scene image: min xy, max xy
   varying vec2 vUv;
 
   float invZ(vec2 uv) {
@@ -79,9 +81,13 @@ const frag = /* glsl */ `
     vec2 t0 = vec2(0.125, 0.375) * px, t1 = vec2(-0.375, 0.125) * px;
     vec2 t2 = -t0, t3 = -t1;
     vec3 col = (texture2D(tColor, uv + t0).rgb + texture2D(tColor, uv + t1).rgb + texture2D(tColor, uv + t2).rgb + texture2D(tColor, uv + t3).rgb) * 0.25;
-    // rider mask, grown by a line width so its outline is fine on both sides of the silhouette
-    vec2 ro = uThick / uOut;
-    float rider = max(riderAt(uv), max(max(riderAt(uv + vec2(ro.x, 0.0)), riderAt(uv - vec2(ro.x, 0.0))), max(riderAt(uv + vec2(0.0, ro.y)), riderAt(uv - vec2(0.0, ro.y)))));
+    // rider mask, grown by a line width so its outline is fine on both sides of the silhouette;
+    // ten texture reads, so only inside the rider's box
+    float rider = 0.0;
+    if (all(greaterThan(uv, uRider.xy)) && all(lessThan(uv, uRider.zw))) {
+      vec2 ro = uThick / uOut;
+      rider = max(riderAt(uv), max(max(riderAt(uv + vec2(ro.x, 0.0)), riderAt(uv - vec2(ro.x, 0.0))), max(riderAt(uv + vec2(0.0, ro.y)), riderAt(uv - vec2(0.0, ro.y)))));
+    }
     float ink = (inkAt(uv + t0, rider) + inkAt(uv + t1, rider) + inkAt(uv + t2, rider) + inkAt(uv + t3, rider)) * 0.25;
     col = mix(col, uInk, ink * 0.9);
 
@@ -124,6 +130,32 @@ const fxaaFrag = /* glsl */ `
   }
 `
 
+// The rider's box: a sphere around the kid and the board, projected, so the shader looks for the
+// rider only where it can be
+const RIDER_MID = 0.85 // meters above the board's ground point
+const RIDER_R = 1.3 // meters, enough for the kid and the board through tricks and wipeouts
+const mid3 = new THREE.Vector3()
+
+/** The rider's box in the scene image (uv: min xy, max xy), grown by `grow`; the whole image if the camera is too close. */
+function riderBox(camera: THREE.PerspectiveCamera, grow: THREE.Vector2, out: THREE.Vector4) {
+  const root = skater.root
+  if (!root) return out.set(0, 0, 1, 1)
+  root.updateWorldMatrix(true, false)
+  camera.updateMatrixWorld()
+  mid3.setFromMatrixPosition(root.matrixWorld)
+  mid3.y += RIDER_MID
+  mid3.applyMatrix4(camera.matrixWorldInverse)
+  const d = -mid3.z
+  if (d < camera.near + RIDER_R) return out.set(0, 0, 1, 1)
+  // the sphere's radius in uv (half its size in NDC)
+  const ry = (0.5 * RIDER_R) / (d * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2))
+  const rx = ry / camera.aspect
+  mid3.applyMatrix4(camera.projectionMatrix)
+  const u = mid3.x * 0.5 + 0.5
+  const v = mid3.y * 0.5 + 0.5
+  return out.set(u - rx - grow.x, v - ry - grow.y, u + rx + grow.x, v + ry + grow.y)
+}
+
 const SS_MAX = 1.75 // at most 1.75x the drawing buffer per axis
 const SS_BUDGET = 7.5e6 // pixels rendered per frame at best
 const SS_MIN_BUDGET = 1.5e6
@@ -156,6 +188,7 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
         uGradeShadow: { value: new THREE.Color(GRADE.shadow) },
         uGradeHigh: { value: new THREE.Color(GRADE.highlight) },
         uGrade: { value: GRADE.strength },
+        uRider: { value: new THREE.Vector4(0, 0, 1, 1) },
       },
     })
     const fxaaMat = new THREE.ShaderMaterial({
@@ -176,7 +209,7 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
 
   // Render the scene above screen resolution (supersampling) within a pixel budget, and
   // back off if the frame rate can't hold it.
-  const quality = useMemo(() => ({ budget: SS_BUDGET, slow: 0, v: new THREE.Vector2() }), [])
+  const quality = useMemo(() => ({ budget: SS_BUDGET, slow: 0, v: new THREE.Vector2(), grow: new THREE.Vector2() }), [])
   const resize = useCallback(() => {
     const v = gl.getDrawingBufferSize(quality.v)
     const ss = THREE.MathUtils.clamp(Math.sqrt(quality.budget / (v.x * v.y)), 1, SS_MAX)
@@ -208,6 +241,10 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
     const pc = camera as THREE.PerspectiveCamera
     mat.uniforms.uNear.value = pc.near
     mat.uniforms.uFar.value = pc.far
+    // grown by two line widths: the mask reaches one past the silhouette
+    const u = mat.uniforms
+    quality.grow.set(2, 2).multiplyScalar(u.uThick.value).divide(u.uOut.value)
+    riderBox(pc, quality.grow, u.uRider.value)
     gl.setRenderTarget(target)
     gl.render(scene, camera)
     gl.setRenderTarget(mid)
