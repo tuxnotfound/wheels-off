@@ -144,6 +144,7 @@ function clusterMat(kind: TreeKind): THREE.ShaderMaterial {
       ]),
     })
     m.uniforms.uMap.value = clusterTex(kind)
+    m.userData.canopy = true // a block's canopies merge into one mesh (bake.ts)
     clusterMats.set(kind, m)
   }
   return m

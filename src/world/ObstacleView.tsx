@@ -11,6 +11,7 @@ import { input } from '../player/input'
 import { obstaclesFor } from './streetGen'
 import type { Obstacle } from './streetGen'
 import { BLOCK } from './worldConfig'
+import { LIVE, bakeStatic } from './bake'
 
 const INK_DARK = '#2f3332'
 const WHITE = '#f1f1ea'
@@ -92,6 +93,8 @@ function Body({ ob }: { ob: Obstacle }) {
 export function ObstacleView({ ob, k }: { ob: Obstacle; k: number }) {
   const ref = useRef<THREE.Group>(null!)
   const z0 = -(ob.u - k * BLOCK)
+  // it tumbles away whole when hit, so its parts merge here, not into the block
+  useLayoutEffect(() => bakeStatic(ref.current), [ob])
   useFrame(() => {
     const t = sim.hits.get(ob.id)
     const g = ref.current
@@ -111,7 +114,7 @@ export function ObstacleView({ ob, k }: { ob: Obstacle; k: number }) {
     g.rotation.set(-tt * 7, 0, dir * tt * 4)
   })
   return (
-    <group ref={ref} position={[ob.s, 0, z0]}>
+    <group ref={ref} position={[ob.s, 0, z0]} userData={LIVE}>
       <Body ob={ob} />
     </group>
   )
