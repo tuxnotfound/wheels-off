@@ -29,7 +29,9 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   that ends the run: score and combo go back to 0. FULL SPEED! pops up when the speedster
   clock starts (above 58 km/h), unless a streak broke less than 5 s before.
 - **P** pause: the pause card, with how to play and the top of each leaderboard, of all time
-  and this week (P or Esc to play on). The P and M chips in the corner show both keys during the ride. **R** high scores: both leaderboards in full, from anywhere,
+  and this week (P or Esc to play on); below it, the other two modes to try, as smaller copies
+  of the landing page's cards with their keys (A arcade, F free roam, T time trial), which can
+  also be clicked. The P and M chips in the corner show both keys during the ride. **R** high scores: both leaderboards in full, from anywhere,
   this week's first (← → or A D switch to all time; R to go back, Esc to ride). A run that
   makes a leaderboard asks for a name 1.5 s after the wipeout, once WIPEOUT has played: Enter
   signs it (as John Doe when blank), Esc skips it and the run goes on no board. The same card offers the run to share: a post on X with
@@ -39,6 +41,18 @@ button give way to a "mobile version soon" card; the attract ride and the music 
 - **F** free roam: the same endless town with no obstacles and no scores. F on the landing page
   rolls off in free roam; F on the pause screen rolls on in the other mode. Leaving arcade for
   free roam ends the run, as a wipeout does. F mid-ride does nothing.
+- **T** time trial: this week's course, 600 m through the week's town to a checkered finish,
+  against the clock: straights of 2 to 4 blocks, each ending in a turn into a side street that
+  a big arrow on that side of the screen (TURN LEFT, TURN RIGHT) shows about 2.4 s out. Along the course every other side street is built over, so its
+  turns are the only ones there. Past each one, three rows
+  of barriers close the road ahead, so riding straight on ends in the wall, "MISSED THE TURN!",
+  and a respawn 25 m before the turn at cruising speed (the clock runs on). A countdown, then
+  GO; a wipeout only costs speed. T mid-ride goes back to the start line, as does the restart
+  chip in the corner (it can be clicked, and never takes the keyboard's focus). At the
+  finish, a time that makes the week's top 10 asks for a name (Enter signs, Esc skips), with
+  the run to share. A gold ghost rides along: the fastest run you know of this week, the
+  board's leader or your own best if it's faster (a best you didn't sign). G turns it off and
+  on (remembered in this browser; the ghost chip in the corner too). On the pause card, A, F and T switch between the three modes.
 
 ## How it's built
 
@@ -88,8 +102,37 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   absurd (over 1,000,000 points or an hour at full speed), names that break the rules, and
   more than 60 runs an hour from one address. `shared/leaderboard.ts` holds the name rules
   both sides apply: letters, digits, spaces and `.-_!?'`, up to 12, with a word filter. The
-  name entry asks for another name when the filter turns one away.
-- **`src/game/mode.ts`**: the mode, arcade or free roam. In free roam the sim skips obstacles,
+  name entry asks for another name when the filter turns one away. `/api/trial`
+  (`worker/trial.ts`, the `trials` table) keeps the time trial's week: GET returns the 10
+  fastest times and the fastest run's ghost; POST signs a time with its ghost, which has to
+  back it up (`checkTrial` in `shared/trial.ts`): start on the line, get going no faster than
+  the measured start, cover no more ground in any 3 s than top speed allows (carving across the
+  street can't add to that, its width caps it), and ride the course's length, with a respawn's
+  jump back never counted as progress. That floors a forged ghost at the measured start and top
+  speed all the way, about 36 s; a bot that clears every obstacle and makes every turn rode
+  38.8 s on 2026-W42's course. The check doesn't know the obstacles or the turns.
+- **`src/game/course.ts`**: the time trial's course, laid out from the week's seed: legs of 2
+  to 4 blocks, each turning at the first intersection with a side street (a side picked by the
+  seed, the other if it has none), until 600 m; the last straight at least 2 blocks. It tells
+  the street generator the course's turns (`branchOpen` in `streetGen.ts`: on a course street,
+  in the time trial, only the course's own side street opens; the others are built over in the
+  block plans, left out of the drawn side streets, and can't be turned into) and the walls past
+  each turn (`obstaclesFor` adds them to a block's obstacles, on the course only),
+  and tells the trial where the kid is along it, when they missed a turn and where they go back.
+- **`src/game/trial.ts`, `src/world/TrialView.tsx`, `shared/trial.ts`**: the time trial. The
+  kid waits on the start line (`resetToStart` in the sim) through a 3 s countdown; from GO the
+  run is recorded as a ghost, the kid's world position every 0.1 s of sim time (interpolated
+  between frames, a respawn marked), until the clock stops on the frame the finish line is
+  crossed. Times are sim time,
+  so frame rate doesn't change them: the same push-held run on the first, straight course came
+  out at 27.81 to 27.83 s at 45, 98 and 121 fps. Your best of the week and its ghost stay in `localStorage`; the week's
+  board and the fastest run's ghost come from `/api/trial`; the faster of the two rides along. A ghost is the kid's own
+  silhouette (`src/world/silhouette.ts`): the character and board as they stand on the start
+  line, frozen once per session into one static mesh, drawn see-through in one flat layer
+  (a depth-only pass first), bent with the world's curve. It hides through the countdown, then
+  never hides: whole while ahead, faint once level with the kid or behind. The acceleration starts at GO: the countdown holds the sim, so W held early
+  only saves the reaction time.
+- **`src/game/mode.ts`**: the mode: arcade, free roam or the time trial. In free roam the sim skips obstacles,
   scores nothing and counts no full speed time, and the HUD shows the speed alone. The attract
   ride runs under the same rules, whichever mode the player then picks. Blocks laid
   out during free roam keep no obstacles for good, so back in arcade none drops in right in
@@ -204,7 +247,8 @@ The leaderboard database, set up once (done 2026-10-08):
 1. `npx wrangler login`
 2. `npx wrangler d1 create wheels-off --location weur`, then its id in `wrangler.toml`.
 3. `npx wrangler d1 migrations apply wheels-off --remote`: the `runs` table and the default
-   table. Run it again after each new migration, before the push that needs it.
+   table. Run it again after each new migration, before the push that needs it
+   (`0004_trials.sql`, the time trial's table, before the time trial ships).
 4. `openssl rand -hex 32 | npx wrangler secret put IP_SALT`. Without it the API signs runs
    with no rate limit and logs a warning.
 

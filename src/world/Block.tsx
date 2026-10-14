@@ -12,6 +12,8 @@ import { BlockObstacles } from './ObstacleView'
 import { blockPlan, h, POLE_U } from './streetGen'
 import type { BlockPlan } from './streetGen'
 import { BLOCK, CURB, SIDEWALK } from './worldConfig'
+import { useMode } from '../game/mode'
+import { input } from '../player/input'
 
 export type BlockDesc = {
   key: string
@@ -59,7 +61,9 @@ function useWires(plan: BlockPlan, half: number): THREE.LineSegments {
 }
 
 function Block({ seed, k, ix, iz, dir, width, u0 }: Omit<BlockDesc, 'key'>) {
-  const plan = useMemo(() => blockPlan(seed, k, width, u0), [seed, k, width, u0])
+  // on the time trial's course, the side streets it doesn't take are built over
+  const course = useMode((s) => s.mode === 'trial') && input.started
+  const plan = useMemo(() => blockPlan(seed, k, width, u0, course), [seed, k, width, u0, course])
   const half = width / 2
   const wires = useWires(plan, half)
   const els: ReactNode[] = []

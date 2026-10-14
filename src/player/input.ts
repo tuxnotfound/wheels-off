@@ -15,9 +15,9 @@ const LEFT = ['a', 'arrowleft']
 const RIGHT = ['d', 'arrowright']
 const UP = ['w', 'arrowup']
 const DOWN = ['s', 'arrowdown']
-// pause, records and music never start the ride, nor do keys that leave the page or move
+// pause, records, music and the ghost never start the ride, nor do keys that leave the page or move
 // around it (Cmd+Tab, Tab to the landing page's buttons)
-const NEVER_START = ['p', 'r', 'm', 'tab', 'escape', 'shift', 'meta', 'control', 'alt', 'capslock']
+const NEVER_START = ['p', 'r', 'm', 'g', 'tab', 'escape', 'shift', 'meta', 'control', 'alt', 'capslock']
 
 function recompute() {
   const has = (ks: string[]) => ks.some((k) => held.has(k))
@@ -37,7 +37,15 @@ export function installInput() {
     const k = e.key.toLowerCase()
     if (k === ' ' || k.startsWith('arrow')) e.preventDefault()
     if (!NEVER_START.includes(k) && !e.metaKey && !e.ctrlKey && !e.altKey) input.started = true
-    if (e.repeat) return
+    if (e.repeat) {
+      // a key held down through a pause or a card went down while the game ignored it: its
+      // repeats count it as held from here (W held into a time trial's countdown pushes at GO)
+      if (!held.has(k)) {
+        held.add(k)
+        recompute()
+      }
+      return
+    }
     held.add(k)
     if (k === ' ') {
       const now = performance.now()

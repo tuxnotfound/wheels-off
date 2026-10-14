@@ -4,6 +4,10 @@
 export const secs = (s: number) =>
   s < 60 ? `${s.toFixed(1)}s` : `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`
 
+/** A time trial's time, to the hundredth. */
+export const lap = (s: number) =>
+  s < 60 ? `${s.toFixed(2)}s` : `${Math.floor(s / 60)}:${(s % 60).toFixed(2).padStart(5, '0')}`
+
 /** Lit next to a live value while it is beating a record; hotter while it is beating the world record. */
 export function Flame({ wr = false }: { wr?: boolean }) {
   return (
@@ -47,6 +51,16 @@ export function Pause() {
     <svg className="hud-note" viewBox="0 0 24 24" aria-hidden="true">
       <rect className="hud-trophy__cup" x="5.5" y="4.5" width="4.6" height="15" rx="1.2" />
       <rect className="hud-trophy__cup" x="13.9" y="4.5" width="4.6" height="15" rx="1.2" />
+    </svg>
+  )
+}
+
+/** A circular arrow: the time trial's restart. */
+export function Restart() {
+  return (
+    <svg className="hud-note" viewBox="0 0 24 24" aria-hidden="true">
+      <polyline className="hud-trophy__handles" points="21 4 21 10 15 10" />
+      <path className="hud-trophy__handles" d="M18.5 15a9 9 0 1 1-2.1-9.4L21 10" />
     </svg>
   )
 }

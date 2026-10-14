@@ -1,4 +1,5 @@
 import { leaderboard } from './leaderboard'
+import { trial } from './trial'
 import type { Env } from './leaderboard'
 
 // The Worker behind the game. It sees every request (run_worker_first in wrangler.toml):
@@ -19,6 +20,7 @@ export default {
       return Response.redirect(url.href, 301)
     }
     if (url.pathname === '/api/leaderboard') return leaderboard(request, env)
+    if (url.pathname === '/api/trial') return trial(request, env)
     if (url.pathname.startsWith('/api/')) return Response.json({ error: 'not found' }, { status: 404 })
     return env.ASSETS.fetch(request)
   },

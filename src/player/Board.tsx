@@ -89,6 +89,7 @@ function decalMat(color: string): THREE.MeshToonMaterial {
   m.customProgramCacheKey = () => 'toon-curve'
   return m
 }
+const NO_GHOST = { noGhost: true }
 const markMat = decalMat('#fff7e6')
 const blurMat = decalMat('#e2f7f1')
 
@@ -155,8 +156,9 @@ export function Board({ bind }: { bind: (apply: ApplyBoard | null) => void }) {
                 <group key={s} position-x={s * TRACK} ref={(g) => { if (g) wheels.current[i * 2 + j] = g }}>
                   <mesh geometry={wheelGeo} material={riderMat(WHEEL)} />
                   <mesh geometry={hubGeo} material={riderMat(HUB)} />
-                  <mesh geometry={markGeo} material={markMat} position={[s * (WHEEL_W / 2 + 0.0012), WHEEL_R * 0.62, 0]} rotation-y={(s * Math.PI) / 2} />
-                  <mesh geometry={blurGeo} material={blurMat} position-x={s * (WHEEL_W / 2 + 0.0016)} rotation-y={(s * Math.PI) / 2} />
+                  {/* decals, left out of the time trial's ghost (silhouette.ts) */}
+                  <mesh geometry={markGeo} material={markMat} position={[s * (WHEEL_W / 2 + 0.0012), WHEEL_R * 0.62, 0]} rotation-y={(s * Math.PI) / 2} userData={NO_GHOST} />
+                  <mesh geometry={blurGeo} material={blurMat} position-x={s * (WHEEL_W / 2 + 0.0016)} rotation-y={(s * Math.PI) / 2} userData={NO_GHOST} />
                 </group>
               ))}
             </group>

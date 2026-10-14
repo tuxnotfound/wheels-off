@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ButtonHTMLAttributes, CSSProperties, MouseEvent } from 'react'
-import { resume, signName, skipRun, togglePause, toggleRecords, useArcade } from './arcadeStore'
+import { closeResult, resume, signName, skipRun, togglePause, toggleRecords, useArcade } from './arcadeStore'
 import type { PendingRun } from './arcadeStore'
 import {
   BOARD_JP,
@@ -20,8 +20,11 @@ import {
 } from './leaderboard'
 import type { Board, Period } from './leaderboard'
 import { useHud } from './hudStore'
-import { roll, switchMode, useMode } from './mode'
-import { Crown, Note, Trophy, secs } from './icons'
+import { roll, setMode, switchMode, useMode } from './mode'
+import type { Mode } from './mode'
+import { enterTrial, startAttempt, toggleGhost, useTrial } from './trial'
+import type { TrialRun } from './trial'
+import { Crown, Note, Trophy, lap, secs } from './icons'
 import { records } from './records'
 import { pressMusic, useMusic } from '../audio/music'
 import { useWebGL } from './webgl'
@@ -181,6 +184,14 @@ function Landing() {
                 <kbd>F</kbd>
               </span>
             </button>
+            <button className="mode-card mode-card--trial" {...landingButton(enterTrial)}>
+              <span className="mode-card__name">TIME TRIAL</span>
+              <span className="mode-card__jp">タイムトライアル</span>
+              <span className="mode-card__what">this week's course against the clock and the ghosts.</span>
+              <span className="mode-card__key">
+                <kbd>T</kbd>
+              </span>
+            </button>
           </div>
           <p className="landing__keys">
             <span><kbd>W</kbd> push</span>
@@ -231,49 +242,97 @@ function Landing() {
 }
 
 /** The pause card (P): the title card, with how to play and the top of each leaderboard. */
+const RULE: Record<Mode, string> = {
+  arcade: 'a wipeout ends the run',
+  free: 'free roam · no obstacles, no scores',
+  trial: 'time trial · a wipeout only slows you down',
+}
+
+/** The three ways to ride, as the pause screen offers the other two: in the landing page's cards, smaller. */
+const MODES: { mode: Mode; name: string; jp: string; what: string; key: string }[] = [
+  { mode: 'arcade', name: 'ARCADE', jp: 'アーケード', what: 'ollie the obstacles and chain combos for the hi-scores.', key: 'A' },
+  { mode: 'free', name: 'FREE ROAM', jp: 'フリーローム', what: 'the same endless town with no obstacles and no scores.', key: 'F' },
+  { mode: 'trial', name: 'TIME TRIAL', jp: 'タイムトライアル', what: 'this week’s course against the clock and the ghosts.', key: 'T' },
+]
+
+/** Switches to a mode from the pause screen, as its key does, and rolls on. */
+function pick(mode: Mode) {
+  if (mode === 'trial') enterTrial()
+  else setMode(mode)
+  resume()
+}
+
+/**
+ * The pause card (P): the title card, with how to play and the top of each leaderboard; below
+ * it, the other two modes to try, each a card with its key (A, F, T), clickable too.
+ */
 function PauseCard() {
-  const free = useMode((s) => s.mode === 'free')
+  const mode = useMode((s) => s.mode)
   return (
     <div className="overlay" role="dialog" aria-label="Paused">
-      <div className="title-card">
-        <h1>WHEELS OFF</h1>
-        <p className="title-card__jp">ホイールズ・オフ</p>
-        <div className="title-card__tops">
-          {(['score', 'speed'] as const).map((board) => {
-            const top = worldRecord(board)
-            const week = weekTop(board)
-            return (
-              <div key={board} className="title-card__top">
-                <span className="title-card__board">{BOARD_TITLE[board]}</span>
-                <span className="title-card__hi">HI-SCORE {top ? `${shown(board, top.value)} ${top.name.toUpperCase()}` : '---'}</span>
-                <span className="title-card__hi">THIS WEEK {week ? `${shown(board, week.value)} ${week.name.toUpperCase()}` : '---'}</span>
-              </div>
-            )
-          })}
+      <div className="pause">
+        <div className="title-card">
+          <h1>WHEELS OFF</h1>
+          <p className="title-card__jp">ホイールズ・オフ</p>
+          <div className="title-card__tops">
+            {(['score', 'speed'] as const).map((board) => {
+              const top = worldRecord(board)
+              const week = weekTop(board)
+              return (
+                <div key={board} className="title-card__top">
+                  <span className="title-card__board">{BOARD_TITLE[board]}</span>
+                  <span className="title-card__hi">HI-SCORE {top ? `${shown(board, top.value)} ${top.name.toUpperCase()}` : '---'}</span>
+                  <span className="title-card__hi">THIS WEEK {week ? `${shown(board, week.value)} ${week.name.toUpperCase()}` : '---'}</span>
+                </div>
+              )
+            })}
+          </div>
+          <dl className="controls">
+            <dt><kbd>W</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">↑</kbd></dt>
+            <dd>push</dd>
+            <dt><kbd>S</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">↓</kbd></dt>
+            <dd>brake</dd>
+            <dt>
+              <kbd>A</kbd><kbd>D</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">←</kbd><kbd className="kbd--arrow">→</kbd>
+            </dt>
+            <dd>carve · hold into a side street to turn</dd>
+            <dt><kbd>Space</kbd></dt>
+            <dd>ollie · tap twice to kickflip</dd>
+            <dt><kbd>P</kbd></dt>
+            <dd>pause</dd>
+            <dt><kbd>R</kbd></dt>
+            <dd>high scores</dd>
+            <dt><kbd>M</kbd></dt>
+            <dd>music on/off</dd>
+          </dl>
+          <p className="title-card__rule">{RULE[mode]}</p>
+          {mode === 'trial' && (
+            <p className="title-card__mode">
+              <span>
+                <kbd>T</kbd> restart the run
+              </span>
+              <span>
+                <kbd>G</kbd> ghost on/off
+              </span>
+            </p>
+          )}
+          <p className="title-card__go">paused · press P to roll on</p>
         </div>
-        <dl className="controls">
-          <dt><kbd>W</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">↑</kbd></dt>
-          <dd>push</dd>
-          <dt><kbd>S</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">↓</kbd></dt>
-          <dd>brake</dd>
-          <dt>
-            <kbd>A</kbd><kbd>D</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">←</kbd><kbd className="kbd--arrow">→</kbd>
-          </dt>
-          <dd>carve · hold into a side street to turn</dd>
-          <dt><kbd>Space</kbd></dt>
-          <dd>ollie · tap twice to kickflip</dd>
-          <dt><kbd>P</kbd></dt>
-          <dd>pause</dd>
-          <dt><kbd>R</kbd></dt>
-          <dd>high scores</dd>
-          <dt><kbd>M</kbd></dt>
-          <dd>music on/off</dd>
-        </dl>
-        <p className="title-card__rule">{free ? 'free roam · no obstacles, no scores' : 'a wipeout ends the run'}</p>
-        <p className="title-card__mode">
-          <kbd>F</kbd> {free ? 'back to arcade' : 'free roam · ends this run'}
-        </p>
-        <p className="title-card__go">paused · press P to roll on</p>
+        <section className="other-modes" aria-label="Other modes">
+          <p className="other-modes__title">try another mode{mode === 'arcade' ? ' · ends this run' : ''}</p>
+          <div className="other-modes__cards">
+            {MODES.filter((m) => m.mode !== mode).map((m) => (
+              <button key={m.mode} className={`mode-card mode-card--small mode-card--${m.mode}`} {...landingButton(() => pick(m.mode))}>
+                <span className="mode-card__name">{m.name}</span>
+                <span className="mode-card__jp">{m.jp}</span>
+                <span className="mode-card__what">{m.what}</span>
+                <span className="mode-card__key">
+                  play · press <kbd>{m.key}</kbd>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   )
@@ -321,6 +380,7 @@ function HiScoresCard() {
         <div className="title-card__boards">
           <Leaderboard period={period} board="score" />
           <Leaderboard period={period} board="speed" />
+          {period === 'week' && <TrialBoard />}
         </div>
         <p className="periods__when">
           {period === 'week' ? `new boards every monday · ${untilMonday()} to go` : 'every run since the start'}
@@ -388,9 +448,8 @@ function shareLine(run: PendingRun): string {
  * The run to share, under the name: a post on X with the line and the game's link filled in, or
  * the same copied, for anywhere else (WhatsApp, Discord). Mouse only: the keys type the name.
  */
-function Share({ run }: { run: PendingRun }) {
+function Share({ line }: { line: string }) {
   const [copy, setCopy] = useState<'ready' | 'done' | 'failed'>('ready')
-  const line = shareLine(run)
   const post = `https://x.com/intent/tweet?text=${encodeURIComponent(line)}&url=${encodeURIComponent(GAME_URL)}`
   const copyLine = () => {
     const done = navigator.clipboard?.writeText(`${line} ${GAME_URL}`) ?? Promise.reject(new Error('no clipboard'))
@@ -467,15 +526,132 @@ function NameEntry({ run }: { run: PendingRun }) {
             }}
           />
         </label>
-        <Share run={run} />
+        <Share line={shareLine(run)} />
         <p className="title-card__go">{refused ? 'that name can’t go on the board · try another' : 'press esc to skip'}</p>
       </form>
     </div>
   )
 }
 
+/** The time trial's board in the hi-scores card, this week only: the 10 fastest on the course. */
+function TrialBoard() {
+  const { board, pb } = useTrial()
+  return (
+    <section className="board">
+      <h2 className="board__title">time trial</h2>
+      <p className="board__jp">タイムトライアル</p>
+      <p className="board__what">fastest on this week’s course</p>
+      <ol>
+        {Array.from({ length: BOARD_SIZE }, (_, i) => (
+          <li key={i} className="board__row">
+            <span className="board__rank">{ordinal(i)}</span>
+            <span className="board__name">{board[i]?.name ?? '---'}</span>
+            <span className="board__value">{board[i] ? lap(board[i].value) : ''}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="board__pr">
+        <Trophy />
+        YOUR PB {pb !== null ? lap(pb) : '---'}
+      </p>
+    </section>
+  )
+}
+
+/** What a player shares about a time trial run: the time, where it stands this week, and a dare. */
+function trialShareLine(run: TrialRun): string {
+  const where = run.rank === 0 ? ', fastest of the week' : run.rank !== null ? `, ${nth(run.rank)} this week` : ''
+  return `${lap(run.time)} on this week’s Wheels Off time trial${where}. Can you beat it?`
+}
+
+/**
+ * The time trial's finish card: the time, against your best and the week's board. A time that
+ * makes the board asks for a name (Enter signs, Esc skips), with the run to share; first place
+ * of the week gets the world record's burst. Then the next attempt lines up.
+ */
+function TrialResult({ run }: { run: TrialRun }) {
+  const places = run.rank !== null
+  const first = run.rank === 0
+  const [name, setName] = useState(lastName)
+  const [refused, setRefused] = useState(false)
+  const field = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    field.current?.focus()
+    field.current?.select()
+  }, [])
+  useEffect(() => {
+    if (places) return
+    // no name to type: Enter, Esc or T goes again
+    const onKey = (e: KeyboardEvent) => {
+      const k = e.key.toLowerCase()
+      if (e.repeat || !(k === 'enter' || k === 'escape' || k === 't')) return
+      e.preventDefault()
+      closeResult(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [places])
+  const keepFocus = (e: MouseEvent) => {
+    if (places && e.target !== field.current) e.preventDefault()
+  }
+  // against your best before this run (none on your first this week)
+  const versus = run.pb === null ? '' : run.newPb ? `${lap(run.pb - run.time)} under your PB` : `PB ${lap(run.pb)} · +${lap(run.time - run.pb)}`
+  const stands = [places && `${ordinal(run.rank!)} THIS WEEK`, versus.toUpperCase()].filter(Boolean)
+  return (
+    <div className={first ? 'overlay overlay--wr' : 'overlay'} role="dialog" aria-label="Time trial result" onMouseDown={keepFocus}>
+      {first && <WorldRecordBurst />}
+      <form
+        className="title-card entry"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (!places) return closeResult(null)
+          const clean = cleanName(name)
+          if (clean && !nameAllowed(clean)) setRefused(true)
+          else closeResult(name)
+        }}
+      >
+        {first && <Crown className="entry__crown" />}
+        <h1 className={first ? 'entry__title--wr' : undefined}>{first ? 'TOP OF THE WEEK!' : run.newPb ? 'NEW PB!' : 'FINISH!'}</h1>
+        <ul className="entry__results">
+          <li>
+            TIME <b>{lap(run.time)}</b>
+            {run.newPb && run.pb !== null && <span className="entry__pr">NEW PB</span>}
+            <span className="entry__rank">{stands.join(' · ')}</span>
+          </li>
+        </ul>
+        {places && (
+          <label className="entry__label">
+            enter your name
+            <input
+              ref={field}
+              className="entry__field"
+              value={name}
+              maxLength={NAME_MAX}
+              spellCheck={false}
+              autoComplete="off"
+              onChange={(e) => {
+                setName(typedName(e.target.value))
+                setRefused(false)
+              }}
+              onKeyDown={(e) => {
+                if (e.key !== 'Escape') return
+                e.preventDefault()
+                closeResult(null)
+              }}
+            />
+          </label>
+        )}
+        {(places || run.newPb) && <Share line={trialShareLine(run)} />}
+        <p className="title-card__go">
+          {refused ? 'that name can’t go on the board · try another' : places ? 'enter to sign · esc to skip' : 'press enter to go again'}
+        </p>
+      </form>
+    </div>
+  )
+}
+
 export function Arcade() {
-  const { menu, pending } = useArcade()
+  const { menu, pending, result } = useArcade()
   useBoards((s) => s.version) // draws the landing page and the cards again when the boards change
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -484,13 +660,27 @@ export function Arcade() {
       // P does nothing on the landing page; R opens the records from anywhere
       if (k === 'p' && useHud.getState().started) togglePause()
       else if (k === 'r') toggleRecords()
+      else if (k === 'g') toggleGhost() // the time trial's ghost, off and on, from anywhere
       else if (k === 'escape') resume()
       else if (k === 'f') {
         // only on the landing page, which rolls off in free roam, or the pause screen, which
         // rolls on in the other mode: a stray F mid-ride never ends a run
-        const { menu, pending } = useArcade.getState()
-        if (pending || !(menu === 'pause' || (menu === null && !useHud.getState().started))) return
+        const { menu, pending, result } = useArcade.getState()
+        if (pending || result || !(menu === 'pause' || (menu === null && !useHud.getState().started))) return
         switchMode()
+        resume()
+      } else if (k === 't') {
+        // the landing page or the pause screen: into the time trial, or a fresh attempt in it; and
+        // mid-ride in the trial, straight back to the start line
+        const { menu, pending, result } = useArcade.getState()
+        if (pending || result) return
+        const landing = menu === null && !useHud.getState().started
+        if (menu === 'pause' || landing) {
+          enterTrial()
+          resume()
+        } else if (menu === null && useMode.getState().mode === 'trial') startAttempt()
+      } else if (k === 'a' && useArcade.getState().menu === 'pause' && useMode.getState().mode !== 'arcade') {
+        setMode('arcade')
         resume()
       }
     }
@@ -499,6 +689,7 @@ export function Arcade() {
   }, [])
   let card = null
   if (pending) card = <NameEntry key={pending.id} run={pending} />
+  else if (result) card = <TrialResult key={result.id} run={result} />
   else if (menu === 'records') card = <HiScoresCard />
   else if (menu === 'pause') card = <PauseCard />
   return (

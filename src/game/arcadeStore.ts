@@ -2,10 +2,12 @@ import { create } from 'zustand'
 import { input, releaseKeys } from '../player/input'
 import { DEFAULT_NAME, cleanName, nameAllowed, refreshBoards, rememberName, signRun } from './leaderboard'
 import type { Board, Period } from './leaderboard'
+import { refreshTrial, signTrial, startAttempt } from './trial'
+import type { TrialRun } from './trial'
 
-// The arcade layer over the ride: the pause screen (P), the records (R), and the name entry
-// after a run that makes a leaderboard. Each one holds the sim still and takes the keyboard
-// from it.
+// The arcade layer over the ride: the pause screen (P), the records (R), the name entry after
+// a run that makes a leaderboard, and a time trial's result at the finish. Each one holds the
+// sim still and takes the keyboard from it.
 
 /** Where a run places on each board (0 is first), null where it misses the top 10. */
 export type Ranks = Record<Period, Record<Board, number | null>>
@@ -22,13 +24,13 @@ export type PendingRun = {
 
 type Menu = 'pause' | 'records' | null
 // back: where closing the records returns to (the pause screen, or the ride or landing page)
-type ArcadeState = { menu: Menu; back: Menu; pending: PendingRun | null }
+type ArcadeState = { menu: Menu; back: Menu; pending: PendingRun | null; result: TrialRun | null }
 
-export const useArcade = create<ArcadeState>(() => ({ menu: null, back: null, pending: null }))
+export const useArcade = create<ArcadeState>(() => ({ menu: null, back: null, pending: null, result: null }))
 
 export function isPaused(): boolean {
   const s = useArcade.getState()
-  return s.menu !== null || s.pending !== null
+  return s.menu !== null || s.pending !== null || s.result !== null
 }
 
 function hold(on: boolean) {
@@ -39,18 +41,21 @@ function hold(on: boolean) {
 function show(menu: Menu, back: Menu = null) {
   useArcade.setState({ menu, back })
   hold(menu !== null)
-  if (menu) refreshBoards()
+  if (menu) {
+    refreshBoards()
+    refreshTrial()
+  }
 }
 
 export function togglePause() {
   const s = useArcade.getState()
-  if (s.pending) return // the name entry has its own keys
+  if (s.pending || s.result) return // the name entry and the result have their own keys
   show(s.menu ? null : 'pause')
 }
 
 export function toggleRecords() {
   const s = useArcade.getState()
-  if (s.pending) return
+  if (s.pending || s.result) return
   if (s.menu === 'records') show(s.back)
   else show('records', s.menu)
 }
@@ -85,4 +90,28 @@ export function skipRun() {
   if (!useArcade.getState().pending) return
   useArcade.setState({ pending: null })
   hold(false)
+}
+
+/** A time trial run crossed the finish: its result card, with a name entry if it makes the board. */
+export function showResult(run: TrialRun) {
+  useArcade.setState({ result: run })
+  hold(true)
+}
+
+/**
+ * Closes the result card and lines up the next attempt. A name signs the run onto the week's
+ * board (a blank one, or one the board turns away, as DEFAULT_NAME); null skips it.
+ */
+export function closeResult(typed: string | null) {
+  const run = useArcade.getState().result
+  if (!run) return
+  if (typed !== null && run.rank !== null) {
+    const clean = cleanName(typed)
+    const name = nameAllowed(clean) ? clean : ''
+    if (name) rememberName(name)
+    signTrial(name || DEFAULT_NAME, run)
+  }
+  useArcade.setState({ result: null })
+  hold(false)
+  startAttempt()
 }
