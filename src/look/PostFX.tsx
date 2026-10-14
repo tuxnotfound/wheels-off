@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { GRADE } from './timeOfDay'
 import { skater } from '../player/Skater'
 
-// The scene renders into an 8-bit sRGB target, then one full-screen pass over it:
+// The scene renders into a half-float target, then one full-screen pass over it:
 //  - fisheye (barrel) lens, the wide-angle look of the reference shots
 //  - supersampled downsample (the scene is rendered above screen resolution)
 //  - ink lines from depth (silhouettes + creases) and from color steps, weighted by distance
@@ -170,11 +170,11 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
   const setDpr = useThree((s) => s.setDpr)
 
   const { target, mid, quad, fxaa, cam, mat, fxaaMat } = useMemo(() => {
-    // 8-bit sRGB: stored encoded and read back linear, so the darks stay smooth at half the
-    // memory and bandwidth of half-float; the depth texture feeds the ink
-    const target = new THREE.WebGLRenderTarget(1, 1, { colorSpace: THREE.SRGBColorSpace })
+    // half-float: sunlit glowing art (ads, foliage) goes past 1.0 and the grade brings it back,
+    // where 8-bit would clip it (it saved 3% of the frame); the depth texture feeds the ink
+    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType })
     target.depthTexture = new THREE.DepthTexture(1, 1, THREE.FloatType)
-    const mid = new THREE.WebGLRenderTarget(1, 1, { colorSpace: THREE.SRGBColorSpace, depthBuffer: false })
+    const mid = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false })
     const mat = new THREE.ShaderMaterial({
       vertexShader: vert,
       fragmentShader: frag,
