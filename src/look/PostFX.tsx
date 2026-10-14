@@ -3,12 +3,13 @@ import { useCallback, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { GRADE } from './timeOfDay'
 
-// The scene renders with MSAA, then one full-screen pass over it:
+// The scene renders into an 8-bit sRGB target, then one full-screen pass over it:
 //  - fisheye (barrel) lens, the wide-angle look of the reference shots
 //  - supersampled downsample (the scene is rendered above screen resolution)
 //  - ink lines from depth (silhouettes + creases) and from color steps, weighted by distance
 //  - a soft vignette
-// and a final FXAA pass to the screen.
+// and a final FXAA pass to the screen. No MSAA: the ink covers the silhouettes and FXAA the rest,
+// and at 3024x1800 4x MSAA cost a third of the GPU's frame and about 360 MB for no visible gain.
 // Silhouettes/creases: the depth buffer is affine in 1/z, so its Laplacian is ~0
 // on any flat surface and spikes on edges and folds.
 const vert = /* glsl */ `
@@ -96,8 +97,8 @@ const frag = /* glsl */ `
   }
 `
 
-// FXAA over the finished frame, which also smooths the ink lines (MSAA can't reach those,
-// they're drawn from the resolved depth). Edges are found on gamma-ish luma.
+// FXAA over the finished frame: it smooths the edges the ink doesn't cover, and the ink lines
+// themselves. Edges are found on gamma-ish luma.
 const fxaaFrag = /* glsl */ `
   uniform sampler2D tSrc;
   uniform vec2 uRcp;
@@ -133,10 +134,11 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
   const dpr = useThree((s) => s.viewport.dpr)
 
   const { target, mid, quad, fxaa, cam, mat, fxaaMat } = useMemo(() => {
-    // MSAA smooths geometry edges; three resolves the depth texture for the ink pass
-    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 })
+    // 8-bit sRGB: stored encoded and read back linear, so the darks stay smooth at half the
+    // memory and bandwidth of half-float; the depth texture feeds the ink
+    const target = new THREE.WebGLRenderTarget(1, 1, { colorSpace: THREE.SRGBColorSpace })
     target.depthTexture = new THREE.DepthTexture(1, 1, THREE.FloatType)
-    const mid = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false })
+    const mid = new THREE.WebGLRenderTarget(1, 1, { colorSpace: THREE.SRGBColorSpace, depthBuffer: false })
     const mat = new THREE.ShaderMaterial({
       vertexShader: vert,
       fragmentShader: frag,
