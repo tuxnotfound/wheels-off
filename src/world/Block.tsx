@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import type { ReactNode } from 'react'
 import * as THREE from 'three'
 import { BOX, CYL, FLAT, PANEL } from '../look/geom'
@@ -14,6 +14,7 @@ import type { BlockPlan } from './streetGen'
 import { BLOCK, CURB, SIDEWALK } from './worldConfig'
 import { useMode } from '../game/mode'
 import { input } from '../player/input'
+import { bakeStatic } from './bake'
 
 export type BlockDesc = {
   key: string
@@ -64,6 +65,9 @@ function Block({ seed, k, ix, iz, dir, width, u0 }: Omit<BlockDesc, 'key'>) {
   // on the time trial's course, the side streets it doesn't take are built over
   const course = useMode((s) => s.mode === 'trial') && input.started
   const plan = useMemo(() => blockPlan(seed, k, width, u0, course), [seed, k, width, u0, course])
+  // once mounted, the block's static parts are merged into a few meshes (bake.ts)
+  const root = useRef<THREE.Group>(null!)
+  useLayoutEffect(() => bakeStatic(root.current), [plan])
   const half = width / 2
   const wires = useWires(plan, half)
   const els: ReactNode[] = []
@@ -149,7 +153,7 @@ function Block({ seed, k, ix, iz, dir, width, u0 }: Omit<BlockDesc, 'key'>) {
   els.push(<BlockObstacles key="obstacles" seed={seed} k={k} width={width} />)
 
   return (
-    <group position={[ix, 0, iz]} rotation-y={(-dir * Math.PI) / 2}>
+    <group ref={root} position={[ix, 0, iz]} rotation-y={(-dir * Math.PI) / 2}>
       {els}
     </group>
   )

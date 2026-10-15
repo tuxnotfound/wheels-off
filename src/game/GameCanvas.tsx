@@ -6,7 +6,7 @@ import type { BlockDesc } from '../world/Block'
 import { Skater } from '../player/Skater'
 import { input, installInput } from '../player/input'
 import { Sky } from '../look/Sky'
-import { PostFX } from '../look/PostFX'
+import { PostFX, canvasDpr, useResolution } from '../look/PostFX'
 import { Petals } from '../look/Petals'
 import { setTreeSun } from '../world/Tree3D'
 import { toonMat } from '../look/materials'
@@ -23,6 +23,7 @@ import type { PendingRun, Ranks } from './arcadeStore'
 import { freeRoam, onCourse, useMode } from './mode'
 import { trialAfterStep, trialTick } from './trial'
 import { autopilot } from './autopilot'
+import { pacer } from './pacer'
 import { tickAds } from '../ads/ads'
 import { TrialView } from '../world/TrialView'
 
@@ -368,16 +369,45 @@ function CameraRig() {
   return null
 }
 
+/**
+ * Drives the frames (the canvas runs frameloop="never"): one every display refresh up to 144 Hz,
+ * and every other one on a 240 Hz screen (pacer.ts at 120), which the GPU couldn't hold anyway.
+ * A 60 cap made the ride feel less fluid on a 120 Hz screen.
+ * While the game is paused (the pause screen, the records, a name being typed, a result) nothing
+ * is drawn and the last frame stays on screen, unless the canvas is resized, which clears it.
+ */
+function FrameLoop() {
+  const advance = useThree((s) => s.advance)
+  const canvas = useThree((s) => s.gl.domElement)
+  // dev-only handle for test scripts: draws a frame at a given time (seconds)
+  if (import.meta.env.DEV) Object.assign(window, { __advance: advance })
+  useEffect(() => {
+    const due = pacer(120)
+    let drawn = ''
+    let raf = requestAnimationFrame(function loop(t) {
+      raf = requestAnimationFrame(loop)
+      const size = `${canvas.width}x${canvas.height}`
+      if (!due(t) || (isPaused() && size === drawn)) return
+      drawn = size
+      advance(t / 1000)
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [advance, canvas])
+  return null
+}
+
 export default function GameCanvas() {
   useEffect(installInput, [])
+  const dpr = useResolution(canvasDpr)
   return (
     <Canvas
+      frameloop="never"
       className="game-canvas"
       flat
       shadows="percentage"
       gl={{ antialias: false }}
       camera={{ fov: 74, near: 0.3, far: 420, position: [0, 3.0, 7.6] }}
-      dpr={[1, 2]}
+      dpr={dpr}
     >
       <fog attach="fog" args={[FOG.color, FOG.near, FOG.far]} />
       <Lights />
@@ -385,6 +415,7 @@ export default function GameCanvas() {
       <World />
       <CameraRig />
       <PostFX />
+      <FrameLoop />
     </Canvas>
   )
 }

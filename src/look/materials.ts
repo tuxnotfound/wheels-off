@@ -59,6 +59,23 @@ export function decalMat(key: string, map: THREE.Texture, transparent = false): 
   })
 }
 
+/**
+ * Plain toon with the color in the vertices: what a block's plain parts are merged into
+ * (world/bake.ts), one per face side and polygon offset.
+ */
+export function bakedMat(side: THREE.Side, offset: [number, number] | null): THREE.MeshToonMaterial {
+  return cached(`baked:${side}:${offset}`, () => {
+    const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: celRamp(), side })
+    if (offset) {
+      m.polygonOffset = true
+      ;[m.polygonOffsetFactor, m.polygonOffsetUnits] = offset
+    }
+    m.onBeforeCompile = patchCurve
+    m.customProgramCacheKey = () => 'toon-curve'
+    return m
+  })
+}
+
 /** Flat paint on the road (lines, zebra stripes): pulled toward the camera so it never z-fights. */
 export function paintMat(color: string): THREE.MeshToonMaterial {
   return cached(`paint:${color}`, () => {

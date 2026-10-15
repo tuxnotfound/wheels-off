@@ -82,6 +82,8 @@ export function trackAd(obj: THREE.Object3D, creative: Creative, slot: string, t
 }
 
 const MAX_DIST: Record<AdFormat, number> = { billboard: 70, banner: 45, poster: 18, nobori: 18, van: 25 }
+const STEP = 0.1 // seconds between checks: an impression takes a second in view, so ten a second will do
+let wait = 0
 const p = new THREE.Vector3()
 const n = new THREE.Vector3()
 const toCam = new THREE.Vector3()
@@ -92,9 +94,14 @@ const toCam = new THREE.Vector3()
  * distance, and facing the camera.
  */
 export function tickAds(camera: THREE.Camera, dt: number) {
+  wait += dt
+  if (wait < STEP) return
+  const step = wait
+  wait = 0
   for (const t of tracked) {
     if (t.counted) continue
-    t.obj.getWorldPosition(p)
+    // where it was drawn last frame (getWorldPosition would update every parent's matrix again)
+    p.setFromMatrixPosition(t.obj.matrixWorld)
     p.y -= (p.x * p.x + p.z * p.z) * CURVE // where the curved world actually draws it
     toCam.copy(camera.position).sub(p)
     const dist = toCam.length()
@@ -107,7 +114,7 @@ export function tickAds(camera: THREE.Camera, dt: number) {
       p.project(camera)
       ok = Math.abs(p.x) < 0.95 && Math.abs(p.y) < 0.95 && p.z < 1
     }
-    t.seen = ok ? t.seen + dt : 0
+    t.seen = ok ? t.seen + step : 0
     if (t.seen >= 1) {
       t.counted = true
       const c = t.creative

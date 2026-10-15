@@ -1,14 +1,17 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useCallback, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
+import { create } from 'zustand'
 import { GRADE } from './timeOfDay'
+import { skater } from '../player/Skater'
 
-// The scene renders with MSAA, then one full-screen pass over it:
+// The scene renders into a half-float target, then one full-screen pass over it:
 //  - fisheye (barrel) lens, the wide-angle look of the reference shots
 //  - supersampled downsample (the scene is rendered above screen resolution)
 //  - ink lines from depth (silhouettes + creases) and from color steps, weighted by distance
 //  - a soft vignette
-// and a final FXAA pass to the screen.
+// and a final FXAA pass to the screen. No MSAA: the ink covers the silhouettes and FXAA the rest,
+// and at 3024x1800 4x MSAA cost a third of the GPU's frame and about 360 MB for no visible gain.
 // Silhouettes/creases: the depth buffer is affine in 1/z, so its Laplacian is ~0
 // on any flat surface and spikes on edges and folds.
 const vert = /* glsl */ `
@@ -23,6 +26,7 @@ const frag = /* glsl */ `
   uniform float uNear, uFar, uBarrel, uThick;
   uniform vec3 uInk, uGradeShadow, uGradeHigh;
   uniform float uGrade;
+  uniform vec4 uRider; // the rider's box in the scene image: min xy, max xy
   varying vec2 vUv;
 
   float invZ(vec2 uv) {
@@ -78,9 +82,13 @@ const frag = /* glsl */ `
     vec2 t0 = vec2(0.125, 0.375) * px, t1 = vec2(-0.375, 0.125) * px;
     vec2 t2 = -t0, t3 = -t1;
     vec3 col = (texture2D(tColor, uv + t0).rgb + texture2D(tColor, uv + t1).rgb + texture2D(tColor, uv + t2).rgb + texture2D(tColor, uv + t3).rgb) * 0.25;
-    // rider mask, grown by a line width so its outline is fine on both sides of the silhouette
-    vec2 ro = uThick / uOut;
-    float rider = max(riderAt(uv), max(max(riderAt(uv + vec2(ro.x, 0.0)), riderAt(uv - vec2(ro.x, 0.0))), max(riderAt(uv + vec2(0.0, ro.y)), riderAt(uv - vec2(0.0, ro.y)))));
+    // rider mask, grown by a line width so its outline is fine on both sides of the silhouette;
+    // ten texture reads, so only inside the rider's box
+    float rider = 0.0;
+    if (all(greaterThan(uv, uRider.xy)) && all(lessThan(uv, uRider.zw))) {
+      vec2 ro = uThick / uOut;
+      rider = max(riderAt(uv), max(max(riderAt(uv + vec2(ro.x, 0.0)), riderAt(uv - vec2(ro.x, 0.0))), max(riderAt(uv + vec2(0.0, ro.y)), riderAt(uv - vec2(0.0, ro.y)))));
+    }
     float ink = (inkAt(uv + t0, rider) + inkAt(uv + t1, rider) + inkAt(uv + t2, rider) + inkAt(uv + t3, rider)) * 0.25;
     col = mix(col, uInk, ink * 0.9);
 
@@ -96,8 +104,8 @@ const frag = /* glsl */ `
   }
 `
 
-// FXAA over the finished frame, which also smooths the ink lines (MSAA can't reach those,
-// they're drawn from the resolved depth). Edges are found on gamma-ish luma.
+// FXAA over the finished frame: it smooths the edges the ink doesn't cover, and the ink lines
+// themselves. Edges are found on gamma-ish luma.
 const fxaaFrag = /* glsl */ `
   uniform sampler2D tSrc;
   uniform vec2 uRcp;
@@ -123,9 +131,57 @@ const fxaaFrag = /* glsl */ `
   }
 `
 
+// The rider's box: a sphere around the kid and the board, projected, so the shader looks for the
+// rider only where it can be
+const RIDER_MID = 0.85 // meters above the board's ground point
+const RIDER_R = 1.3 // meters, enough for the kid and the board through tricks and wipeouts
+const mid3 = new THREE.Vector3()
+
+/** The rider's box in the scene image (uv: min xy, max xy), grown by `grow`; the whole image if the camera is too close. */
+function riderBox(camera: THREE.PerspectiveCamera, grow: THREE.Vector2, out: THREE.Vector4) {
+  const root = skater.root
+  if (!root) return out.set(0, 0, 1, 1)
+  root.updateWorldMatrix(true, false)
+  camera.updateMatrixWorld()
+  mid3.setFromMatrixPosition(root.matrixWorld)
+  mid3.y += RIDER_MID
+  mid3.applyMatrix4(camera.matrixWorldInverse)
+  const d = -mid3.z
+  if (d < camera.near + RIDER_R) return out.set(0, 0, 1, 1)
+  // the sphere's radius in uv (half its size in NDC)
+  const ry = (0.5 * RIDER_R) / (d * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2))
+  const rx = ry / camera.aspect
+  mid3.applyMatrix4(camera.projectionMatrix)
+  const u = mid3.x * 0.5 + 0.5
+  const v = mid3.y * 0.5 + 0.5
+  return out.set(u - rx - grow.x, v - ry - grow.y, u + rx + grow.x, v + ry + grow.y)
+}
+
+/**
+ * The canvas resolution (its DPR): the screen's pixel ratio, at least 1, under a cap the back-off
+ * lowers. The ratio is followed as the window moves to a screen with another one, which r3f
+ * doesn't notice on its own: a window dragged from a 2x screen to a 1x one kept drawing 2x.
+ */
+export const useResolution = create(() => ({ ratio: window.devicePixelRatio, cap: 2 }))
+export const canvasDpr = (s: { ratio: number; cap: number }) => Math.min(Math.max(s.ratio, 1), s.cap)
+function followRatio() {
+  matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener(
+    'change',
+    () => {
+      useResolution.setState({ ratio: window.devicePixelRatio })
+      followRatio()
+    },
+    { once: true },
+  )
+}
+followRatio()
+
 const SS_MAX = 1.75 // at most 1.75x the drawing buffer per axis
 const SS_BUDGET = 7.5e6 // pixels rendered per frame at best
-const SS_MIN_BUDGET = 1.5e6
+const SLOW = 0.021 // seconds: frames averaging slower than this run under about 48 a second
+const SUSTAIN = 60 // frames that slow, one after another, before quality steps down
+const SETTLE = 2 // seconds of frames before any counts: shaders compile, the art uploads
+const STEP = 0.8 // each step keeps this much of the supersampling budget, then of the resolution
 
 export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; thickness?: number }) {
   const gl = useThree((s) => s.gl)
@@ -133,8 +189,9 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
   const dpr = useThree((s) => s.viewport.dpr)
 
   const { target, mid, quad, fxaa, cam, mat, fxaaMat } = useMemo(() => {
-    // MSAA smooths geometry edges; three resolves the depth texture for the ink pass
-    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 })
+    // half-float: sunlit glowing art (ads, foliage) goes past 1.0 and the grade brings it back,
+    // where 8-bit would clip it (it saved 3% of the frame); the depth texture feeds the ink
+    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType })
     target.depthTexture = new THREE.DepthTexture(1, 1, THREE.FloatType)
     const mid = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false })
     const mat = new THREE.ShaderMaterial({
@@ -154,6 +211,7 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
         uGradeShadow: { value: new THREE.Color(GRADE.shadow) },
         uGradeHigh: { value: new THREE.Color(GRADE.highlight) },
         uGrade: { value: GRADE.strength },
+        uRider: { value: new THREE.Vector4(0, 0, 1, 1) },
       },
     })
     const fxaaMat = new THREE.ShaderMaterial({
@@ -172,12 +230,18 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
     return { target, mid, quad, fxaa, cam, mat, fxaaMat }
   }, [barrel, thickness])
 
-  // Render the scene above screen resolution (supersampling) within a pixel budget, and
-  // back off if the frame rate can't hold it.
-  const quality = useMemo(() => ({ budget: SS_BUDGET, slow: 0, v: new THREE.Vector2() }), [])
+  // Render the scene above screen resolution (supersampling) within a pixel budget, and step
+  // quality down on a machine that can't hold the frame rate (frames averaging slower than
+  // SLOW, SUSTAIN of them in a row): first the supersampling, a fifth of its budget at a time,
+  // down to the screen's own resolution; then the resolution itself (the canvas DPR), a fifth at
+  // a time, down to 1x on a high-DPI screen and 0.75x on a 1x one. It never steps back up.
+  const quality = useMemo(
+    () => ({ budget: SS_BUDGET, ss: true, avg: 1 / 60, slow: 0, age: 0, v: new THREE.Vector2(), grow: new THREE.Vector2() }),
+    [],
+  )
   const resize = useCallback(() => {
     const v = gl.getDrawingBufferSize(quality.v)
-    const ss = THREE.MathUtils.clamp(Math.sqrt(quality.budget / (v.x * v.y)), 1, SS_MAX)
+    const ss = quality.ss ? THREE.MathUtils.clamp(Math.sqrt(quality.budget / (v.x * v.y)), 1, SS_MAX) : 1
     target.setSize(Math.round(v.x * ss), Math.round(v.y * ss))
     mid.setSize(v.x, v.y)
     mat.uniforms.uOut.value.copy(v)
@@ -185,6 +249,23 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
     fxaaMat.uniforms.uRcp.value.set(1 / v.x, 1 / v.y)
   }, [gl, dpr, target, mid, mat, fxaaMat, thickness, quality])
   useEffect(resize, [resize, size])
+
+  const stepDown = () => {
+    const v = gl.getDrawingBufferSize(quality.v)
+    const pixels = v.x * v.y
+    const floor = Math.max(0.75, Math.min(useResolution.getState().ratio, 2) / 2)
+    if (quality.ss && quality.budget > pixels) {
+      // from the budget in use: on a small screen the cap holds it below the full budget
+      quality.budget = Math.max(pixels, Math.min(quality.budget, SS_MAX * SS_MAX * pixels) * STEP)
+      quality.ss = quality.budget > pixels
+      resize()
+    } else if (dpr > floor) {
+      quality.ss = false // off for good: a smaller canvas would take it back up
+      useResolution.setState({ cap: Math.max(floor, dpr * STEP) }) // the canvas resizes, then resize() runs
+    }
+  }
+  // dev-only handle for test scripts: the quality state, and a step down on demand
+  if (import.meta.env.DEV) Object.assign(window, { __quality: { state: quality, dpr, stepDown } })
 
   useEffect(
     () => () => {
@@ -196,16 +277,23 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
 
   // priority 1: this callback owns rendering (r3f stops auto-rendering)
   useFrame(({ scene, camera }, dt) => {
-    // sustained slow frames (>21 ms) drop the supersampling budget by a fifth
-    quality.slow = dt > 0.021 ? quality.slow + 1 : Math.max(0, quality.slow - 1)
-    if (quality.slow > 90 && quality.budget > SS_MIN_BUDGET) {
-      quality.budget *= 0.8
+    // a pause or a hidden tab shows up as one long frame: capped, it can't count as many
+    const t = Math.min(dt, 0.1)
+    quality.age += t
+    quality.avg += (t - quality.avg) * 0.05
+    quality.slow = quality.age > SETTLE && quality.avg > SLOW ? quality.slow + 1 : 0
+    if (quality.slow > SUSTAIN) {
       quality.slow = 0
-      resize()
+      quality.avg = 1 / 60 // the next step waits for a second of fresh evidence
+      stepDown()
     }
     const pc = camera as THREE.PerspectiveCamera
     mat.uniforms.uNear.value = pc.near
     mat.uniforms.uFar.value = pc.far
+    // grown by two line widths: the mask reaches one past the silhouette
+    const u = mat.uniforms
+    quality.grow.set(2, 2).multiplyScalar(u.uThick.value).divide(u.uOut.value)
+    riderBox(pc, quality.grow, u.uRider.value)
     gl.setRenderTarget(target)
     gl.render(scene, camera)
     gl.setRenderTarget(mid)

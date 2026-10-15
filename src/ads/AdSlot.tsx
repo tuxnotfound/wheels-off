@@ -3,6 +3,7 @@ import type * as THREE from 'three'
 import { PANEL } from '../look/geom'
 import { paintedDepth, paintedMat } from '../art/art'
 import { AD_SIZE, pickAd, trackAd } from './ads'
+import { LIVE } from '../world/bake'
 import type { AdFormat } from './ads'
 
 type V3 = [number, number, number]
@@ -33,6 +34,8 @@ export function AdSlot({ format, r, slot, p, rot = [0, 0, 0], scale = 1, twoSide
       castShadow
       receiveShadow
       customDepthMaterial={paintedDepth(ad.image)}
+      // its own mesh, for its impressions: a block's bake leaves it out
+      userData={LIVE}
     />
   )
 }

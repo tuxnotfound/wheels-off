@@ -5,6 +5,7 @@ import { CYL } from '../look/geom'
 import { M } from '../world/parts'
 import { AdSlot } from './AdSlot'
 import { AD_SIZE, BILLBOARD_YAW } from './ads'
+import { LIVE } from '../world/bake'
 
 // The physical structures that carry ads. All in block-local coords: +x is the right
 // of the street, -z is forward (u grows), so a face with +Z normal faces oncoming riders.
@@ -90,7 +91,7 @@ export function Nobori({ s, u, side, r, slot }: { s: number; u: number; side: nu
       <M c="#2f3a38" p={[0, 0.06, 0]} s={[0.3, 0.12, 0.3]} />
       <M g={CYL} c="#e9ece6" p={[0, top / 2, 0]} s={[0.05, top, 0.05]} />
       <M g={CYL} c="#e9ece6" p={[-side * (w / 2 + 0.02), top - 0.05, 0]} s={[0.035, w + 0.1, 0.035]} r={[0, 0, Math.PI / 2]} />
-      <group ref={flag}>
+      <group ref={flag} userData={LIVE}>
         <AdSlot format="nobori" r={r} slot={slot} p={[-side * (w / 2 + 0.04), top - 0.1 - h / 2, 0]} twoSided />
       </group>
     </group>
