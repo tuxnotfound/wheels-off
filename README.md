@@ -68,9 +68,9 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   side, kept over the road, and on a wide screen aimed so the kid rides right of the title. It
   renders three blocks behind (`BEHIND_LANDING`) instead of one, since it looks back down the
   street. Taking over swings it round the kid, on the side of the street with more room, into
-  the chase in 1.5 s. Frames come from `FrameLoop` and `pacer.ts`: 60 a second, or the nearest
-  rate above it (every other refresh on a 120 Hz screen, so it isn't drawn twice as often), and
-  none while the game is paused, when the last frame stays on screen.
+  the chase in 1.5 s. Frames come from `FrameLoop` and `pacer.ts`: every display refresh up
+  to 144 Hz, every other one on a 240 Hz screen, and none while the game is paused, when the
+  last frame stays on screen.
 - **`src/game/autopilot.ts`**: the attract ride behind the landing page. It drives the same
   input as the keyboard: straight down the first street (no carving near an intersection, so it
   never turns), a carve every few seconds, and an ollie or a kickflip every 3.5 to 7.5 s. The

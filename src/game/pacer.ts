@@ -1,6 +1,6 @@
 // Frame pacing: a frame every Nth display refresh, N chosen so frames come at the target rate or
-// the nearest one above it, evenly spaced. A 60 Hz screen draws every refresh; 120 Hz and 144 Hz
-// screens draw every other one (60 and 72 per second); 240 Hz every fourth. The refresh interval
+// the nearest one above it, evenly spaced. At a target of 120, 60, 120 and 144 Hz screens draw
+// every refresh and a 240 Hz screen every other one. The refresh interval
 // is the median gap between the browser's animation callbacks, so a slow frame or a jittery
 // clock doesn't throw it off, and a frame is drawn once N refreshes have nearly passed since the
 // last one, so a late callback is drawn, never skipped.

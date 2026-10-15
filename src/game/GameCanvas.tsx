@@ -370,8 +370,9 @@ function CameraRig() {
 }
 
 /**
- * Drives the frames (the canvas runs frameloop="never"): one every few display refreshes, at 60
- * a second or the nearest rate above (pacer.ts), so a 120 Hz screen doesn't draw twice as many.
+ * Drives the frames (the canvas runs frameloop="never"): one every display refresh up to 144 Hz,
+ * and every other one on a 240 Hz screen (pacer.ts at 120), which the GPU couldn't hold anyway.
+ * A 60 cap made the ride feel less fluid on a 120 Hz screen.
  * While the game is paused (the pause screen, the records, a name being typed, a result) nothing
  * is drawn and the last frame stays on screen, unless the canvas is resized, which clears it.
  */
@@ -381,7 +382,7 @@ function FrameLoop() {
   // dev-only handle for test scripts: draws a frame at a given time (seconds)
   if (import.meta.env.DEV) Object.assign(window, { __advance: advance })
   useEffect(() => {
-    const due = pacer(60)
+    const due = pacer(120)
     let drawn = ''
     let raf = requestAnimationFrame(function loop(t) {
       raf = requestAnimationFrame(loop)
