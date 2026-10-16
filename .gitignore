@@ -1,5 +1,7 @@
 node_modules
 dist
+dist-itch
+wheels-off-*.zip
 dist-ssr
 *.local
 .DS_Store
