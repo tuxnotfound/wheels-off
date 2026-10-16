@@ -26,6 +26,11 @@ function readPlay(body: unknown): Play | null {
   return { session: p.session, source: cleanSource(typeof p.source === 'string' ? p.source : ''), runs, seconds: Math.round(seconds * 10) / 10 }
 }
 
+/** Deletes play counts older than 13 months, the time the privacy page gives: the daily cron. */
+export async function forgetOldPlays(env: Env): Promise<void> {
+  await env.DB.prepare(`DELETE FROM plays WHERE created_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-13 months')`).run()
+}
+
 export async function play(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') return reply({ error: 'method' }, 405)
   if (Number(request.headers.get('content-length')) > 1024) return reply({ error: 'too long' }, 413)
