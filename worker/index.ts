@@ -1,3 +1,4 @@
+import { challenge } from './challenge'
 import { leaderboard } from './leaderboard'
 import { trial } from './trial'
 import { forgetOldPlays, play } from './play'
@@ -20,6 +21,7 @@ export default {
       url.hostname = APEX
       return Response.redirect(url.href, 301)
     }
+    if (url.pathname === '/api/challenge') return challenge(request, env)
     if (url.pathname === '/api/leaderboard') return leaderboard(request, env)
     if (url.pathname === '/api/trial') return trial(request, env)
     if (url.pathname === '/api/play') return play(request, env)

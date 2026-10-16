@@ -13,7 +13,8 @@ import { readJson, writeJson } from './storage'
 // and a missed turn puts the kid back before it (the clock runs on). The run is recorded as a
 // ghost. One ghost rides along: the fastest run you know of this week, the board's leader from
 // the API (worker/trial.ts, the week's 10 fastest times) or your own best, kept in this browser
-// when it is faster (a best you didn't sign). G turns it off and on, remembered here.
+// when it is faster (a best you didn't sign). G turns it off and on, remembered here. A visit
+// that came by a challenge link races that run's ghost instead (below).
 
 const COUNTDOWN = 3 // seconds before GO
 const RESULT_AFTER = 1 // seconds of rolling on past the finish before the result card
@@ -108,8 +109,9 @@ export function trialClock(): number {
   return live.phase === 'countdown' ? 0 : sim.time - live.goAt
 }
 
-/** The ghost to race: the fastest run you know of this week, the board's leader or your own best. */
+/** The ghost to race: a challenge's, else the fastest run you know of this week, the board's leader or your own best. */
 export function ghost(): Ghost | null {
+  if (challengeGhost) return challengeGhost
   const leaderTime = useTrial.getState().leader?.value ?? Infinity
   if (leaderGhost && leaderTime <= (pb?.time ?? Infinity)) return leaderGhost
   return pb?.ghost ?? leaderGhost
@@ -255,4 +257,57 @@ export function signTrial(name: string, run: TrialRun) {
     useTrial.setState({ board })
   }
   void ask({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, time: run.time, ghost: run.ghost }) })
+}
+
+// Challenge links (worker/challenge.ts). Sharing a finished run puts it up once and links to
+// /?c=<id>. A visit that opens such a link this week races that run's ghost; one from a past
+// week gets a note instead, since the course has changed with the town.
+const CHALLENGE_API = '/api/challenge'
+
+/** The challenge this visit came with: whose run, its time, and whether its week is over. */
+export const useChallenge = create(() => ({ challenge: null as { name: string | null; time: number; stale: boolean } | null }))
+let challengeGhost: Ghost | null = null
+
+function readChallenge() {
+  const url = new URL(location.href)
+  const id = url.searchParams.get('c')
+  if (id === null) return
+  // out of the address bar, so a copied address doesn't pass the challenge on by accident
+  url.searchParams.delete('c')
+  history.replaceState(history.state, '', url.pathname + url.search + url.hash)
+  fetch(`${CHALLENGE_API}?id=${encodeURIComponent(id)}`)
+    .then((res) => (res.ok ? (res.json() as Promise<{ name?: string | null; week?: string; time?: number; ghost?: Ghost }>) : null))
+    .then((c) => {
+      if (!c || typeof c.time !== 'number' || !Array.isArray(c.ghost?.x)) return
+      const stale = c.week !== week
+      if (!stale) challengeGhost = c.ghost
+      useChallenge.setState({ challenge: { name: c.name ?? null, time: c.time, stale } })
+    })
+    .catch(() => {
+      // offline, or no API: the visit plays as any other
+    })
+}
+readChallenge()
+
+const links = new Map<number, Promise<string | null>>()
+
+/** The link that challenges a friend to a finished run: the run goes up once, however often it is shared. Null when it can't. */
+export function challengeLink(run: TrialRun, name: string): Promise<string | null> {
+  let link = links.get(run.id)
+  if (!link) {
+    link = fetch(CHALLENGE_API, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name, time: run.time, ghost: run.ghost }),
+    })
+      .then((res) => (res.ok ? (res.json() as Promise<{ id?: unknown }>) : null))
+      .then((c) => (typeof c?.id === 'string' ? `https://playwheelsoff.com/?c=${c.id}&ref=challenge` : null))
+      .catch(() => null)
+      .then((url) => {
+        if (!url) links.delete(run.id) // the next share tries again
+        return url
+      })
+    links.set(run.id, link)
+  }
+  return link
 }

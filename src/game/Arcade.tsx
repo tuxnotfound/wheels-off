@@ -22,7 +22,7 @@ import type { Board, Period } from './leaderboard'
 import { useHud } from './hudStore'
 import { roll, setMode, switchMode, useMode } from './mode'
 import type { Mode } from './mode'
-import { enterTrial, startAttempt, toggleGhost, useTrial } from './trial'
+import { challengeLink, enterTrial, startAttempt, toggleGhost, useChallenge, useTrial } from './trial'
 import type { TrialRun } from './trial'
 import { Crown, Note, Trophy, lap, secs } from './icons'
 import { records } from './records'
@@ -120,6 +120,7 @@ function Landing() {
   const covered = useArcade((s) => s.menu !== null) // the hi-scores card, opened from here
   const musicOff = useMusic((s) => s.off)
   const no3d = !useWebGL((s) => s.ok)
+  const challenge = useChallenge((s) => s.challenge) // the visit came by a challenge link
   const [gone, setGone] = useState(false)
   useEffect(() => {
     if (!started) return
@@ -167,6 +168,13 @@ function Landing() {
           </h1>
         </header>
         <div className="landing__go">
+          {challenge && (
+            <p className="landing__challenge" role="status">
+              {challenge.stale
+                ? 'THAT CHALLENGE’S WEEK IS OVER · THIS WEEK’S COURSE IS NEW'
+                : `${(challenge.name ?? 'A FRIEND').toUpperCase()} RODE THIS WEEK’S TIME TRIAL IN ${lap(challenge.time)} · RACE THEIR GHOST`}
+            </p>
+          )}
           <div className="landing__modes">
             <button className="mode-card mode-card--arcade" {...landingButton(() => roll('arcade'))}>
               <span className="mode-card__name">ARCADE</span>
@@ -219,7 +227,7 @@ function Landing() {
           )}
         </div>
       </div>
-      {!covered && <p className="landing__start">PRESS SPACE TO START</p>}
+      {!covered && <p className="landing__start">{!challenge ? 'PRESS SPACE TO START' : challenge.stale ? 'PRESS T FOR THIS WEEK’S TIME TRIAL' : 'PRESS T TO TAKE THE CHALLENGE'}</p>}
       <div className="marquee" aria-hidden="true">
         <div className="marquee__track">
           {[0, 1].map((copy) => (
@@ -448,13 +456,32 @@ function shareLine(run: PendingRun): string {
 /**
  * The run to share, under the name: a post on X with the line and the game's link filled in, or
  * the same copied, for anywhere else (WhatsApp, Discord). Mouse only: the keys type the name.
+ * With `link` (a time trial run's challenge link, made on the first click), the game's link is
+ * swapped for it, or kept when the challenge can't be made.
  */
-function Share({ line }: { line: string }) {
+function Share({ line, link }: { line: string; link?: () => Promise<string | null> }) {
   const [copy, setCopy] = useState<'ready' | 'done' | 'failed'>('ready')
-  const post = `https://x.com/intent/tweet?text=${encodeURIComponent(line)}&url=${encodeURIComponent(GAME_URL)}`
+  const intent = (url: string) => `https://x.com/intent/tweet?text=${encodeURIComponent(line)}&url=${encodeURIComponent(url)}`
+  const url = () => (link ? link().then((u) => u ?? GAME_URL) : Promise.resolve(GAME_URL))
+  const postOnX = (e: MouseEvent) => {
+    if (!link) return // the plain link opens as it is
+    // the tab opens now, inside the click, so no popup blocker stops it; it goes to X once the link is back
+    e.preventDefault()
+    const tab = window.open('', '_blank')
+    if (tab) tab.opener = null
+    void url().then((u) => (tab ? tab.location.replace(intent(u)) : window.open(intent(u), '_blank', 'noopener')))
+  }
   const copyLine = () => {
-    const done = navigator.clipboard?.writeText(`${line} ${GAME_URL}`) ?? Promise.reject(new Error('no clipboard'))
-    done.then(
+    const text = url().then((u) => `${line} ${u}`)
+    // a ClipboardItem takes the text while it is still on its way, inside the click, which Safari
+    // asks for; writeText once it has arrived is the fallback
+    const write =
+      typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write
+        ? navigator.clipboard
+            .write([new ClipboardItem({ 'text/plain': text.then((t) => new Blob([t], { type: 'text/plain' })) })])
+            .catch(() => text.then((t) => navigator.clipboard.writeText(t)))
+        : text.then((t) => navigator.clipboard?.writeText(t) ?? Promise.reject(new Error('no clipboard')))
+    write.then(
       () => setCopy('done'),
       () => setCopy('failed'),
     )
@@ -462,7 +489,7 @@ function Share({ line }: { line: string }) {
   return (
     <div className="entry__share">
       <span className="entry__share-what">share it</span>
-      <a className="chip" href={post} target="_blank" rel="noopener noreferrer">
+      <a className="chip" href={intent(GAME_URL)} target="_blank" rel="noopener noreferrer" onClick={postOnX}>
         post on X
       </a>
       <button className="chip" type="button" onClick={copyLine}>
@@ -642,7 +669,7 @@ function TrialResult({ run }: { run: TrialRun }) {
             />
           </label>
         )}
-        {(places || run.newPb) && <Share line={trialShareLine(run)} />}
+        {(places || run.newPb) && <Share line={trialShareLine(run)} link={() => challengeLink(run, cleanName(name))} />}
         <p className="title-card__go">
           {refused ? 'that name can’t go on the board · try another' : places ? 'enter to sign · esc to skip' : 'press enter to go again'}
         </p>

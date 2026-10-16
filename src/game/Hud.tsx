@@ -3,7 +3,7 @@ import { useHud } from './hudStore'
 import { Crown, Flame, Note, Pause, Restart, Trophy, lap, secs } from './icons'
 import { BOARD_TITLE } from './leaderboard'
 import { useMode } from './mode'
-import { startAttempt, toggleGhost, useGhost, useTrial } from './trial'
+import { startAttempt, toggleGhost, useChallenge, useGhost, useTrial } from './trial'
 
 /**
  * The record under a live value. While the run is beating it, it follows the value in red.
@@ -37,6 +37,7 @@ function Wr({ value, name, beating }: { value: string; name: string; beating: bo
  */
 function TrialPanel() {
   const { phase, count, clock, toGo, pb, leader } = useTrial()
+  const challenge = useChallenge((s) => s.challenge)
   return (
     <>
       <div className="hud-score">
@@ -56,6 +57,13 @@ function TrialPanel() {
           {leader ? lap(leader.value) : '---'}
           <span className="hud-wr__name">{leader?.name ?? ''}</span>
         </span>
+        {challenge && !challenge.stale && (
+          <span className="hud-pr">
+            <small>VS</small>
+            {lap(challenge.time)}
+            <span className="hud-wr__name">{challenge.name ?? ''}</span>
+          </span>
+        )}
       </div>
       {phase === 'countdown' && (
         <div className="countdown" key={`count-${count}`} role="status">
