@@ -9,7 +9,7 @@ import type { Boards, Entry, Week } from '../shared/leaderboard'
 // address is turned away. Moderation is by hand: a row with hidden = 1 drops off the boards
 // (README, Leaderboards).
 
-export type Env = { DB: D1Database; IP_SALT?: string }
+export type Env = { DB: D1Database; IP_SALT?: string; CORS_ORIGINS?: string }
 
 // Far past anything played: a run without a wipeout scores about n² for n obstacles cleared, at
 // most 1.6 cleared a second, so five unbroken minutes come to about 200,000.
