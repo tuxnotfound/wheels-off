@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { patchCurve } from '../look/materials'
 import { celRamp } from '../look/gradientMap'
+import { asset } from '../site'
 
 // The painted-art pipeline. public/art/manifest.json lists every painted image
 // with its real-world size; the street generator lays lots out from it and the
@@ -40,8 +41,8 @@ export let art: ArtManifest = { character: null, buildings: [], props: [] }
 const props = new Map<string, PropArt>()
 const textures = new Map<string, THREE.Texture>()
 
-/** Load images (paths relative to /art/) into the shared texture map used by paintedMat. */
-export async function loadTextures(paths: string[], loader = new THREE.TextureLoader().setPath('/art/')) {
+/** Load images (paths relative to art/) into the shared texture map used by paintedMat. */
+export async function loadTextures(paths: string[], loader = new THREE.TextureLoader().setPath(asset('art/'))) {
   await Promise.all(
     paths.map(async (p) => {
       const t = await loader.loadAsync(p)
@@ -53,7 +54,7 @@ export async function loadTextures(paths: string[], loader = new THREE.TextureLo
 }
 
 /** Fetch the manifest alone: cheap, and everything else (textures, the character) lists itself in it. */
-export async function loadManifest(base = '/art/'): Promise<ArtManifest> {
+export async function loadManifest(base = asset('art/')): Promise<ArtManifest> {
   const m = (await (await fetch(`${base}manifest.json`)).json()) as ArtManifest
   art = m
   props.clear()
@@ -61,11 +62,11 @@ export async function loadManifest(base = '/art/'): Promise<ArtManifest> {
   return m
 }
 
-/** Character to ride: `?vrm=<path under /art/>` overrides the manifest's `character`. */
+/** Character to ride: `?vrm=<path under art/>` overrides the manifest's `character`. */
 export function characterUrl(): string | null {
   const q = new URLSearchParams(window.location.search).get('vrm')
   const path = q ?? art.character
-  return path ? `/art/${path}` : null
+  return path ? asset(`art/${path}`) : null
 }
 
 export function propArt(id: string): PropArt | undefined {

@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { loadTextures } from '../art/art'
 import { CURVE } from '../world/worldConfig'
+import { asset } from '../site'
 
 // Advertising inventory. The town has fixed ad *slots* (rooftop billboards, banners over
 // the street, wall posters, nobori flags outside shops, delivery-van sides); which
@@ -39,7 +40,7 @@ type Inventory = Record<AdFormat, Creative[]>
 const inventory: Inventory = { billboard: [], banner: [], poster: [], nobori: [], van: [] }
 
 /** Load the ad manifest and its images. Missing or broken file = empty inventory, no ads. */
-export async function loadAds(url = '/art/ads.json') {
+export async function loadAds(url = asset('art/ads.json')) {
   try {
     const res = await fetch(url)
     if (!res.ok) throw new Error(`${res.status}`)
