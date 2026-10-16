@@ -134,6 +134,16 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   (a depth-only pass first), bent with the world's curve. It hides through the countdown, then
   never hides: whole while ahead, faint once level with the kid or behind. The acceleration starts at GO: the countdown holds the sim, so W held early
   only saves the reaction time.
+- **Challenge links** (`challengeLink` and `useChallenge` in `src/game/trial.ts`,
+  `worker/challenge.ts`, the `challenges` table): sharing a finished time trial run, on the
+  board or not, puts it up once (POST `/api/challenge`, checked as the board checks a run, at
+  most 20 an hour from one address) and shares `/?c=<id>&ref=challenge` in place of the game's
+  link. The X tab opens inside the click and goes to X once the link is back; "copy" hands the
+  clipboard a `ClipboardItem` still waiting on the link, which Safari asks for. A failed upload
+  shares the plain link. A visit by such a link (GET `/api/challenge?id=`) gets a banner on the
+  landing page with whose run it is and its time, "PRESS T TO TAKE THE CHALLENGE", and races that
+  run's ghost in place of the fastest one, with a VS line in the trial's HUD. A challenge from a
+  past week gets a note instead, since the course has changed. `?c` leaves the address bar.
 - **`src/game/mode.ts`**: the mode: arcade, free roam or the time trial. In free roam the sim skips obstacles,
   scores nothing and counts no full speed time, and the HUD shows the speed alone. The attract
   ride runs under the same rules, whichever mode the player then picks. Blocks laid
@@ -256,7 +266,8 @@ The leaderboard database, set up once (done 2026-10-08):
 2. `npx wrangler d1 create wheels-off --location weur`, then its id in `wrangler.toml`.
 3. `npx wrangler d1 migrations apply wheels-off --remote`: the `runs` table and the default
    table. Run it again after each new migration, before the push that needs it
-   (`0004_trials.sql`, the time trial's table, before the time trial ships).
+   (`0004_trials.sql`, the time trial's table, before the time trial ships; `0006_challenges.sql`,
+   the challenge links' table, before they ship).
 4. `openssl rand -hex 32 | npx wrangler secret put IP_SALT`. Without it the API signs runs
    with no rate limit and logs a warning.
 

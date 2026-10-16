@@ -1247,6 +1247,21 @@ kbd {
   gap: 16px;
 }
 
+/* a visit by a challenge link: whose run to race, over the ways to ride */
+.landing__challenge {
+  margin: 0;
+  padding: 9px 14px;
+  background: var(--bubble);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 3px 4px 0 var(--ink);
+  font-family: var(--arcade);
+  font-size: clamp(11px, 1.1vw, 14px);
+  line-height: 1.6;
+  animation: rise 0.5s ease-out 0.9s both;
+}
+
 .landing__modes {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1618,6 +1633,7 @@ kbd {
   }
 
   .landing__modes,
+  .landing__challenge,
   .landing__keys,
   .landing__start,
   .chip--scores {
