@@ -153,7 +153,8 @@ function Landing() {
           <Note off={musicOff} />
           <kbd>M</kbd>
         </button>
-        <a className="chip" href="/privacy" target="_blank" rel="noopener">
+        {/* Enter opens the page without also starting the ride, as on the buttons */}
+        <a className="chip" href="/privacy" target="_blank" rel="noopener" onKeyDown={(e) => e.key === 'Enter' && e.stopPropagation()}>
           privacy
         </a>
       </nav>
