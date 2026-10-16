@@ -1,5 +1,6 @@
 import { leaderboard } from './leaderboard'
 import { trial } from './trial'
+import { forgetOldPlays, play } from './play'
 import type { Env } from './leaderboard'
 
 // The Worker behind the game. It sees every request (run_worker_first in wrangler.toml):
@@ -21,7 +22,13 @@ export default {
     }
     if (url.pathname === '/api/leaderboard') return leaderboard(request, env)
     if (url.pathname === '/api/trial') return trial(request, env)
+    if (url.pathname === '/api/play') return play(request, env)
     if (url.pathname.startsWith('/api/')) return Response.json({ error: 'not found' }, { status: 404 })
     return env.ASSETS.fetch(request)
+  },
+  // once a day (triggers in wrangler.toml): play counts older than 13 months go, as the privacy
+  // page says
+  scheduled(_controller, env, ctx) {
+    ctx.waitUntil(forgetOldPlays(env))
   },
 } satisfies ExportedHandler<Env & { ASSETS: Fetcher }>

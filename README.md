@@ -113,6 +113,15 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   jump back never counted as progress. That floors a forged ghost at the measured start and top
   speed all the way, about 36 s; a bot that clears every obstacle and makes every turn rode
   38.8 s on 2026-W42's course. The check doesn't know the obstacles or the turns.
+- **`src/game/plays.ts`, `worker/play.ts`, `shared/play.ts`**: the play tracker, one row in
+  `plays` per page visit that rides. The visit gets a random session id, in memory only, when
+  the landing page is left; POST `/api/play` makes its row then and raises its counts after each
+  run (an arcade run ended, a time trial finished), every minute of riding, and when the page is
+  hidden or closed (`sendBeacon`). The row holds where the visit came from (the link's `?ref`,
+  else the referring site, else `direct`; the ref is then taken out of the address bar), the
+  runs, the seconds ridden (pauses left out), the week and the day. A player is the salted
+  address hash the rate limits already use, so nothing is stored in the browser for it. One
+  address opens at most 30 sessions an hour. The weekly reads are under Deploy, Plays.
 - **`src/game/course.ts`**: the time trial's course, laid out from the week's seed: legs of 2
   to 4 blocks, each turning at the first intersection with a side street (a side picked by the
   seed, the other if it has none), until 600 m; the last straight at least 2 blocks. It tells
@@ -259,7 +268,8 @@ The leaderboard database, set up once (done 2026-10-08):
 2. `npx wrangler d1 create wheels-off --location weur`, then its id in `wrangler.toml`.
 3. `npx wrangler d1 migrations apply wheels-off --remote`: the `runs` table and the default
    table. Run it again after each new migration, before the push that needs it
-   (`0004_trials.sql`, the time trial's table, before the time trial ships).
+   (`0004_trials.sql`, the time trial's table, before the time trial ships; `0005_plays.sql`,
+   the play tracker's table, before it ships).
 4. `openssl rand -hex 32 | npx wrangler secret put IP_SALT`. Without it the API signs runs
    with no rate limit and logs a warning.
 
@@ -286,6 +296,25 @@ The top of a week, and the best run of each month:
 ```bash
 npx wrangler d1 execute wheels-off --remote --command "SELECT name, score, streak FROM runs WHERE hidden = 0 AND week = '2026-W42' ORDER BY score DESC LIMIT 10"
 npx wrangler d1 execute wheels-off --remote --command "SELECT substr(created_at, 1, 7) AS month, name, max(score) AS score FROM runs WHERE hidden = 0 AND seeded = 0 GROUP BY month"
+```
+
+### Plays: who rides, from where, and who comes back
+
+`plays` holds one row per page visit that rides (`src/game/plays.ts`). A player is an
+`ip_hash`, so the counts are close, not exact: a home address that changes looks like a new
+player, and a shared network counts as one. The week's visits by source, with players, runs,
+the average ride and the long sessions (3 minutes or more):
+
+```bash
+npx wrangler d1 execute wheels-off --remote --command "SELECT source, count(*) AS sessions, count(DISTINCT ip_hash) AS players, sum(runs) AS runs, round(avg(seconds)) AS avg_seconds, sum(seconds >= 180) AS long_sessions FROM plays WHERE week = '2026-W43' GROUP BY source ORDER BY players DESC"
+```
+
+Returning players by the week they first rode: new players, and how many rode again on
+another day within 14 days of their first (the last two weeks are still filling in), with the
+source of their first visit:
+
+```bash
+npx wrangler d1 execute wheels-off --remote --command "WITH first AS (SELECT ip_hash, min(day) AS day, min(week) AS week, (SELECT source FROM plays q WHERE q.ip_hash = p.ip_hash ORDER BY created_at LIMIT 1) AS source FROM plays p WHERE ip_hash IS NOT NULL GROUP BY ip_hash), days AS (SELECT f.ip_hash, f.week, f.source, count(DISTINCT p.day) AS n FROM first f JOIN plays p ON p.ip_hash = f.ip_hash AND p.day <= date(f.day, '+14 days') GROUP BY f.ip_hash) SELECT week, source, count(*) AS new_players, sum(n >= 2) AS came_back FROM days GROUP BY week, source ORDER BY week, new_players DESC"
 ```
 
 ### Later: accounts and billboard sales

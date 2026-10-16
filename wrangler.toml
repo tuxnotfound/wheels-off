@@ -28,3 +28,8 @@ enabled = true
 binding = "DB"
 database_name = "wheels-off"
 database_id = "46c1a91b-df0a-4f10-9da5-71d77e3e5ed8"
+
+# Once a day, 03:17 UTC: play counts older than 13 months are deleted (worker/play.ts), as the
+# privacy page says.
+[triggers]
+crons = ["17 3 * * *"]
