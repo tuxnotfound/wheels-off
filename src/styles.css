@@ -1164,7 +1164,9 @@ kbd {
   pointer-events: none;
 }
 
-.landing button {
+/* the page lets clicks through to the game, except on its buttons and links */
+.landing button,
+.landing a {
   pointer-events: auto;
 }
 
@@ -1533,7 +1535,8 @@ kbd {
   opacity: 0;
 }
 
-.landing--off button {
+.landing--off button,
+.landing--off a {
   pointer-events: none;
 }
 
