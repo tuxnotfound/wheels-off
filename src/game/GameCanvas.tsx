@@ -25,6 +25,7 @@ import { trialAfterStep, trialTick } from './trial'
 import { autopilot } from './autopilot'
 import { pacer } from './pacer'
 import { tickAds } from '../ads/ads'
+import { playRode, playRunEnded, playStarted } from './plays'
 import { TrialView } from '../world/TrialView'
 
 const damp = (a: number, b: number, lambda: number, dt: number) => a + (b - a) * (1 - Math.exp(-lambda * dt))
@@ -106,12 +107,17 @@ function SimDriver() {
       if (trialTick(dt)) {
         stepSim(dt)
         const run = trialAfterStep()
-        if (run) showResult(run)
+        if (run) {
+          showResult(run)
+          playRunEnded()
+        }
       }
     } else stepSim(dt)
     // the attract ride behind the landing page counts no ad impressions and pops no toasts
-    if (input.started) tickAds(camera, Math.min(dt, 1 / 20))
-    else sim.events.length = 0
+    if (input.started) {
+      tickAds(camera, Math.min(dt, 1 / 20))
+      playRode(dt)
+    } else sim.events.length = 0
     // only arcade scores; leaving it for free roam or the time trial ends the run, as a wipeout does
     const arcade = !freeRoam() && mode === 'arcade'
     const quit = !arcade && last.arcade
@@ -127,6 +133,7 @@ function SimDriver() {
     }
     sim.events.length = 0
     if (input.started && !hud.started) {
+      playStarted()
       patch.started = true
       patch.street = { id: sim.time, ...streetName(sim.street.seed) }
     }
@@ -141,6 +148,7 @@ function SimDriver() {
       // game over for this run: a run that makes a leaderboard signs it, else a new PR gets its
       // banner, once the wipeout has played (leaving for another mode has none to play)
       const end = endRun()
+      playRunEnded()
       refreshBoards() // so the next run is up against the boards as they stand now
       const ranks: Ranks = {
         week: { score: rankFor('week', 'score', end.score), speed: rankFor('week', 'speed', end.streak) },
