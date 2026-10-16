@@ -240,6 +240,9 @@ In dev, `window.__sim` exposes the live sim state for poking at from the console
 (Open Graph tags, a large image card). It is a 1200×630 headless screenshot of the landing page
 on `/?week=2026-W50` (the cherry tree town), with `.landing__go`, `.landing__chips`,
 `.landing__start` and `.marquee` hidden so only the title stays over the ride.
+For search engines the head carries a canonical link to the bare URL, so `?ref=` links count
+as one page, next to `public/robots.txt` and a one-page `public/sitemap.xml`. Shared runs link
+to `/?ref=share`.
 Open `/?vrm=<file under public/art/>` to try a VRM character without editing the manifest.
 
 ## Deploy
