@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#7ccac0" />
+    <title>Privacy · Wheels Off</title>
+    <meta name="description" content="What Wheels Off keeps about you, where, why and for how long." />
+    <link rel="canonical" href="https://playwheelsoff.com/privacy" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link href="/fonts/fonts.css" rel="stylesheet" />
+    <style>
+      :root {
+        --ink: #2b2433;
+        --paper: #fdfaf2;
+        --sky: #7ccac0;
+        --muted: #5d5468;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 32px 16px 64px;
+        background: var(--sky);
+        color: var(--ink);
+        font: 16px/1.6 system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 28px 28px 32px;
+        background: var(--paper);
+        border: 3px solid var(--ink);
+        border-radius: 18px;
+        box-shadow: 5px 6px 0 var(--ink);
+      }
+      h1 {
+        margin: 0 0 4px;
+        font: 400 clamp(30px, 6vw, 44px) / 1.1 'Dela Gothic One', system-ui, sans-serif;
+      }
+      h2 {
+        margin: 28px 0 8px;
+        font: 400 20px/1.3 'Dela Gothic One', system-ui, sans-serif;
+      }
+      p,
+      ul {
+        margin: 0 0 12px;
+      }
+      ul {
+        padding-left: 20px;
+      }
+      li {
+        margin-bottom: 6px;
+      }
+      a {
+        color: inherit;
+      }
+      code {
+        font-size: 0.9em;
+        white-space: nowrap;
+      }
+      .updated {
+        margin-bottom: 20px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .back {
+        display: inline-block;
+        margin-top: 16px;
+        font: 12px/1 'Press Start 2P', monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Privacy</h1>
+      <p class="updated">Wheels Off · last updated 2026-10-16</p>
+
+      <p>
+        Wheels Off is a browser game made and run by tuxnotfound
+        (<a href="https://github.com/tuxnotfound">github.com/tuxnotfound</a>). Write to
+        <a href="mailto:tuxnotfound@cioga.eu">tuxnotfound@cioga.eu</a> with any question about this page or your
+        data.
+      </p>
+      <p>
+        There are no accounts, no cookies and no ad trackers. The game keeps a little in your browser so it
+        remembers your records, and a little on its server so the leaderboards work and I can tell whether people
+        play.
+      </p>
+
+      <h2>In your browser</h2>
+      <p>
+        Kept in your browser's local storage and sent nowhere: your personal records, this week's best time trial
+        run and its ghost, the last name you typed, whether the music and the ghost are on, and the last copy of
+        the leaderboards, so the game works offline. Clearing this site's data in your browser removes all of it.
+      </p>
+
+      <h2>On the server</h2>
+      <p>The game's database runs on Cloudflare D1, in western Europe. It keeps:</p>
+      <ul>
+        <li>
+          <strong>Runs you sign onto a leaderboard:</strong> the name you type, the score or time, the week, and
+          for a time trial the path your rider took (the ghost other players race).
+        </li>
+        <li>
+          <strong>Runs you share as a challenge:</strong> the time, the path, and your name if you have one.
+        </li>
+        <li>
+          <strong>Play counts:</strong> for each visit where you ride, a random id made for that visit only (it is
+          not stored in your browser), where the visit came from (a tag in the link, such as
+          <code>?ref=share</code>, or the site that linked here), how many runs you rode and for how many seconds,
+          and the day. I use these to count players and how many come back.
+        </li>
+        <li>
+          <strong>A salted hash of your IP address</strong> with each of the above: your address mixed with a
+          secret and put through a one-way function. I cannot turn it back into your address, but the same address
+          always gives the same hash. It limits how many runs one address can send, and it is how play counts tell
+          a returning player from a new one.
+        </li>
+      </ul>
+
+      <h2>Visit statistics and hosting</h2>
+      <p>
+        Cloudflare hosts the site and counts page views with Cloudflare Web Analytics, which uses no cookies and
+        no local storage. As the host, Cloudflare handles your IP address to deliver each request, under its data
+        processing terms with me. The fonts are served from this site, not from a
+        font service.
+      </p>
+      <p>
+        The share buttons open X's own post page or copy text to your clipboard. Nothing goes to X unless you post
+        there.
+      </p>
+
+      <h2>Why, and for how long</h2>
+      <p>
+        I keep this because I have a legitimate interest in running the game, keeping the leaderboards fair, and
+        knowing whether people play it (Article 6(1)(f) of the GDPR).
+      </p>
+      <ul>
+        <li>Play counts are deleted after 13 months.</li>
+        <li>
+          Signed runs and shared challenges stay for as long as the game runs, since they are the leaderboards and
+          the challenges other players open. I will take yours down if you ask.
+        </li>
+      </ul>
+
+      <h2>Your rights</h2>
+      <p>
+        You can ask what I hold about you, ask me to correct or delete it, or object to how I use it: write to
+        <a href="mailto:tuxnotfound@cioga.eu">tuxnotfound@cioga.eu</a>. Since I only hold a hash of your address,
+        tell me your name on the boards and roughly when you played so I can find your runs. You can also complain
+        to your data protection authority; in Portugal that is the CNPD (<a href="https://www.cnpd.pt">cnpd.pt</a>).
+      </p>
+
+      <a class="back" href="/">◀ BACK TO THE GAME</a>
+    </main>
+  </body>
+</html>
