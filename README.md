@@ -144,6 +144,7 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   landing page with whose run it is and its time, "PRESS T TO TAKE THE CHALLENGE", and races that
   run's ghost in place of the fastest one, with a VS line in the trial's HUD. A challenge from a
   past week gets a note instead, since the course has changed. `?c` leaves the address bar.
+  The table comes with `0006_challenges.sql`, applied like the others (Deploy) before the push.
 - **`src/game/mode.ts`**: the mode: arcade, free roam or the time trial. In free roam the sim skips obstacles,
   scores nothing and counts no full speed time, and the HUD shows the speed alone. The attract
   ride runs under the same rules, whichever mode the player then picks. Blocks laid
@@ -266,8 +267,7 @@ The leaderboard database, set up once (done 2026-10-08):
 2. `npx wrangler d1 create wheels-off --location weur`, then its id in `wrangler.toml`.
 3. `npx wrangler d1 migrations apply wheels-off --remote`: the `runs` table and the default
    table. Run it again after each new migration, before the push that needs it
-   (`0004_trials.sql`, the time trial's table, before the time trial ships; `0006_challenges.sql`,
-   the challenge links' table, before they ship).
+   (`0004_trials.sql`, the time trial's table, before the time trial ships).
 4. `openssl rand -hex 32 | npx wrangler secret put IP_SALT`. Without it the API signs runs
    with no rate limit and logs a warning.
 
