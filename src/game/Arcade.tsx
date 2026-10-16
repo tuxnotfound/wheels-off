@@ -152,6 +152,9 @@ function Landing() {
           <Note off={musicOff} />
           <kbd>M</kbd>
         </button>
+        <a className="chip" href="/privacy" target="_blank" rel="noopener">
+          privacy
+        </a>
       </nav>
       <div className="landing__body">
         <header className="landing__head">

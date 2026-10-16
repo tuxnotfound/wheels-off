@@ -1429,6 +1429,7 @@ kbd {
   border-radius: 14px;
   box-shadow: 2px 3px 0 var(--ink);
   cursor: pointer;
+  text-decoration: none; /* a chip can be a link: the privacy page */
 }
 
 .chip kbd {
