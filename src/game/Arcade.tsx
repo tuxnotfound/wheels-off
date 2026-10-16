@@ -429,7 +429,8 @@ function Result({ run, board, pr }: { run: PendingRun; board: Board; pr: boolean
   )
 }
 
-const GAME_URL = 'https://playwheelsoff.com'
+// the ref marks a visit that came from a player's share, apart from my own posts (?ref=x)
+const GAME_URL = 'https://playwheelsoff.com/?ref=share'
 
 const nth = (i: number) => `${i + 1}${['st', 'nd', 'rd'][i] ?? 'th'}`
 
