@@ -328,6 +328,34 @@ source of their first visit:
 npx wrangler d1 execute wheels-off --remote --command "WITH first AS (SELECT ip_hash, min(day) AS day, min(week) AS week, (SELECT source FROM plays q WHERE q.ip_hash = p.ip_hash ORDER BY created_at LIMIT 1) AS source FROM plays p WHERE ip_hash IS NOT NULL GROUP BY ip_hash), days AS (SELECT f.ip_hash, f.week, f.source, count(DISTINCT p.day) AS n FROM first f JOIN plays p ON p.ip_hash = f.ip_hash AND p.day <= date(f.day, '+14 days') GROUP BY f.ip_hash) SELECT week, source, count(*) AS new_players, sum(n >= 2) AS came_back FROM days GROUP BY week, source ORDER BY week, new_players DESC"
 ```
 
+### Portals: the itch.io build
+
+`npm run build:itch` builds the game for itch.io into `dist-itch` and packs
+`wheels-off-itch.zip` (`scripts/portal-zip.mjs`), the file to upload as an HTML game played in
+the browser. A portal runs the game in its frame, on its own host and in a subfolder, so:
+
+- Every file loads by a relative path: Vite's base is `./`, the code goes through `asset()` in
+  `src/site.ts`, and `public/fonts/fonts.css` points at its files relatively. Absolute paths
+  (`/art/...`) would miss the subfolder. The same build runs on playwheelsoff.com.
+- With `VITE_PORTAL=itch`, the API, the privacy chip and every shared link point back at
+  playwheelsoff.com (`api()` and `SITE` in `src/site.ts`), and the play tracker records the
+  visit's source as `itch`.
+- The Worker answers itch.io's game host (`https://html-classic.itch.zone`, and any `itch.zone`
+  host, as itch.io's staff suggest) with CORS headers on `/api/*`, and turns other origins'
+  preflights away (`worker/cors.ts`). Play counts post as plain text, so they need no preflight.
+- The zip leaves out the local test model, source maps, the privacy page, `robots.txt` and the
+  sitemap, and the script stops if the build breaks itch.io's rules (absolute paths in
+  `index.html`, over 1,000 files, over 500 MB, a file over 200 MB). On 2026-10-16: 182 files,
+  10 MB, 5 MB zipped.
+
+To try a portal build locally, from another origin and a subfolder as itch.io serves it:
+
+```bash
+VITE_PORTAL=itch VITE_SITE=http://localhost:8788 npx vite build --outDir /tmp/itchroot/html/1 --emptyOutDir
+npm run build && npx wrangler dev --port 8788 --var CORS_ORIGINS:http://localhost:8800
+cd /tmp/itchroot && python3 -m http.server 8800   # then open http://localhost:8800/html/1/index.html
+```
+
 ### Later: accounts and billboard sales
 
 Both go in the same API and database: a new migration per table (users, ad bookings) and a

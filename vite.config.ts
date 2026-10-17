@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // relative paths in the build, so it also runs from a portal's subfolder (src/site.ts)
+  base: './',
   // /api is the leaderboard API, served by `npm run api` (wrangler, on 8788) next to this.
   server: { port: 5173, host: true, proxy: { '/api': 'http://localhost:8788' } },
   // Pre-bundle the heavy 3D libs so the first dev load is fast.

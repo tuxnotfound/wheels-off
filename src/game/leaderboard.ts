@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { BOARD_SIZE, weekOf } from '../../shared/leaderboard'
 import type { Board, Boards, Entry, Week } from '../../shared/leaderboard'
 import { readJson, writeJson } from './storage'
+import { api } from '../site'
 
 export { BOARD_SIZE, NAME_MAX, cleanName, nameAllowed, typedName, weekOf } from '../../shared/leaderboard'
 export type { Board, Entry } from '../../shared/leaderboard'
@@ -25,7 +26,7 @@ export const BOARD_JP: Record<Board, string> = { score: 'トリックスター',
 
 export const DEFAULT_NAME = 'John Doe'
 
-const API = '/api/leaderboard'
+const API = api('leaderboard')
 const KEY = 'wheelsoff:boards' // the last copy (the local-only tables lived under wheelsoff:leaderboard)
 const WEEK_KEY = 'wheelsoff:week' // the last copy of a week's boards, with the week they are for
 const NAME_KEY = 'wheelsoff:name'

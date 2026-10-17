@@ -7,6 +7,7 @@ import { finish as finishLine, missedTurn, progress, respawnPoint } from './cour
 import { roll } from './mode'
 import { resetToStart, respawnAt, sim } from './sim'
 import { readJson, writeJson } from './storage'
+import { api } from '../site'
 
 // The time trial (mode.ts): the week's course through the week's town (course.ts), against the
 // clock. Each attempt starts on the start line after a countdown; a wipeout only costs speed,
@@ -19,7 +20,7 @@ import { readJson, writeJson } from './storage'
 const COUNTDOWN = 3 // seconds before GO
 const RESULT_AFTER = 1 // seconds of rolling on past the finish before the result card
 const MISS_HOLD = 0.9 // seconds of the crash into the wall before the respawn
-const API = '/api/trial'
+const API = api('trial')
 const PB_KEY = 'wheelsoff:trial-course' // this week's best: { week, time, ghost } (the straight course's runs lived under wheelsoff:trial)
 const GHOST_OFF_KEY = 'wheelsoff:ghost-off'
 const REFRESH_EVERY = 60_000 // ms between fetches of the board, at most
@@ -262,7 +263,7 @@ export function signTrial(name: string, run: TrialRun) {
 // Challenge links (worker/challenge.ts). Sharing a finished run puts it up once and links to
 // /?c=<id>. A visit that opens such a link this week races that run's ghost; one from a past
 // week gets a note instead, since the course has changed with the town.
-const CHALLENGE_API = '/api/challenge'
+const CHALLENGE_API = api('challenge')
 
 /** The challenge this visit came with: whose run, its time, and whether its week is over. */
 export const useChallenge = create(() => ({ challenge: null as { name: string | null; time: number; stale: boolean } | null }))

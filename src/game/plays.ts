@@ -1,4 +1,5 @@
 import { cleanSource } from '../../shared/play'
+import { PORTAL, api } from '../site'
 
 // The play tracker's side in the game (worker/play.ts): one session per page visit that rides,
 // with where the visit came from, the runs ended and the seconds ridden. The session id is
@@ -6,7 +7,7 @@ import { cleanSource } from '../../shared/play'
 // ride starts, and raised after each run, every minute of riding, and when the page is hidden
 // or closed (sendBeacon, which survives the page going away).
 
-const API = '/api/play'
+const API = api('play')
 const BEAT = 60 // seconds of riding between sends
 
 /** The link's ?ref, else the referring site, else direct; the ref then leaves the address bar, so a copied address doesn't carry it on. */
@@ -27,7 +28,7 @@ function sourceOf(): string {
   return 'direct'
 }
 
-const source = sourceOf()
+const source = PORTAL ? cleanSource(PORTAL) : sourceOf() // in a portal's frame, the portal is the source
 const play = { session: '', runs: 0, seconds: 0, sentAt: 0 }
 
 function body(): string {
@@ -37,7 +38,8 @@ function body(): string {
 function send() {
   if (!play.session) return
   play.sentAt = play.seconds
-  void fetch(API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: body(), keepalive: true }).catch(() => {
+  // plain text, so a portal build's cross-origin send needs no preflight (which keepalive can't wait for)
+  void fetch(API, { method: 'POST', headers: { 'content-type': 'text/plain' }, body: body(), keepalive: true }).catch(() => {
     // offline, or no API: the next send carries the counts
   })
 }

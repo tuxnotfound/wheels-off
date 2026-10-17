@@ -28,6 +28,7 @@ import { Crown, Note, Trophy, lap, secs } from './icons'
 import { records } from './records'
 import { pressMusic, useMusic } from '../audio/music'
 import { useWebGL } from './webgl'
+import { PORTAL, SITE } from '../site'
 
 // What is drawn over the ride. First the landing page, over the attract ride, until someone
 // takes over. Then the cards, all in the title card's look, with scores and names in arcade
@@ -154,7 +155,7 @@ function Landing() {
           <kbd>M</kbd>
         </button>
         {/* Enter opens the page without also starting the ride, as on the buttons */}
-        <a className="chip" href="/privacy" target="_blank" rel="noopener" onKeyDown={(e) => e.key === 'Enter' && e.stopPropagation()}>
+        <a className="chip" href={PORTAL ? `${SITE}/privacy` : '/privacy'} target="_blank" rel="noopener" onKeyDown={(e) => e.key === 'Enter' && e.stopPropagation()}>
           privacy
         </a>
       </nav>
