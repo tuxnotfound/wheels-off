@@ -570,6 +570,9 @@ kbd {
   position: absolute;
   left: 24px;
   bottom: 28px;
+  /* short of the turn arrows at the bottom center, so a long name wraps instead of running into
+     them (.turns: 90px apart around the middle) */
+  max-width: calc(50% - 110px);
   display: flex;
   flex-direction: column;
   color: #fbfaf3;
