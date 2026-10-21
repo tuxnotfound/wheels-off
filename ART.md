@@ -127,7 +127,7 @@ skin in place of shorts (a straight tube round each leg bone below the seat, ove
 socks; a model without a `Bottoms` material keeps what it wears), and the top as an
 oversized dark green tee: hung from the pelvis and cut straight at the hips, with roomy
 straight sleeves to the elbows built from the arm skin.
-The face is reshaped after the Lofi Girl: smaller near-black almond eyes under heavy lids,
+The face is reshaped for a calm look: smaller near-black almond eyes under heavy lids,
 a bolder lash line, warmer skin and a rounder jaw. So a VRoid export can keep normal
 proportions, long hair and its own face.
 If the file is missing or broken, the game falls back to the procedural kid and logs a

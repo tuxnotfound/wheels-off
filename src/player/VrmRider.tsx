@@ -33,7 +33,7 @@ const PANTS_CUFF = 0.085
 const PANTS_HEEL = 0.03 // the hem drops this much at the back, over the shoe's low heel
 const SOCKS = '#24242c'
 
-// Her face, after the Lofi Girl: small dark almond eyes under heavy lids, looking a little
+// Her face, a calm look: small dark almond eyes under heavy lids, looking a little
 // down, a darker lash line, warmer skin and a round jaw in place of the pointed chin.
 const EYE_SIZE = 0.85 // the eyes shrunk about their own centers,
 const EYE_SQUASH = 0.85 // and flattened into almonds
