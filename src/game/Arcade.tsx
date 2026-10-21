@@ -99,9 +99,26 @@ const landingButton = (act: () => void): ButtonHTMLAttributes<HTMLButtonElement>
   },
 })
 
-/** On a touch screen, the buttons that stand in for a card's keys (Enter, Esc, P, R). */
+const TAP_GUARD_MS = 500 // a card's buttons ignore taps this long after it opens
+
+/**
+ * On a touch screen, the buttons that stand in for a card's keys (Enter, Esc, P, R). A card can
+ * open under a thumb that is still tapping ollies, so for its first moment the row takes no tap.
+ */
 function TapRow({ children }: { children: ReactNode }) {
-  return <p className="title-card__go title-card__go--tap">{children}</p>
+  const opened = useRef(performance.now())
+  return (
+    <p
+      className="title-card__go title-card__go--tap"
+      onClickCapture={(e) => {
+        if (performance.now() - opened.current >= TAP_GUARD_MS) return
+        e.preventDefault()
+        e.stopPropagation()
+      }}
+    >
+      {children}
+    </p>
+  )
 }
 
 /** A board's top three of all time, for the marquee. */
