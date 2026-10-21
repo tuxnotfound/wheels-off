@@ -1640,8 +1640,7 @@ kbd {
 }
 
 /* a phone or tablet: the ways to ride by tap, and the ride by the on-screen controls
-   (src/game/TouchControls.tsx). Keys aren't shown, the HUD's chips move to the top so the
-   controls own the bottom corners, and double-tap zoom is off. */
+   (src/game/TouchControls.tsx). Keys aren't shown and double-tap zoom is off. */
 @media (hover: none) and (pointer: coarse) {
   html {
     touch-action: manipulation;
@@ -1658,12 +1657,6 @@ kbd {
     display: none;
   }
 
-  .hud-keys {
-    top: 12px;
-    right: 50%;
-    bottom: auto;
-    transform: translateX(50%);
-  }
 }
 
 /* a phone on its side (390 or so tall): a smaller title, and the mode cards by name, so the
@@ -1689,101 +1682,97 @@ kbd {
   }
 }
 
-/* the ride's controls on a touch screen: over the canvas, under the HUD, whose buttons stay on top */
-.touch {
+/* the trackpad on a touch screen (src/game/TouchControls.tsx): across the bottom, over the canvas
+   and under the HUD, whose buttons stay on top. Its top band pushes and its bottom band brakes. */
+.pad {
+  --pad: 30vh;
   position: fixed;
-  inset: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--pad);
   z-index: 5;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  background: linear-gradient(
+    180deg,
+    rgb(242 193 78 / 0.2) 0 40%,
+    rgb(253 250 242 / 0.06) 40% 75%,
+    rgb(217 83 63 / 0.2) 75%
+  );
+  border-top: 2px solid rgb(253 250 242 / 0.6);
 }
 
-.touch__steer {
+.pad__band,
+.pad__hint {
   position: absolute;
-  inset: 0 50% 0 0;
-}
-
-.touch__hint {
-  position: absolute;
-  left: max(24px, env(safe-area-inset-left));
-  top: 50%;
-  font-family: var(--arcade);
-  font-size: 11px;
-  color: var(--bubble);
-  text-shadow: 2px 2px 0 var(--ink);
-  opacity: 0.75;
-}
-
-.touch__thumb {
-  position: absolute;
-  width: 140px;
-  height: 56px;
-  margin: -28px 0 0 -70px;
-  background: rgb(35 49 46 / 0.25);
-  border: 3px solid rgb(253 250 242 / 0.7);
-  border-radius: 28px;
-}
-
-.touch__knob {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 44px;
-  height: 44px;
-  margin: -22px 0 0 -22px;
-  background: var(--bubble);
-  border: 3px solid var(--ink);
-  border-radius: 50%;
-}
-
-.touch__buttons {
-  position: absolute;
-  right: max(16px, env(safe-area-inset-right));
-  bottom: max(16px, env(safe-area-inset-bottom));
-  display: grid;
-  grid-template-areas:
-    '. push'
-    'brake ollie';
-  gap: 12px;
-  align-items: end;
-  justify-items: end;
-}
-
-.touch__button {
-  width: 72px;
-  height: 72px;
-  padding: 0;
   font-family: var(--arcade);
   font-size: 10px;
-  color: var(--ink);
-  background: var(--bubble);
-  border: 3px solid var(--ink);
+  color: var(--bubble);
+  text-shadow: 2px 2px 0 var(--ink);
+  pointer-events: none;
+}
+
+.pad__band {
+  left: 12px;
+  opacity: 0.8;
+}
+
+.pad__band--push {
+  top: 10px;
+}
+
+.pad__band--brake {
+  bottom: max(10px, env(safe-area-inset-bottom));
+}
+
+.pad__hint {
+  left: 50%;
+  top: 55%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+.pad__mark {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  background: rgb(253 250 242 / 0.3);
+  border: 3px solid var(--bubble);
   border-radius: 50%;
-  box-shadow: 3px 4px 0 var(--ink);
-  touch-action: none;
+  pointer-events: none;
 }
 
-.touch__button:active {
-  transform: translate(2px, 3px);
-  box-shadow: 1px 1px 0 var(--ink);
+/* a phone held upright: the mode cards by name, side by side, clear of the start prompt */
+@media (max-width: 500px) {
+  .landing__body {
+    bottom: 100px;
+  }
+
+  .landing .mode-card__what {
+    display: none;
+  }
 }
 
-.touch__button--push {
-  grid-area: push;
-}
+/* with the pad on screen, what sat at the bottom of the HUD rides just above it */
+@media (hover: none) and (pointer: coarse) {
+  .hud-keys {
+    top: auto;
+    right: 12px;
+    bottom: calc(30vh + 12px);
+    transform: none;
+  }
 
-.touch__button--brake {
-  grid-area: brake;
-}
+  .street-card {
+    bottom: calc(30vh + 16px);
+  }
 
-.touch__button--ollie {
-  grid-area: ollie;
-  width: 100px;
-  height: 100px;
-  font-size: 12px;
-  background: var(--gold);
+  .turns {
+    bottom: calc(30vh + 10px);
+  }
 }
 
 /* a card's buttons in place of its keys, on a touch screen: pinned to the bottom of the screen
@@ -1800,54 +1789,6 @@ kbd {
   background: var(--bubble);
   border-radius: 0 0 15px 15px;
   animation: none;
-}
-
-/* a phone held upright: the game asks for it sideways */
-.rotate {
-  display: none;
-}
-
-@media (hover: none) and (pointer: coarse) and (orientation: portrait) {
-  .rotate {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 24px;
-    text-align: center;
-    color: var(--bubble);
-    background: var(--sage);
-    text-shadow: 3px 3px 0 var(--ink);
-  }
-
-  .rotate__title {
-    margin: 0;
-    font-family: var(--arcade);
-    font-size: 16px;
-    line-height: 1.6;
-  }
-
-  .rotate__jp {
-    margin: 0;
-    font-family: var(--display);
-    font-size: 18px;
-  }
-}
-
-/* no WebGL, so no ride can start: the card says why, in place of the ways to ride, on any
-   device. The hi-scores and the music still work. */
-.landing--no3d .landing__modes,
-.landing--no3d .landing__keys,
-.landing--no3d .landing__start {
-  display: none;
-}
-
-.landing--no3d .landing__touch {
-  display: flex;
 }
 
 @media (prefers-reduced-motion: reduce) {

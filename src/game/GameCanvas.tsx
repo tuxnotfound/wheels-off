@@ -26,6 +26,7 @@ import { autopilot } from './autopilot'
 import { pacer } from './pacer'
 import { tickAds } from '../ads/ads'
 import { playRode, playRunEnded, playStarted } from './plays'
+import { trackpadTick } from './TouchControls'
 import { TrialView } from '../world/TrialView'
 
 const damp = (a: number, b: number, lambda: number, dt: number) => a + (b - a) * (1 - Math.exp(-lambda * dt))
@@ -101,6 +102,7 @@ function SimDriver() {
   useFrame(({ camera }, dt) => {
     if (isPaused()) return // the pause screen, a name being typed or a result: the world holds still
     if (!input.started) autopilot()
+    else trackpadTick() // on a touch screen, the thumb's line and pedal (TouchControls.tsx)
     const mode = useMode.getState().mode
     if (input.started && mode === 'trial') {
       // the time trial holds the kid on the start line until GO, then times the run
@@ -310,6 +312,11 @@ function Lights() {
 // tall one aiming low so they ride between the title and the buttons. Taking over swings it up
 // and round behind them into the chase.
 const LANDING = { r: 5.4, h: 1.15, fov: 52, drift: 0.6, off: 1.9, aim: 0.95, aimTall: 0.4 }
+// the chase: behind (d) and above (h) the kid, aimed at y down the street, fov the base field of
+// view (vertical, as three.js counts it). A tall screen (a phone held upright) needs a wider view
+// to show the street, and aims lower, so the kid rides higher, above the touch pad.
+const CHASE = { d: 7.6, h: 3.0, y: 1.1, fov: 72 }
+const CHASE_TALL = { d: 8.4, h: 3.6, y: 0.2, fov: 92 }
 const SWING_TIME = 1.5 // seconds
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
@@ -319,12 +326,14 @@ const ease = (t: number) => t * t * (3 - 2 * t)
 function CameraRig() {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const wide = useThree((s) => s.size.width > s.size.height * 1.2)
+  const tall = useThree((s) => s.size.height > s.size.width)
   const st = useRef({ fov: 74, y: 0, roll: 0, landing: 1, way: 0 }).current
   // dev-only handle for test scripts (ad readability probes)
   if (import.meta.env.DEV) Object.assign(window, { __camera: camera })
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 1 / 20)
-    st.fov = damp(st.fov, 72 + Math.max(0, sim.speed - 8) * 0.9, 2.5, dt)
+    const C = tall ? CHASE_TALL : CHASE
+    st.fov = damp(st.fov, C.fov + Math.max(0, sim.speed - 8) * 0.9, 2.5, dt)
     st.y = damp(st.y, sim.y, 5, dt)
     st.roll = damp(st.roll, -sim.latVel * 0.012 - sim.turnRate * 0.03, 4, dt)
     if (input.started) st.landing = Math.max(0, st.landing - dt / SWING_TIME)
@@ -335,8 +344,8 @@ function CameraRig() {
     const b = ease(st.landing)
     let fov = st.fov
     if (b === 0) {
-      camera.position.set(Math.sin(sim.time * 60) * shake, 3.0 + st.y * 0.4, 7.6)
-      camera.lookAt(0, 1.1 + st.y * 0.3, -7)
+      camera.position.set(Math.sin(sim.time * 60) * shake, C.h + st.y * 0.4, C.d)
+      camera.lookAt(0, C.y + st.y * 0.3, -7)
     } else {
       // the swing orbits the kid, so the camera never passes through them: angle, distance and
       // height blend from the landing shot to the chase, rising and closing in on the way round
@@ -346,14 +355,14 @@ function CameraRig() {
       const dz = sim.pz - anchor.z
       const rx = dx * c + dz * s
       const rz = -dx * s + dz * c
-      const chaseAngle = Math.atan2(-rx, 7.6 - rz)
-      const chaseR = Math.hypot(rx, 7.6 - rz)
+      const chaseAngle = Math.atan2(-rx, C.d - rz)
+      const chaseR = Math.hypot(rx, C.d - rz)
       const angle = Math.PI + LANDING.drift * Math.sin(sim.time * 0.13)
       const turn = wrap(angle - chaseAngle)
       const a = chaseAngle + (Math.sign(turn) === st.way ? turn : turn + st.way * 2 * Math.PI) * b
       const crane = Math.sin(Math.PI * b)
       const r = lerp(chaseR, LANDING.r, b) - 1.6 * crane
-      const h = lerp(3.0 + st.y * 0.4, LANDING.h, b) + 1.4 * crane
+      const h = lerp(C.h + st.y * 0.4, LANDING.h, b) + 1.4 * crane
       // held softly over the road: past the curb it would pass through poles and facades
       const lim = sim.street.width / 2 - 0.3
       const side = lim * Math.tanh((sim.lat + Math.sin(a) * r) / lim)
@@ -365,7 +374,7 @@ function CameraRig() {
       const lz = rz + Math.sin(angle) * off
       const keep = ease(Math.min(1, b / 0.45))
       const aim = (wide ? LANDING.aim : LANDING.aimTall) + st.y * 0.5
-      camera.lookAt(lerp(0, lx, keep), lerp(1.1 + st.y * 0.3, aim, keep), lerp(-7, lz, keep))
+      camera.lookAt(lerp(0, lx, keep), lerp(C.y + st.y * 0.3, aim, keep), lerp(-7, lz, keep))
       fov = lerp(st.fov, LANDING.fov, b)
     }
     camera.rotateZ(st.roll * (1 - b))

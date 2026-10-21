@@ -314,14 +314,14 @@ function PauseCard() {
           </div>
           {touchDevice ? (
             <dl className="controls">
-              <dt><kbd>left side</kbd></dt>
-              <dd>drag to carve · hold into a side street to turn</dd>
-              <dt><kbd>PUSH</kbd></dt>
-              <dd>hold to push</dd>
-              <dt><kbd>BRAKE</kbd></dt>
-              <dd>hold to brake</dd>
-              <dt><kbd>OLLIE</kbd></dt>
-              <dd>tap · tap twice to kickflip</dd>
+              <dt><kbd>the pad</kbd></dt>
+              <dd>keep a thumb on it · the skater rides to your thumb's side</dd>
+              <dt><kbd>top · bottom</kbd></dt>
+              <dd>push · brake</dd>
+              <dt><kbd>to the edge</kbd></dt>
+              <dd>turn into a side street that way</dd>
+              <dt><kbd>lift and land</kbd></dt>
+              <dd>ollie · twice to kickflip</dd>
             </dl>
           ) : (
           <dl className="controls">
