@@ -1694,65 +1694,53 @@ kbd {
 }
 
 /* the trackpad on a touch screen (src/game/TouchControls.tsx): across the bottom, over the canvas
-   and under the HUD, whose buttons stay on top. Its top band pushes and its bottom band brakes. */
+   and under the HUD, whose buttons stay on top. Its top half pushes; it's kept faint, so the
+   street shows through. */
 .pad {
-  --pad: 30vh;
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  height: var(--pad);
+  height: 22vh;
   z-index: 5;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-  background: linear-gradient(
-    180deg,
-    rgb(242 193 78 / 0.2) 0 40%,
-    rgb(253 250 242 / 0.06) 40% 75%,
-    rgb(217 83 63 / 0.2) 75%
-  );
-  border-top: 2px solid rgb(253 250 242 / 0.6);
+  background: linear-gradient(180deg, rgb(242 193 78 / 0.1) 0 50%, rgb(253 250 242 / 0.03) 50%);
+  border-top: 1px solid rgb(253 250 242 / 0.35);
 }
 
 .pad__band,
 .pad__hint {
   position: absolute;
   font-family: var(--arcade);
-  font-size: 10px;
+  font-size: 8px;
   color: var(--bubble);
-  text-shadow: 2px 2px 0 var(--ink);
+  text-shadow: 1px 1px 0 var(--ink);
+  opacity: 0.55;
   pointer-events: none;
 }
 
 .pad__band {
-  left: 12px;
-  opacity: 0.8;
-}
-
-.pad__band--push {
-  top: 10px;
-}
-
-.pad__band--brake {
-  bottom: max(10px, env(safe-area-inset-bottom));
+  left: 10px;
+  top: 8px;
 }
 
 .pad__hint {
   left: 50%;
-  top: 55%;
+  top: 70%;
   transform: translate(-50%, -50%);
   white-space: nowrap;
 }
 
 .pad__mark {
   position: absolute;
-  width: 56px;
-  height: 56px;
-  margin: -28px 0 0 -28px;
-  background: rgb(253 250 242 / 0.3);
-  border: 3px solid var(--bubble);
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  background: rgb(253 250 242 / 0.15);
+  border: 2px solid rgb(253 250 242 / 0.6);
   border-radius: 50%;
   pointer-events: none;
 }
@@ -1773,16 +1761,16 @@ kbd {
   .hud-keys {
     top: auto;
     right: 12px;
-    bottom: calc(30vh + 12px);
+    bottom: calc(22vh + 12px);
     transform: none;
   }
 
   .street-card {
-    bottom: calc(30vh + 16px);
+    bottom: calc(22vh + 16px);
   }
 
   .turns {
-    bottom: calc(30vh + 10px);
+    bottom: calc(22vh + 10px);
   }
 }
 

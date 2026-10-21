@@ -9,8 +9,8 @@ import { sim } from './sim'
 
 // The ride on a touch screen: a trackpad across the bottom of the screen, where a thumb stays.
 // Across the pad is across the street: the skater rides to the spot under the thumb, left curb
-// to right curb, and held at an edge into an intersection, turns that way. Up the pad is the
-// pedal: the top band pushes, the bottom band brakes, the middle cruises. Lifting the thumb and
+// to right curb, and held at an edge into an intersection, turns that way. The pad's top half
+// pushes and its bottom half cruises; there's no brake. Lifting the thumb and
 // landing it again within GRACE is a tap, an ollie; two quick taps are a kickflip (as Space).
 // Through the lift the skater keeps the pedal and the line it had, so a tap costs no speed, and
 // a tap's landing changes neither until the thumb stays or moves (SETTLE). A second finger's tap
@@ -20,8 +20,7 @@ import { sim } from './sim'
 const GRACE = 600 // ms a lifted thumb keeps the pedal and the line, and a landing counts as a tap
 const SETTLE = 150 // ms a tap's landing waits before it steers or pedals
 const SETTLE_PX = 12 // or how far it moves
-const PUSH_BAND = 0.4 // the top of the pad pushes
-const BRAKE_BAND = 0.75 // and below this it brakes (fractions of the pad's height, from the top)
+const PUSH_BAND = 0.5 // the top half of the pad pushes (a fraction of its height, from the top)
 const EDGE = 0.85 // past this fraction of the lane the thumb also asks for the side street
 const GAIN = 1.6 // steer per meter off the thumb's line
 
@@ -38,7 +37,7 @@ function read(x: number, y: number) {
   const r = pad.rect
   pad.aim = Math.max(-1, Math.min(1, ((x - r.left) / r.width) * 2 - 1))
   const v = (y - r.top) / r.height
-  pad.z = v < PUSH_BAND ? 1 : v > BRAKE_BAND ? -1 : 0
+  pad.z = v < PUSH_BAND ? 1 : 0
 }
 
 function release() {
@@ -117,8 +116,7 @@ export function TouchControls() {
 
   return (
     <div className="pad" ref={area} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onContextMenu={(e) => e.preventDefault()}>
-      <span className="pad__band pad__band--push">PUSH</span>
-      <span className="pad__band pad__band--brake">BRAKE</span>
+      <span className="pad__band">PUSH</span>
       {mark ? <span className="pad__mark" style={{ left: mark.x, top: mark.y }} aria-hidden="true" /> : <span className="pad__hint">hold a thumb here · tap to ollie</span>}
     </div>
   )

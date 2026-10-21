@@ -333,8 +333,8 @@ function PauseCard() {
             <dl className="controls">
               <dt><kbd>the pad</kbd></dt>
               <dd>keep a thumb on it · the skater rides to your thumb's side</dd>
-              <dt><kbd>top · bottom</kbd></dt>
-              <dd>push · brake</dd>
+              <dt><kbd>top half</kbd></dt>
+              <dd>push</dd>
               <dt><kbd>to the edge</kbd></dt>
               <dd>turn into a side street that way</dd>
               <dt><kbd>lift and land</kbd></dt>
