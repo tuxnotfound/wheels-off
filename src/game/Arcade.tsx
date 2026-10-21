@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ButtonHTMLAttributes, CSSProperties, MouseEvent } from 'react'
+import type { ButtonHTMLAttributes, CSSProperties, MouseEvent, ReactNode } from 'react'
 import { closeResult, resume, signName, skipRun, togglePause, toggleRecords, useArcade } from './arcadeStore'
 import type { PendingRun } from './arcadeStore'
 import {
@@ -29,6 +29,7 @@ import { records } from './records'
 import { pressMusic, useMusic } from '../audio/music'
 import { useWebGL } from './webgl'
 import { PORTAL, SITE } from '../site'
+import { touchDevice } from '../player/touch'
 
 // What is drawn over the ride. First the landing page, over the attract ride, until someone
 // takes over. Then the cards, all in the title card's look, with scores and names in arcade
@@ -97,6 +98,11 @@ const landingButton = (act: () => void): ButtonHTMLAttributes<HTMLButtonElement>
     act()
   },
 })
+
+/** On a touch screen, the buttons that stand in for a card's keys (Enter, Esc, P, R). */
+function TapRow({ children }: { children: ReactNode }) {
+  return <p className="title-card__go title-card__go--tap">{children}</p>
+}
 
 /** A board's top three of all time, for the marquee. */
 const topThree = (board: Board) =>
@@ -213,7 +219,7 @@ function Landing() {
             <span><kbd>Space</kbd> ollie</span>
             <span><kbd>P</kbd> pause</span>
           </p>
-          {no3d ? (
+          {no3d && (
             <div className="landing__touch" role="alert">
               <p className="landing__touch-title">3D GRAPHICS ARE OFF</p>
               <p className="landing__touch-jp">3Dグラフィックがオフです</p>
@@ -223,16 +229,22 @@ function Landing() {
                 then relaunch the browser.
               </p>
             </div>
-          ) : (
-            <div className="landing__touch">
-              <p className="landing__touch-title">MOBILE VERSION SOON</p>
-              <p className="landing__touch-jp">スマホ版、近日公開</p>
-              <p className="landing__touch-what">Wheels Off is made for a desktop browser. Open it on a computer to ride.</p>
-            </div>
           )}
         </div>
       </div>
-      {!covered && <p className="landing__start">{!challenge ? 'PRESS SPACE TO START' : challenge.stale ? 'PRESS T FOR THIS WEEK’S TIME TRIAL' : 'PRESS T TO TAKE THE CHALLENGE'}</p>}
+      {!covered && (
+        <p className="landing__start">
+          {touchDevice
+            ? !challenge
+              ? 'TAP A MODE TO RIDE'
+              : 'TAP TIME TRIAL TO RACE'
+            : !challenge
+              ? 'PRESS SPACE TO START'
+              : challenge.stale
+                ? 'PRESS T FOR THIS WEEK’S TIME TRIAL'
+                : 'PRESS T TO TAKE THE CHALLENGE'}
+        </p>
+      )}
       <div className="marquee" aria-hidden="true">
         <div className="marquee__track">
           {[0, 1].map((copy) => (
@@ -300,6 +312,18 @@ function PauseCard() {
               )
             })}
           </div>
+          {touchDevice ? (
+            <dl className="controls">
+              <dt><kbd>left side</kbd></dt>
+              <dd>drag to carve · hold into a side street to turn</dd>
+              <dt><kbd>PUSH</kbd></dt>
+              <dd>hold to push</dd>
+              <dt><kbd>BRAKE</kbd></dt>
+              <dd>hold to brake</dd>
+              <dt><kbd>OLLIE</kbd></dt>
+              <dd>tap · tap twice to kickflip</dd>
+            </dl>
+          ) : (
           <dl className="controls">
             <dt><kbd>W</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">↑</kbd></dt>
             <dd>push</dd>
@@ -318,8 +342,9 @@ function PauseCard() {
             <dt><kbd>M</kbd></dt>
             <dd>music on/off</dd>
           </dl>
+          )}
           <p className="title-card__rule">{RULE[mode]}</p>
-          {mode === 'trial' && (
+          {mode === 'trial' && !touchDevice && (
             <p className="title-card__mode">
               <span>
                 <kbd>T</kbd> restart the run
@@ -329,7 +354,15 @@ function PauseCard() {
               </span>
             </p>
           )}
-          <p className="title-card__go">paused · press P to roll on</p>
+          {touchDevice ? (
+            <TapRow>
+              <button type="button" className="chip" onClick={resume}>
+                roll on
+              </button>
+            </TapRow>
+          ) : (
+            <p className="title-card__go">paused · press P to roll on</p>
+          )}
         </div>
         <section className="other-modes" aria-label="Other modes">
           <p className="other-modes__title">try another mode{mode === 'arcade' ? ' · ends this run' : ''}</p>
@@ -339,9 +372,7 @@ function PauseCard() {
                 <span className="mode-card__name">{m.name}</span>
                 <span className="mode-card__jp">{m.jp}</span>
                 <span className="mode-card__what">{m.what}</span>
-                <span className="mode-card__key">
-                  play · press <kbd>{m.key}</kbd>
-                </span>
+                <span className="mode-card__key">{touchDevice ? 'tap to play' : <>play · press <kbd>{m.key}</kbd></>}</span>
               </button>
             ))}
           </div>
@@ -398,7 +429,15 @@ function HiScoresCard() {
         <p className="periods__when">
           {period === 'week' ? `new boards every monday · ${untilMonday()} to go` : 'every run since the start'}
         </p>
-        <p className="title-card__go">← → switch · press R to go back</p>
+        {touchDevice ? (
+          <TapRow>
+            <button type="button" className="chip" onClick={toggleRecords}>
+              back
+            </button>
+          </TapRow>
+        ) : (
+          <p className="title-card__go">← → switch · press R to go back</p>
+        )}
       </div>
     </div>
   )
@@ -560,7 +599,20 @@ function NameEntry({ run }: { run: PendingRun }) {
           />
         </label>
         <Share line={shareLine(run)} />
-        <p className="title-card__go">{refused ? 'that name can’t go on the board · try another' : 'press esc to skip'}</p>
+        {refused ? (
+          <p className="title-card__go">that name can’t go on the board · try another</p>
+        ) : touchDevice ? (
+          <TapRow>
+            <button type="submit" className="chip">
+              sign
+            </button>
+            <button type="button" className="chip" onClick={skipRun}>
+              skip
+            </button>
+          </TapRow>
+        ) : (
+          <p className="title-card__go">press esc to skip</p>
+        )}
       </form>
     </div>
   )
@@ -675,9 +727,28 @@ function TrialResult({ run }: { run: TrialRun }) {
           </label>
         )}
         {(places || run.newPb) && <Share line={trialShareLine(run)} link={() => challengeLink(run, cleanName(name))} />}
-        <p className="title-card__go">
-          {refused ? 'that name can’t go on the board · try another' : places ? 'enter to sign · esc to skip' : 'press enter to go again'}
-        </p>
+        {touchDevice && !refused ? (
+          <TapRow>
+            {places ? (
+              <>
+                <button type="submit" className="chip">
+                  sign
+                </button>
+                <button type="button" className="chip" onClick={() => closeResult(null)}>
+                  skip
+                </button>
+              </>
+            ) : (
+              <button type="button" className="chip" onClick={() => closeResult(null)}>
+                go again
+              </button>
+            )}
+          </TapRow>
+        ) : (
+          <p className="title-card__go">
+            {refused ? 'that name can’t go on the board · try another' : places ? 'enter to sign · esc to skip' : 'press enter to go again'}
+          </p>
+        )}
       </form>
     </div>
   )

@@ -14,11 +14,19 @@ It shows the title, the two modes, the keys, and the hi-scores going round on a 
 PRESS SPACE TO START. Space (or any key) rolls off in arcade (**F** in free roam), or click a mode; the page clears away as the camera
 swings round behind the kid into the chase. **R** opens the hi-scores from there, **M** the music.
 Keys that leave or move around the page (Cmd, Ctrl, Alt, Shift, Tab, Esc) never start the ride.
-On a phone or tablet (a touch screen with no mouse), the modes, the keys and the hi-scores
-button give way to a "mobile version soon" card; the attract ride and the music still play.
+On a phone or tablet (a touch screen with no mouse) the modes are tapped and the keys row is
+left out; on a short screen (a phone on its side) the title shrinks and the mode cards show
+their names only. A phone held upright gets a card asking to turn it sideways.
 
 ## Controls
 
+- **On a phone or tablet** (`src/game/TouchControls.tsx`): the left half of the screen steers.
+  A thumb lands anywhere there and drags left or right from that spot (60 px for a full carve);
+  held into a side street, it turns. PUSH and BRAKE work while held, OLLIE is tapped, twice
+  quickly for a kickflip; each finger is its own pointer, so steering and the buttons work
+  together. The HUD's pause and music chips move to the top center and take taps, and every card
+  has buttons where the keyboard has keys (roll on, back, sign, skip, go again), pinned to the
+  bottom of the screen while a tall card scrolls.
 - **W / ↑** push (speed up), **S / ↓** brake
 - **A / D** (or ←/→) carve across the lane. Hold toward a side street as you reach an
   intersection to turn into it (arrows at the bottom show which turns exist).
@@ -154,6 +162,12 @@ button give way to a "mobile version soon" card; the attract ride and the music 
   run's ghost in place of the fastest one, with a VS line in the trial's HUD. A challenge from a
   past week gets a note instead, since the course has changed. `?c` leaves the address bar.
   The table comes with `0006_challenges.sql`, applied like the others (Deploy) before the push.
+- **`src/game/TouchControls.tsx`, `src/player/touch.ts`**: the ride on a touch screen. `touchDevice`
+  is the same `(hover: none) and (pointer: coarse)` query the styles use. The controls feed the
+  same `input` as the keys (`touchSteer`, `touchPedal`, `jumpPress` in `src/player/input.ts`), so
+  the sim doesn't know which drove it. They sit over the canvas and under the HUD, and go while a
+  card covers the ride. On a touch screen the renderer starts without supersampling, at the
+  screen's own resolution (capped at 2x), for a phone's GPU.
 - **`src/game/mode.ts`**: the mode: arcade, free roam or the time trial. In free roam the sim skips obstacles,
   scores nothing and counts no full speed time, and the HUD shows the speed alone. The attract
   ride runs under the same rules, whichever mode the player then picks. Blocks laid
@@ -383,4 +397,4 @@ same shape is a one-line swap in the game.
 
 1. Sound effects: board roll, pop, landing, ambient town.
 2. Grindable curbs and rails, manuals, a trick-and-score loop beyond ollies.
-3. Pedestrians and cyclists, day/evening palettes, mobile touch controls.
+3. Pedestrians and cyclists, day/evening palettes.

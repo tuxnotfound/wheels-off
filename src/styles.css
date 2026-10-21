@@ -1639,24 +1639,202 @@ kbd {
   }
 }
 
-/* a phone or tablet: no ways to ride yet (the hi-scores card closes only by key), just the
-   word that a mobile version is coming */
+/* a phone or tablet: the ways to ride by tap, and the ride by the on-screen controls
+   (src/game/TouchControls.tsx). Keys aren't shown, the HUD's chips move to the top so the
+   controls own the bottom corners, and double-tap zoom is off. */
 @media (hover: none) and (pointer: coarse) {
-  .landing__body {
-    bottom: 56px;
-    justify-content: space-between;
+  html {
+    touch-action: manipulation;
   }
 
-  .landing__modes,
-  .landing__challenge,
+  .game-canvas {
+    touch-action: none;
+  }
+
   .landing__keys,
-  .landing__start,
-  .chip--scores {
+  .landing .mode-card__key,
+  .landing__chips kbd,
+  .hud-key kbd {
     display: none;
   }
 
-  .landing__touch {
+  .hud-keys {
+    top: 12px;
+    right: 50%;
+    bottom: auto;
+    transform: translateX(50%);
+  }
+}
+
+/* a phone on its side (390 or so tall): a smaller title, and the mode cards by name, so the
+   cards clear the marquee */
+@media (max-height: 480px) {
+  .landing__title {
+    font-size: clamp(34px, 13vh, 60px);
+  }
+
+  .landing__jp,
+  .landing .mode-card__what {
+    display: none;
+  }
+
+  .overlay .title-card h1 {
+    font-size: clamp(28px, 11vh, 44px);
+  }
+
+  /* the hi-scores boards side by side, as on a desktop, so the card scrolls less */
+  .title-card__boards {
+    flex-wrap: nowrap;
+    gap: 12px 20px;
+  }
+}
+
+/* the ride's controls on a touch screen: over the canvas, under the HUD, whose buttons stay on top */
+.touch {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.touch__steer {
+  position: absolute;
+  inset: 0 50% 0 0;
+}
+
+.touch__hint {
+  position: absolute;
+  left: max(24px, env(safe-area-inset-left));
+  top: 50%;
+  font-family: var(--arcade);
+  font-size: 11px;
+  color: var(--bubble);
+  text-shadow: 2px 2px 0 var(--ink);
+  opacity: 0.75;
+}
+
+.touch__thumb {
+  position: absolute;
+  width: 140px;
+  height: 56px;
+  margin: -28px 0 0 -70px;
+  background: rgb(35 49 46 / 0.25);
+  border: 3px solid rgb(253 250 242 / 0.7);
+  border-radius: 28px;
+}
+
+.touch__knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  background: var(--bubble);
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+}
+
+.touch__buttons {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-areas:
+    '. push'
+    'brake ollie';
+  gap: 12px;
+  align-items: end;
+  justify-items: end;
+}
+
+.touch__button {
+  width: 72px;
+  height: 72px;
+  padding: 0;
+  font-family: var(--arcade);
+  font-size: 10px;
+  color: var(--ink);
+  background: var(--bubble);
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  box-shadow: 3px 4px 0 var(--ink);
+  touch-action: none;
+}
+
+.touch__button:active {
+  transform: translate(2px, 3px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.touch__button--push {
+  grid-area: push;
+}
+
+.touch__button--brake {
+  grid-area: brake;
+}
+
+.touch__button--ollie {
+  grid-area: ollie;
+  width: 100px;
+  height: 100px;
+  font-size: 12px;
+  background: var(--gold);
+}
+
+/* a card's buttons in place of its keys, on a touch screen: pinned to the bottom of the screen
+   while a tall card scrolls under them, so they're always in reach */
+.title-card__go--tap {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  /* the card's own paper behind them, edge to edge, so the rows scroll under it */
+  margin: 0 -30px -18px;
+  padding: 10px 30px 14px;
+  background: var(--bubble);
+  border-radius: 0 0 15px 15px;
+  animation: none;
+}
+
+/* a phone held upright: the game asks for it sideways */
+.rotate {
+  display: none;
+}
+
+@media (hover: none) and (pointer: coarse) and (orientation: portrait) {
+  .rotate {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
     display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px;
+    text-align: center;
+    color: var(--bubble);
+    background: var(--sage);
+    text-shadow: 3px 3px 0 var(--ink);
+  }
+
+  .rotate__title {
+    margin: 0;
+    font-family: var(--arcade);
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  .rotate__jp {
+    margin: 0;
+    font-family: var(--display);
+    font-size: 18px;
   }
 }
 
