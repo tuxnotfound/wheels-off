@@ -3,6 +3,8 @@
 // buttons, and the ollie button's presses.
 export const input = {
   x: 0, // -1 left .. 1 right
+  turnX: 0, // the keys' steer alone, -1, 0 or 1: what asks to turn into a side street. A thumb's
+  // steer is fractional and only corrects the line; the touch pad's edge asks through steerSide
   z: 0, // 1 push, -1 brake
   jumpBuffer: 0, // seconds left on a buffered jump press
   flipBuffer: 0, // seconds left on a second, quick jump press (kickflip)
@@ -26,7 +28,8 @@ const clamp1 = (v: number) => Math.max(-1, Math.min(1, v))
 
 function recompute() {
   const has = (ks: string[]) => ks.some((k) => held.has(k))
-  input.x = clamp1((has(RIGHT) ? 1 : 0) - (has(LEFT) ? 1 : 0) + touch.x)
+  input.turnX = (has(RIGHT) ? 1 : 0) - (has(LEFT) ? 1 : 0)
+  input.x = clamp1(input.turnX + touch.x)
   input.z = clamp1((has(UP) ? 1 : 0) - (has(DOWN) ? 1 : 0) + touch.z)
 }
 

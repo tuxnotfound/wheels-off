@@ -152,7 +152,7 @@ function canTurn(street: Street, k: number, side: number): boolean {
 }
 
 function turnIntent(): number {
-  if (input.x !== 0) return input.x
+  if (input.turnX !== 0) return input.turnX // a key held toward the side street
   if (input.steerBuffer > 0) return input.steerSide
   return 0
 }
