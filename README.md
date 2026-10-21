@@ -313,11 +313,14 @@ npx wrangler d1 execute wheels-off --remote --command "SELECT substr(created_at,
 
 `plays` holds one row per page visit that rides (`src/game/plays.ts`). A player is an
 `ip_hash`, so the counts are close, not exact: a home address that changes looks like a new
-player, and a shared network counts as one. The week's visits by source, with players, runs,
+player, and a shared network counts as one. My own rides count as source `me` once a browser is
+marked: open `https://playwheelsoff.com/?me=1` once in each browser I play in (`?me=0` unmarks
+it, and `?reset-records` clears the mark with the rest). The queries below leave `me` out. The
+itch.io frame can't be marked this way, so my rides there still count as `itch`. The week's visits by source, with players, runs,
 the average ride and the long sessions (3 minutes or more):
 
 ```bash
-npx wrangler d1 execute wheels-off --remote --command "SELECT source, count(*) AS sessions, count(DISTINCT ip_hash) AS players, sum(runs) AS runs, round(avg(seconds)) AS avg_seconds, sum(seconds >= 180) AS long_sessions FROM plays WHERE week = '2026-W43' GROUP BY source ORDER BY players DESC"
+npx wrangler d1 execute wheels-off --remote --command "SELECT source, count(*) AS sessions, count(DISTINCT ip_hash) AS players, sum(runs) AS runs, round(avg(seconds)) AS avg_seconds, sum(seconds >= 180) AS long_sessions FROM plays WHERE week = '2026-W43' AND source != 'me' GROUP BY source ORDER BY players DESC"
 ```
 
 Returning players by the week they first rode: new players, and how many rode again on
@@ -325,7 +328,7 @@ another day within 14 days of their first (the last two weeks are still filling 
 source of their first visit:
 
 ```bash
-npx wrangler d1 execute wheels-off --remote --command "WITH first AS (SELECT ip_hash, min(day) AS day, min(week) AS week, (SELECT source FROM plays q WHERE q.ip_hash = p.ip_hash ORDER BY created_at LIMIT 1) AS source FROM plays p WHERE ip_hash IS NOT NULL GROUP BY ip_hash), days AS (SELECT f.ip_hash, f.week, f.source, count(DISTINCT p.day) AS n FROM first f JOIN plays p ON p.ip_hash = f.ip_hash AND p.day <= date(f.day, '+14 days') GROUP BY f.ip_hash) SELECT week, source, count(*) AS new_players, sum(n >= 2) AS came_back FROM days GROUP BY week, source ORDER BY week, new_players DESC"
+npx wrangler d1 execute wheels-off --remote --command "WITH first AS (SELECT ip_hash, min(day) AS day, min(week) AS week, (SELECT source FROM plays q WHERE q.ip_hash = p.ip_hash ORDER BY created_at LIMIT 1) AS source FROM plays p WHERE ip_hash IS NOT NULL AND source != 'me' GROUP BY ip_hash), days AS (SELECT f.ip_hash, f.week, f.source, count(DISTINCT p.day) AS n FROM first f JOIN plays p ON p.ip_hash = f.ip_hash AND p.source != 'me' AND p.day <= date(f.day, '+14 days') GROUP BY f.ip_hash) SELECT week, source, count(*) AS new_players, sum(n >= 2) AS came_back FROM days GROUP BY week, source ORDER BY week, new_players DESC"
 ```
 
 ### Portals: the itch.io build
