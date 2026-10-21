@@ -1,10 +1,11 @@
 // A portal build (src/site.ts) calls the API from the portal's own host, so /api/* answers
 // those origins with CORS headers; any other origin gets none and the browser keeps the answer
 // from it. itch.io serves HTML5 games from html-classic.itch.zone, and its staff suggest
-// allowing all of itch.zone, where they expect games to move. CORS_ORIGINS (comma separated, in
+// allowing all of itch.zone, where they expect games to move. CrazyGames runs games on several
+// crazygames.com origins (its technical requirements), so all of them. CORS_ORIGINS (comma separated, in
 // .dev.vars) adds origins for a local portal build against `wrangler dev`; production has none.
 
-const PORTALS = [/^https:\/\/([a-z0-9-]+\.)*itch\.zone$/]
+const PORTALS = [/^https:\/\/([a-z0-9-]+\.)*itch\.zone$/, /^https:\/\/([a-z0-9-]+\.)*crazygames\.com$/]
 
 /** The request's origin when it is a portal's (or a local one listed in CORS_ORIGINS), else null. */
 export function portalOrigin(request: Request, extra: string | undefined): string | null {

@@ -28,7 +28,7 @@ import { Crown, Note, Trophy, lap, secs } from './icons'
 import { records } from './records'
 import { pressMusic, useMusic } from '../audio/music'
 import { useWebGL } from './webgl'
-import { PORTAL, SITE } from '../site'
+import { PORTAL, SHARE_LINKS, SITE } from '../site'
 import { touchDevice } from '../player/touch'
 
 // What is drawn over the ride. First the landing page, over the attract ride, until someone
@@ -598,7 +598,7 @@ function NameEntry({ run }: { run: PendingRun }) {
             }}
           />
         </label>
-        <Share line={shareLine(run)} />
+        {SHARE_LINKS && <Share line={shareLine(run)} />}
         {refused ? (
           <p className="title-card__go">that name can’t go on the board · try another</p>
         ) : touchDevice ? (
@@ -726,7 +726,7 @@ function TrialResult({ run }: { run: TrialRun }) {
             />
           </label>
         )}
-        {(places || run.newPb) && <Share line={trialShareLine(run)} link={() => challengeLink(run, cleanName(name))} />}
+        {SHARE_LINKS && (places || run.newPb) && <Share line={trialShareLine(run)} link={() => challengeLink(run, cleanName(name))} />}
         {touchDevice && !refused ? (
           <TapRow>
             {places ? (

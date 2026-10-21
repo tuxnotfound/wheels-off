@@ -10,6 +10,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "build:itch": "tsc -b && VITE_PORTAL=itch vite build --outDir dist-itch --emptyOutDir && node scripts/portal-zip.mjs dist-itch wheels-off-itch.zip",
+    "build:crazygames": "tsc -b && VITE_PORTAL=crazygames vite build --outDir dist-crazygames --emptyOutDir && node scripts/portal-zip.mjs dist-crazygames wheels-off-crazygames.zip",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "api": "wrangler dev --port 8788",
