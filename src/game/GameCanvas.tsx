@@ -312,11 +312,12 @@ function Lights() {
 // tall one aiming low so they ride between the title and the buttons. Taking over swings it up
 // and round behind them into the chase.
 const LANDING = { r: 5.4, h: 1.15, fov: 52, drift: 0.6, off: 1.9, aim: 0.95, aimTall: 0.4 }
-// the chase: behind (d) and above (h) the kid, aimed at y down the street, fov the base field of
-// view (vertical, as three.js counts it). A tall screen (a phone held upright) needs a wider view
-// to show the street, and aims lower, so the kid rides higher, above the touch pad.
-const CHASE = { d: 7.6, h: 3.0, y: 1.1, fov: 72 }
-const CHASE_TALL = { d: 8.4, h: 3.6, y: 0.2, fov: 92 }
+// the chase: behind (d) and above (h) the kid, aimed at y down the street; fov is the base field
+// of view (vertical, as three.js counts it), widened by `widen` degrees per m/s over 8. A tall
+// screen (a phone held upright) sits closer and lower, so the kid fills more of a narrow screen
+// and rides above the touch pad, and widens less with speed.
+const CHASE = { d: 7.6, h: 3.0, y: 1.1, fov: 72, widen: 0.9 }
+const CHASE_TALL = { d: 5.2, h: 2.3, y: 0.9, fov: 70, widen: 0.4 }
 const SWING_TIME = 1.5 // seconds
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
@@ -333,7 +334,7 @@ function CameraRig() {
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 1 / 20)
     const C = tall ? CHASE_TALL : CHASE
-    st.fov = damp(st.fov, C.fov + Math.max(0, sim.speed - 8) * 0.9, 2.5, dt)
+    st.fov = damp(st.fov, C.fov + Math.max(0, sim.speed - 8) * C.widen, 2.5, dt)
     st.y = damp(st.y, sim.y, 5, dt)
     st.roll = damp(st.roll, -sim.latVel * 0.012 - sim.turnRate * 0.03, 4, dt)
     if (input.started) st.landing = Math.max(0, st.landing - dt / SWING_TIME)
