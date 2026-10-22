@@ -1711,6 +1711,10 @@ kbd {
   border-top: 1px solid rgb(253 250 242 / 0.35);
 }
 
+.pad--covered {
+  visibility: hidden;
+}
+
 .pad__band,
 .pad__hint {
   position: absolute;

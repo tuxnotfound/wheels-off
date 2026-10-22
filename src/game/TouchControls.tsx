@@ -82,10 +82,28 @@ export function TouchControls() {
     }
   }, [covered])
 
-  if (!touchDevice || !started || covered) return null
+  // the pad's touches are the game's: no magnifier on a resting thumb, no scroll, no zoom. Pointer
+  // events still come; only the browser's own handling of the touch is stopped (React's touch
+  // handlers are passive, so these listeners are native)
+  useEffect(() => {
+    const el = area.current
+    if (!el) return
+    const stop = (e: TouchEvent) => e.preventDefault()
+    el.addEventListener('touchstart', stop, { passive: false })
+    el.addEventListener('touchmove', stop, { passive: false })
+    return () => {
+      el.removeEventListener('touchstart', stop)
+      el.removeEventListener('touchmove', stop)
+    }
+  }, [started])
+
+  // mounted for the whole ride, hidden under a card: a thumb still down when a card opens stays
+  // the pad's touch, so iOS doesn't take it for a long press on the card
+  if (!touchDevice || !started) return null
 
   const down = (e: PointerEvent<HTMLDivElement>) => {
     e.preventDefault()
+    if (covered) return
     const now = performance.now()
     if (pad.thumb) {
       jumpPress() // a second finger's tap while the thumb holds
@@ -102,7 +120,7 @@ export function TouchControls() {
   }
   const move = (e: PointerEvent<HTMLDivElement>) => {
     const t = pad.thumb
-    if (!t || e.pointerId !== t.id) return
+    if (covered || !t || e.pointerId !== t.id) return
     if (!t.settled && (performance.now() - t.at > SETTLE || Math.hypot(e.clientX - t.x, e.clientY - t.y) > SETTLE_PX)) t.settled = true
     if (t.settled) read(e.clientX, e.clientY)
     setMark({ x: e.clientX - pad.rect.left, y: e.clientY - pad.rect.top })
@@ -115,7 +133,7 @@ export function TouchControls() {
   }
 
   return (
-    <div className="pad" ref={area} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onContextMenu={(e) => e.preventDefault()}>
+    <div className={covered ? 'pad pad--covered' : 'pad'} ref={area} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onContextMenu={(e) => e.preventDefault()}>
       <span className="pad__band">PUSH</span>
       {mark ? <span className="pad__mark" style={{ left: mark.x, top: mark.y }} aria-hidden="true" /> : <span className="pad__hint">hold a thumb here · tap to ollie</span>}
     </div>
