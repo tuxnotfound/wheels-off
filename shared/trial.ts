@@ -15,8 +15,8 @@ const START_Z = -TRIAL_START * 100
 export const TOP_SPEED = 17
 /** The fastest the kid carves across the street, meters a second (the sim's, too). */
 export const CARVE_SPEED = 6.5
-/** The speed the kid gets back when put back before a turn they missed, meters a second. */
-export const RESPAWN_SPEED = 10
+/** The speed the kid has when put back before a turn they missed: none, they get going again (2026-10-26). */
+export const RESPAWN_SPEED = 0
 /**
  * How fast the kid can get going: the meters covered 1 to 5 s after GO, measured 2026-10-13
  * with push held from GO (the fastest start there is) at 45, 98 and 121 fps, which all agree.
