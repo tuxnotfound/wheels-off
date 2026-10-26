@@ -1701,7 +1701,7 @@ kbd {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 22vh;
+  height: 15vh;
   z-index: 5;
   touch-action: none;
   user-select: none;
@@ -1760,16 +1760,16 @@ kbd {
   .hud-keys {
     top: auto;
     right: 12px;
-    bottom: calc(22vh + 12px);
+    bottom: calc(15vh + 12px);
     transform: none;
   }
 
   .street-card {
-    bottom: calc(22vh + 16px);
+    bottom: calc(15vh + 16px);
   }
 
   .turns {
-    bottom: calc(22vh + 10px);
+    bottom: calc(15vh + 10px);
   }
 }
 

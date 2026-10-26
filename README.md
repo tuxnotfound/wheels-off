@@ -26,7 +26,7 @@ show their names only. Upright, the chase camera sits closer and lower (`CHASE_T
   brakes; W and S do nothing. A wipeout, or a missed turn in the time trial, brings the kid to a
   stop, and they get going again. The attract ride under the landing page still cruises.
 - **On a phone, held upright** (`src/game/TouchControls.tsx`): a faint trackpad across the
-  bottom fifth of the screen. Across the pad is across the street: the kid rides to the spot under
+  bottom 15% of the screen. Across the pad is across the street: the kid rides to the spot under
   the thumb, curb to curb, and held at an edge into an intersection, turns that way. Lifting the
   thumb and landing it again within 0.6 s is an ollie, twice quickly a kickflip; through the lift
   the kid keeps their line. A second finger's tap ollies too. The pad claims its touches, so iOS
