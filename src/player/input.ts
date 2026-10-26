@@ -1,6 +1,5 @@
 // Keyboard state as a plain module: read by the sim every frame, no React. On a touch screen the
-// on-screen controls (src/game/TouchControls.tsx) add to it: a thumb's steer, the push and brake
-// buttons, and the ollie button's presses.
+// touch pad (src/game/TouchControls.tsx) adds to it: a thumb's steer and its taps.
 export const input = {
   x: 0, // -1 left .. 1 right
   turnX: 0, // the keys' steer alone, -1, 0 or 1: what asks to turn into a side street. A thumb's
@@ -23,14 +22,14 @@ const DOWN = ['s', 'arrowdown']
 // around it (Cmd+Tab, Tab to the landing page's buttons)
 const NEVER_START = ['p', 'r', 'm', 'g', 'tab', 'escape', 'shift', 'meta', 'control', 'alt', 'capslock']
 
-const touch = { x: 0, z: 0 }
+const touch = { x: 0 }
 const clamp1 = (v: number) => Math.max(-1, Math.min(1, v))
 
 function recompute() {
   const has = (ks: string[]) => ks.some((k) => held.has(k))
   input.turnX = (has(RIGHT) ? 1 : 0) - (has(LEFT) ? 1 : 0)
   input.x = clamp1(input.turnX + touch.x)
-  input.z = clamp1((has(UP) ? 1 : 0) - (has(DOWN) ? 1 : 0) + touch.z)
+  input.z = (has(UP) ? 1 : 0) - (has(DOWN) ? 1 : 0)
 }
 
 const DOUBLE_TAP_MS = 320
@@ -58,11 +57,6 @@ export function touchSteer(x: number) {
   recompute()
 }
 
-/** The push (1) and brake (-1) buttons, 0 with neither held. */
-export function touchPedal(z: number) {
-  touch.z = clamp1(z)
-  recompute()
-}
 
 let installed = false
 export function installInput() {
@@ -108,7 +102,6 @@ export function installInput() {
 export function releaseKeys() {
   held.clear()
   touch.x = 0
-  touch.z = 0
   recompute()
   input.jumpBuffer = 0
   input.flipBuffer = 0

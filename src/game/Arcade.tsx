@@ -230,8 +230,6 @@ function Landing() {
             </button>
           </div>
           <p className="landing__keys">
-            <span><kbd>W</kbd> push</span>
-            <span><kbd>S</kbd> brake</span>
             <span><kbd>A</kbd><kbd>D</kbd> carve</span>
             <span><kbd>Space</kbd> ollie</span>
             <span><kbd>P</kbd> pause</span>
@@ -332,9 +330,7 @@ function PauseCard() {
           {touchDevice ? (
             <dl className="controls">
               <dt><kbd>the pad</kbd></dt>
-              <dd>keep a thumb on it · the skater rides to your thumb's side</dd>
-              <dt><kbd>top half</kbd></dt>
-              <dd>push</dd>
+              <dd>drag a thumb on it · the skater rides to your thumb's side</dd>
               <dt><kbd>to the edge</kbd></dt>
               <dd>turn into a side street that way</dd>
               <dt><kbd>lift and land</kbd></dt>
@@ -342,10 +338,6 @@ function PauseCard() {
             </dl>
           ) : (
           <dl className="controls">
-            <dt><kbd>W</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">↑</kbd></dt>
-            <dd>push</dd>
-            <dt><kbd>S</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">↓</kbd></dt>
-            <dd>brake</dd>
             <dt>
               <kbd>A</kbd><kbd>D</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">←</kbd><kbd className="kbd--arrow">→</kbd>
             </dt>

@@ -1694,8 +1694,8 @@ kbd {
 }
 
 /* the trackpad on a touch screen (src/game/TouchControls.tsx): across the bottom, over the canvas
-   and under the HUD, whose buttons stay on top. Its top half pushes; it's kept faint, so the
-   street shows through. */
+   and under the HUD, whose buttons stay on top. It only steers; it's kept faint, so the street
+   shows through. */
 .pad {
   position: fixed;
   left: 0;
@@ -1707,7 +1707,7 @@ kbd {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-  background: linear-gradient(180deg, rgb(242 193 78 / 0.1) 0 50%, rgb(253 250 242 / 0.03) 50%);
+  background: rgb(253 250 242 / 0.05);
   border-top: 1px solid rgb(253 250 242 / 0.35);
 }
 
@@ -1715,7 +1715,6 @@ kbd {
   visibility: hidden;
 }
 
-.pad__band,
 .pad__hint {
   position: absolute;
   font-family: var(--arcade);
@@ -1726,10 +1725,6 @@ kbd {
   pointer-events: none;
 }
 
-.pad__band {
-  left: 10px;
-  top: 8px;
-}
 
 .pad__hint {
   left: 50%;
