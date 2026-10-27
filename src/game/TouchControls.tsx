@@ -8,8 +8,9 @@ import { useHud } from './hudStore'
 import { sim } from './sim'
 
 // The ride on a touch screen: a trackpad across the bottom of the screen, where a thumb stays.
-// Across the pad is across the street: the skater rides to the spot under the thumb, left curb
-// to right curb, and held at an edge into an intersection, turns that way. Speed takes care of
+// Across the pad is across the street: the skater rides to the spot under the thumb. The pad's
+// outer tenth on each side is the curb, as a held key is (a thumb doesn't reach the glass's last
+// pixels), and a thumb there into an intersection turns that way. Speed takes care of
 // itself (the sim's automatic speed), so the thumb only steers. Lifting the thumb and
 // landing it again within GRACE is a tap, an ollie; two quick taps are a kickflip (as Space).
 // Through the lift the skater keeps the line it had, and a tap's landing doesn't move it until the
@@ -20,12 +21,12 @@ import { sim } from './sim'
 const GRACE = 600 // ms a lifted thumb keeps the line, and a landing counts as a tap
 const SETTLE = 150 // ms a tap's landing waits before it steers or pedals
 const SETTLE_PX = 12 // or how far it moves
-const EDGE = 0.85 // past this fraction of the lane the thumb also asks for the side street
+const REACH = 0.8 // the fraction of the pad's half width that spans curb to curb; past it, the curb
 const GAIN = 1.6 // steer per meter off the thumb's line
 
 /** The pad's state, outside React: read every frame by trackpadTick. */
 const pad = {
-  aim: null as number | null, // -1 left curb .. 1 right curb, null with no thumb
+  aim: null as number | null, // -1 left curb .. 1 right curb (held there past REACH), null with no thumb
   thumb: null as { id: number; at: number; x: number; y: number; settled: boolean } | null,
   liftedAt: -Infinity,
   rect: { left: 0, top: 0, width: 1, height: 1 },
@@ -33,7 +34,7 @@ const pad = {
 
 function read(x: number) {
   const r = pad.rect
-  pad.aim = Math.max(-1, Math.min(1, ((x - r.left) / r.width) * 2 - 1))
+  pad.aim = Math.max(-1, Math.min(1, (((x - r.left) / r.width) * 2 - 1) / REACH))
 }
 
 function release() {
@@ -55,7 +56,7 @@ export function trackpadTick() {
   const lim = laneLimit(sim.street.width)
   const x = Math.max(-1, Math.min(1, (pad.aim * lim - sim.lat) * GAIN))
   touchSteer(x)
-  if (Math.abs(pad.aim) > EDGE) {
+  if (Math.abs(pad.aim) === 1) {
     input.steerSide = Math.sign(pad.aim)
     input.steerBuffer = 0.5
   }
