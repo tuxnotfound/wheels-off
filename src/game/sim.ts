@@ -44,6 +44,13 @@ const BOARD_HALF = 0.45
 const BODY_HALF = 0.3
 const BAIL_TIME = 0.9
 const FULL_SPEED_GAP = 5 // seconds: a streak that breaks and picks up again within this says nothing
+// Automatic speed (2026-10-26): once someone rides, the kid gets going from 0 on their own, up to
+// top speed, and holds it; nothing pushes or brakes (W and S do nothing). A wipeout slows them to
+// a stop and they get going again. ACCEL stays under the fastest pushed start measured for the
+// time trial's check (RAMP in shared/trial.ts), with room to spare, so honest runs pass it: 2.3 m
+// at 1 s against the check's 2.9. Top speed comes at about 3.8 s. The attract ride under the
+// landing page keeps the old cruise, pushes and all.
+const ACCEL = 4.5 // m/s²
 
 // What a wipeout says, picked at random and never the same twice running.
 const WIPEOUTS = ['WIPEOUT!', 'BAILED!', 'SLAMMED!', 'ATE IT!', 'FACEPLANT!', 'KOOKED!', 'OOF!', 'TOASTED!']
@@ -152,7 +159,7 @@ function canTurn(street: Street, k: number, side: number): boolean {
 }
 
 function turnIntent(): number {
-  if (input.x !== 0) return input.x
+  if (input.turnX !== 0) return input.turnX // a key held toward the side street
   if (input.steerBuffer > 0) return input.steerSide
   return 0
 }
@@ -262,18 +269,21 @@ export function stepSim(dtRaw: number) {
   input.steerBuffer = Math.max(0, input.steerBuffer - dt)
   const bailing = sim.time - sim.bailT < BAIL_TIME
 
-  // --- speed: stroke, brake, or roll ---
-  sim.braking = input.z < 0 && sim.grounded && !bailing
-  if (input.z <= 0) sim.topSpeed = false
+  // --- speed: automatic once someone rides; on the attract ride, stroke, brake, or roll ---
+  const auto = input.started
+  sim.braking = !auto && input.z < 0 && sim.grounded && !bailing
+  if (auto) sim.topSpeed = sim.speed >= MAX_SPEED - 0.3
+  else if (input.z <= 0) sim.topSpeed = false
   else if (sim.speed >= MAX_SPEED - 0.3) sim.topSpeed = true
   else if (sim.speed < MAX_SPEED - HOLD_BAND) sim.topSpeed = false
-  const powering = input.z > 0 && !sim.topSpeed
+  // the pushes still play while the kid gets going: in automatic, they're the look of it
+  const powering = auto ? !sim.topSpeed : input.z > 0 && !sim.topSpeed
   const cruising = sim.grounded && !bailing && !sim.braking && !powering
   if (!cruising) sim.nextIdleT = sim.time + idleGap()
   const idle = cruising && sim.time >= sim.nextIdleT
   if (idle) sim.nextIdleT = sim.time + idleGap()
   const sagging = sim.topSpeed && sim.speed < MAX_SPEED - HOLD_SAG
-  const want = sim.grounded && !bailing && input.z >= 0 && (powering || sim.speed < CRUISE - 1.5 || idle || sagging)
+  const want = sim.grounded && !bailing && (auto ? powering || idle : input.z >= 0 && (powering || sim.speed < CRUISE - 1.5 || idle || sagging))
 
   const P = sim.push
   const stage = (next: PushStage, dur = 0) => {
@@ -318,8 +328,10 @@ export function stepSim(dtRaw: number) {
   const contact = P.stage === 'contact'
 
   if (sim.braking) sim.speed = Math.max(0, sim.speed - (sim.speed * BRAKE_K + BRAKE_MIN) * dt)
-  else if (bailing) sim.speed = damp(sim.speed, MIN_SPEED, 0.5, dt)
-  else if (contact) {
+  else if (bailing) sim.speed = auto ? damp(sim.speed, 0, 3, dt) : damp(sim.speed, MIN_SPEED, 0.5, dt)
+  else if (auto) {
+    if (sim.grounded) sim.speed = Math.min(MAX_SPEED, sim.speed + ACCEL * dt)
+  } else if (contact) {
     // aim a little past the target so the last pushes don't crawl up to it
     const target = input.z > 0 ? MAX_SPEED + 1 : CRUISE + 0.8
     sim.speed = Math.min(MAX_SPEED, Math.max(sim.speed, damp(sim.speed, target, sim.push.rate, dt)))

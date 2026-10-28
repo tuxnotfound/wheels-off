@@ -4,6 +4,7 @@ import { Hud } from './game/Hud'
 import { Arcade } from './game/Arcade'
 import { installMusic } from './audio/music'
 import { useWebGL } from './game/webgl'
+import { TouchControls } from './game/TouchControls'
 
 export default function App() {
   useEffect(installMusic, [])
@@ -13,6 +14,7 @@ export default function App() {
       {/* without WebGL the canvas would only throw; the landing page says why instead */}
       {webgl && <GameCanvas />}
       <Hud />
+      <TouchControls />
       <Arcade />
     </>
   )

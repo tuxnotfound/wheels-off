@@ -23,6 +23,17 @@ body {
   font-family: system-ui, sans-serif;
   overflow: hidden;
   background: var(--sage);
+  /* a game, not a page: quick taps and long presses select nothing, call up no menu and flash
+     nothing (iOS selected a card's text under fast ollie taps) */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .game-canvas {
@@ -1639,37 +1650,143 @@ kbd {
   }
 }
 
-/* a phone or tablet: no ways to ride yet (the hi-scores card closes only by key), just the
-   word that a mobile version is coming */
+/* a phone or tablet: the ways to ride by tap, and the ride by the on-screen controls
+   (src/game/TouchControls.tsx). Keys aren't shown and double-tap zoom is off. */
 @media (hover: none) and (pointer: coarse) {
-  .landing__body {
-    bottom: 56px;
-    justify-content: space-between;
+  html {
+    touch-action: manipulation;
   }
 
-  .landing__modes,
-  .landing__challenge,
+  .game-canvas {
+    touch-action: none;
+  }
+
   .landing__keys,
-  .landing__start,
-  .chip--scores {
+  .landing .mode-card__key,
+  .landing__chips kbd,
+  .hud-key kbd {
     display: none;
   }
 
-  .landing__touch {
-    display: flex;
+}
+
+/* a phone on its side (390 or so tall): a smaller title, and the mode cards by name, so the
+   cards clear the marquee */
+@media (max-height: 480px) {
+  .landing__title {
+    font-size: clamp(34px, 13vh, 60px);
+  }
+
+  .landing__jp,
+  .landing .mode-card__what {
+    display: none;
+  }
+
+  .overlay .title-card h1 {
+    font-size: clamp(28px, 11vh, 44px);
+  }
+
+  /* the hi-scores boards side by side, as on a desktop, so the card scrolls less */
+  .title-card__boards {
+    flex-wrap: nowrap;
+    gap: 12px 20px;
   }
 }
 
-/* no WebGL, so no ride can start: the card says why, in place of the ways to ride, on any
-   device. The hi-scores and the music still work. */
-.landing--no3d .landing__modes,
-.landing--no3d .landing__keys,
-.landing--no3d .landing__start {
-  display: none;
+/* the trackpad on a touch screen (src/game/TouchControls.tsx): across the bottom, over the canvas
+   and under the HUD, whose buttons stay on top. It only steers; it's kept faint, so the street
+   shows through. */
+.pad {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 15vh;
+  z-index: 5;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  background: rgb(253 250 242 / 0.05);
+  border-top: 1px solid rgb(253 250 242 / 0.35);
 }
 
-.landing--no3d .landing__touch {
+.pad--covered {
+  visibility: hidden;
+}
+
+.pad__hint {
+  position: absolute;
+  font-family: var(--arcade);
+  font-size: 8px;
+  color: var(--bubble);
+  text-shadow: 1px 1px 0 var(--ink);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+
+.pad__hint {
+  left: 50%;
+  top: 70%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+.pad__mark {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  background: rgb(253 250 242 / 0.15);
+  border: 2px solid rgb(253 250 242 / 0.6);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* a phone held upright: the mode cards by name, side by side, clear of the start prompt */
+@media (max-width: 500px) {
+  .landing__body {
+    bottom: 100px;
+  }
+
+  .landing .mode-card__what {
+    display: none;
+  }
+}
+
+/* with the pad on screen, what sat at the bottom of the HUD rides just above it */
+@media (hover: none) and (pointer: coarse) {
+  .hud-keys {
+    top: auto;
+    right: 12px;
+    bottom: calc(15vh + 12px);
+    transform: none;
+  }
+
+  .street-card {
+    bottom: calc(15vh + 16px);
+  }
+
+  .turns {
+    bottom: calc(15vh + 10px);
+  }
+}
+
+/* a card's buttons in place of its keys, on a touch screen: pinned to the bottom of the screen
+   while a tall card scrolls under them, so they're always in reach */
+.title-card__go--tap {
+  position: sticky;
+  bottom: 0;
   display: flex;
+  justify-content: center;
+  gap: 12px;
+  /* the card's own paper behind them, edge to edge, so the rows scroll under it */
+  margin: 0 -30px -18px;
+  padding: 10px 30px 14px;
+  background: var(--bubble);
+  border-radius: 0 0 15px 15px;
+  animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

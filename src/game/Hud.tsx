@@ -1,4 +1,5 @@
-import { useMusic } from '../audio/music'
+import { pressMusic, useMusic } from '../audio/music'
+import { togglePause } from './arcadeStore'
 import { useHud } from './hudStore'
 import { Crown, Flame, Note, Pause, Restart, Trophy, lap, secs } from './icons'
 import { BOARD_TITLE } from './leaderboard'
@@ -199,14 +200,21 @@ export function Hud() {
               <kbd>T</kbd>
             </button>
           )}
-          <div className="hud-key" role="note" aria-label="P pauses">
+          {/* tappable too, for a touch screen; they never take the focus, so Space stays an ollie */}
+          <button type="button" className="hud-key hud-key--button" aria-label="P pauses" onMouseDown={(e) => e.preventDefault()} onClick={togglePause}>
             <Pause />
             <kbd>P</kbd>
-          </div>
-          <div className={musicOff ? 'hud-key hud-key--off' : 'hud-key'} role="status" aria-label={musicOff ? 'music off' : 'music on'}>
+          </button>
+          <button
+            type="button"
+            className={musicOff ? 'hud-key hud-key--button hud-key--off' : 'hud-key hud-key--button'}
+            aria-label={musicOff ? 'music off' : 'music on'}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={pressMusic}
+          >
             <Note off={musicOff} />
             <kbd>M</kbd>
-          </div>
+          </button>
         </div>
       )}
       {started && mode === 'trial' && turns && <TurnSign left={turns.left} />}

@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { create } from 'zustand'
 import { GRADE } from './timeOfDay'
 import { skater } from '../player/Skater'
+import { touchDevice } from '../player/touch'
 
 // The scene renders into a half-float target, then one full-screen pass over it:
 //  - fisheye (barrel) lens, the wide-angle look of the reference shots
@@ -236,7 +237,8 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
   // down to the screen's own resolution; then the resolution itself (the canvas DPR), a fifth at
   // a time, down to 1x on a high-DPI screen and 0.75x on a 1x one. It never steps back up.
   const quality = useMemo(
-    () => ({ budget: SS_BUDGET, ss: true, avg: 1 / 60, slow: 0, age: 0, v: new THREE.Vector2(), grow: new THREE.Vector2() }),
+    // a phone's GPU starts at the screen's own resolution: no supersampling to step down from
+    () => ({ budget: SS_BUDGET, ss: !touchDevice, avg: 1 / 60, slow: 0, age: 0, v: new THREE.Vector2(), grow: new THREE.Vector2() }),
     [],
   )
   const resize = useCallback(() => {
