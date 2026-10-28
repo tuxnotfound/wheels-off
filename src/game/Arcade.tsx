@@ -99,9 +99,26 @@ const landingButton = (act: () => void): ButtonHTMLAttributes<HTMLButtonElement>
   },
 })
 
-/** On a touch screen, the buttons that stand in for a card's keys (Enter, Esc, P, R). */
+const TAP_GUARD_MS = 500 // a card's buttons ignore taps this long after it opens
+
+/**
+ * On a touch screen, the buttons that stand in for a card's keys (Enter, Esc, P, R). A card can
+ * open under a thumb that is still tapping ollies, so for its first moment the row takes no tap.
+ */
 function TapRow({ children }: { children: ReactNode }) {
-  return <p className="title-card__go title-card__go--tap">{children}</p>
+  const opened = useRef(performance.now())
+  return (
+    <p
+      className="title-card__go title-card__go--tap"
+      onClickCapture={(e) => {
+        if (performance.now() - opened.current >= TAP_GUARD_MS) return
+        e.preventDefault()
+        e.stopPropagation()
+      }}
+    >
+      {children}
+    </p>
+  )
 }
 
 /** A board's top three of all time, for the marquee. */
@@ -213,8 +230,6 @@ function Landing() {
             </button>
           </div>
           <p className="landing__keys">
-            <span><kbd>W</kbd> push</span>
-            <span><kbd>S</kbd> brake</span>
             <span><kbd>A</kbd><kbd>D</kbd> carve</span>
             <span><kbd>Space</kbd> ollie</span>
             <span><kbd>P</kbd> pause</span>
@@ -314,21 +329,15 @@ function PauseCard() {
           </div>
           {touchDevice ? (
             <dl className="controls">
-              <dt><kbd>left side</kbd></dt>
-              <dd>drag to carve · hold into a side street to turn</dd>
-              <dt><kbd>PUSH</kbd></dt>
-              <dd>hold to push</dd>
-              <dt><kbd>BRAKE</kbd></dt>
-              <dd>hold to brake</dd>
-              <dt><kbd>OLLIE</kbd></dt>
-              <dd>tap · tap twice to kickflip</dd>
+              <dt><kbd>the pad</kbd></dt>
+              <dd>drag a thumb on it · the skater rides to your thumb's side</dd>
+              <dt><kbd>to the edge</kbd></dt>
+              <dd>turn into a side street that way</dd>
+              <dt><kbd>lift and land</kbd></dt>
+              <dd>ollie · twice to kickflip</dd>
             </dl>
           ) : (
           <dl className="controls">
-            <dt><kbd>W</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">↑</kbd></dt>
-            <dd>push</dd>
-            <dt><kbd>S</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">↓</kbd></dt>
-            <dd>brake</dd>
             <dt>
               <kbd>A</kbd><kbd>D</kbd><span className="controls__or">/</span><kbd className="kbd--arrow">←</kbd><kbd className="kbd--arrow">→</kbd>
             </dt>

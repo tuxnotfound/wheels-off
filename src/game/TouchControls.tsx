@@ -1,106 +1,134 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent } from 'react'
-import { jumpPress, touchPedal, touchSteer } from '../player/input'
+import { input, jumpPress, touchSteer } from '../player/input'
 import { touchDevice } from '../player/touch'
+import { laneLimit } from '../world/streetGen'
 import { useArcade } from './arcadeStore'
 import { useHud } from './hudStore'
+import { sim } from './sim'
 
-// The ride's controls on a touch screen. The left half steers: a thumb lands anywhere there and
-// drags left or right from that spot, a full carve at REACH, and held into a side street it turns
-// into it, as A and D do. On the right, three buttons: push and brake while held (W and S), and
-// ollie (Space), tapped twice quickly for a kickflip. Each finger is its own pointer, so steering
-// and the buttons work together. The layer sits under the HUD, whose own buttons (pause, music,
-// the trial's ghost and restart) stay on top, and it goes while a card covers the ride.
+// The ride on a touch screen: a trackpad across the bottom of the screen, where a thumb stays.
+// Across the pad is across the street: the skater rides to the spot under the thumb. The pad's
+// outer tenth on each side is the curb, as a held key is (a thumb doesn't reach the glass's last
+// pixels), and a thumb there into an intersection turns that way. Speed takes care of
+// itself (the sim's automatic speed), so the thumb only steers. Lifting the thumb and
+// landing it again within GRACE is a tap, an ollie; two quick taps are a kickflip (as Space).
+// Through the lift the skater keeps the line it had, and a tap's landing doesn't move it until the
+// thumb stays or moves (SETTLE). A second finger's tap
+// while the first holds is an ollie too. The pad sits under the HUD, whose buttons stay on top,
+// and lets go of everything while a card covers the ride.
 
-const REACH = 60 // px of drag for a full carve
-const DEAD = 8 // px of drag that steer nothing
+const GRACE = 600 // ms a lifted thumb keeps the line, and a landing counts as a tap
+const SETTLE = 150 // ms a tap's landing waits before it steers or pedals
+const SETTLE_PX = 12 // or how far it moves
+const REACH = 0.8 // the fraction of the pad's half width that spans curb to curb; past it, the curb
+const GAIN = 1.6 // steer per meter off the thumb's line
 
-const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+/** The pad's state, outside React: read every frame by trackpadTick. */
+const pad = {
+  aim: null as number | null, // -1 left curb .. 1 right curb (held there past REACH), null with no thumb
+  thumb: null as { id: number; at: number; x: number; y: number; settled: boolean } | null,
+  liftedAt: -Infinity,
+  rect: { left: 0, top: 0, width: 1, height: 1 },
+}
+
+function read(x: number) {
+  const r = pad.rect
+  pad.aim = Math.max(-1, Math.min(1, (((x - r.left) / r.width) * 2 - 1) / REACH))
+}
+
+function release() {
+  pad.aim = null
+  pad.thumb = null
+  touchSteer(0)
+}
+
+/**
+ * Each frame before the sim steps (GameCanvas): steers the skater toward the thumb's line, through
+ * a tap's lift too; after GRACE with no thumb, lets go.
+ */
+export function trackpadTick() {
+  if (!touchDevice || pad.aim === null) return
+  if (!pad.thumb && performance.now() - pad.liftedAt > GRACE) {
+    release()
+    return
+  }
+  const lim = laneLimit(sim.street.width)
+  const x = Math.max(-1, Math.min(1, (pad.aim * lim - sim.lat) * GAIN))
+  touchSteer(x)
+  if (Math.abs(pad.aim) === 1) {
+    input.steerSide = Math.sign(pad.aim)
+    input.steerBuffer = 0.5
+  }
+}
 
 export function TouchControls() {
   const started = useHud((s) => s.started)
   const covered = useArcade((s) => s.menu !== null || s.pending !== null || s.result !== null)
-  const [thumb, setThumb] = useState<{ x: number; y: number; dx: number } | null>(null)
-  const steer = useRef<{ id: number; x: number } | null>(null)
-  const pedals = useRef(new Map<number, number>()) // pointer to 1 (push) or -1 (brake)
+  const [mark, setMark] = useState<{ x: number; y: number } | null>(null)
+  const area = useRef<HTMLDivElement>(null)
 
   // a card over the ride lets go of everything, so nothing is held when it closes
   useEffect(() => {
-    if (!covered) return
-    steer.current = null
-    pedals.current.clear()
-    setThumb(null)
-    touchSteer(0)
-    touchPedal(0)
+    if (covered) {
+      release()
+      setMark(null)
+    }
   }, [covered])
 
-  if (!touchDevice || !started || covered) return null
+  // the pad's touches are the game's: no magnifier on a resting thumb, no scroll, no zoom. Pointer
+  // events still come; only the browser's own handling of the touch is stopped (React's touch
+  // handlers are passive, so these listeners are native)
+  useEffect(() => {
+    const el = area.current
+    if (!el) return
+    const stop = (e: TouchEvent) => e.preventDefault()
+    el.addEventListener('touchstart', stop, { passive: false })
+    el.addEventListener('touchmove', stop, { passive: false })
+    return () => {
+      el.removeEventListener('touchstart', stop)
+      el.removeEventListener('touchmove', stop)
+    }
+  }, [started])
 
-  const steerDown = (e: PointerEvent<HTMLDivElement>) => {
-    if (steer.current) return
-    e.currentTarget.setPointerCapture(e.pointerId)
-    steer.current = { id: e.pointerId, x: e.clientX }
-    setThumb({ x: e.clientX, y: e.clientY, dx: 0 })
-  }
-  const steerMove = (e: PointerEvent<HTMLDivElement>) => {
-    const s = steer.current
-    if (!s || e.pointerId !== s.id) return
-    const dx = clamp(e.clientX - s.x, -REACH, REACH)
-    touchSteer(Math.abs(dx) < DEAD ? 0 : (dx - Math.sign(dx) * DEAD) / (REACH - DEAD))
-    setThumb((t) => t && { ...t, dx })
-  }
-  const steerUp = (e: PointerEvent<HTMLDivElement>) => {
-    if (e.pointerId !== steer.current?.id) return
-    steer.current = null
-    setThumb(null)
-    touchSteer(0)
-  }
+  // mounted for the whole ride, hidden under a card: a thumb still down when a card opens stays
+  // the pad's touch, so iOS doesn't take it for a long press on the card
+  if (!touchDevice || !started) return null
 
-  const pedal = () => {
-    let z = 0
-    for (const v of pedals.current.values()) z += v
-    touchPedal(z)
-  }
-  const pedalDown = (z: number) => (e: PointerEvent<HTMLButtonElement>) => {
+  const down = (e: PointerEvent<HTMLDivElement>) => {
     e.preventDefault()
+    if (covered) return
+    const now = performance.now()
+    if (pad.thumb) {
+      jumpPress() // a second finger's tap while the thumb holds
+      return
+    }
+    const r = area.current!.getBoundingClientRect()
+    pad.rect = { left: r.left, top: r.top, width: r.width, height: r.height }
     e.currentTarget.setPointerCapture(e.pointerId)
-    pedals.current.set(e.pointerId, z)
-    pedal()
+    const tap = now - pad.liftedAt < GRACE
+    if (tap) jumpPress()
+    pad.thumb = { id: e.pointerId, at: now, x: e.clientX, y: e.clientY, settled: !tap }
+    if (!tap) read(e.clientX)
+    setMark({ x: e.clientX - r.left, y: e.clientY - r.top })
   }
-  const pedalUp = (e: PointerEvent<HTMLButtonElement>) => {
-    pedals.current.delete(e.pointerId)
-    pedal()
+  const move = (e: PointerEvent<HTMLDivElement>) => {
+    const t = pad.thumb
+    if (covered || !t || e.pointerId !== t.id) return
+    if (!t.settled && (performance.now() - t.at > SETTLE || Math.hypot(e.clientX - t.x, e.clientY - t.y) > SETTLE_PX)) t.settled = true
+    if (t.settled) read(e.clientX)
+    setMark({ x: e.clientX - pad.rect.left, y: e.clientY - pad.rect.top })
+  }
+  const up = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.pointerId !== pad.thumb?.id) return
+    pad.thumb = null
+    pad.liftedAt = performance.now()
+    setMark(null)
   }
 
   return (
-    <div className="touch" onContextMenu={(e) => e.preventDefault()}>
-      <div className="touch__steer" onPointerDown={steerDown} onPointerMove={steerMove} onPointerUp={steerUp} onPointerCancel={steerUp}>
-        {thumb ? (
-          <span className="touch__thumb" style={{ left: thumb.x, top: thumb.y }} aria-hidden="true">
-            <span className="touch__knob" style={{ transform: `translateX(${thumb.dx}px)` }} />
-          </span>
-        ) : (
-          <span className="touch__hint">drag to carve</span>
-        )}
-      </div>
-      <div className="touch__buttons">
-        <button type="button" className="touch__button touch__button--brake" onPointerDown={pedalDown(-1)} onPointerUp={pedalUp} onPointerCancel={pedalUp}>
-          BRAKE
-        </button>
-        <button type="button" className="touch__button touch__button--push" onPointerDown={pedalDown(1)} onPointerUp={pedalUp} onPointerCancel={pedalUp}>
-          PUSH
-        </button>
-        <button
-          type="button"
-          className="touch__button touch__button--ollie"
-          onPointerDown={(e) => {
-            e.preventDefault()
-            jumpPress()
-          }}
-        >
-          OLLIE
-        </button>
-      </div>
+    <div className={covered ? 'pad pad--covered' : 'pad'} ref={area} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onContextMenu={(e) => e.preventDefault()}>
+      {mark ? <span className="pad__mark" style={{ left: mark.x, top: mark.y }} aria-hidden="true" /> : <span className="pad__hint">drag to steer · tap to ollie</span>}
     </div>
   )
 }
