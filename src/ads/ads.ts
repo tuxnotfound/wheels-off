@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { loadTextures } from '../art/art'
 import { CURVE } from '../world/worldConfig'
-import { asset } from '../site'
+import { AD_SPACE_SIGNS, asset } from '../site'
 
 // Advertising inventory. The town has fixed ad *slots* (rooftop billboards, banners over
 // the street, wall posters, nobori flags outside shops, delivery-van sides); which
@@ -44,7 +44,8 @@ export async function loadAds(url = asset('art/ads.json')) {
   try {
     const res = await fetch(url)
     if (!res.ok) throw new Error(`${res.status}`)
-    const list = ((await res.json()) as { creatives: Creative[] }).creatives
+    const all = ((await res.json()) as { creatives: Creative[] }).creatives
+    const list = AD_SPACE_SIGNS ? all : all.filter((c) => c.advertiser !== 'Available') // unsold space's own signs
     await loadTextures(list.map((c) => c.image))
     for (const f of Object.keys(inventory) as AdFormat[]) inventory[f] = list.filter((c) => c.format === f)
   } catch (e) {
