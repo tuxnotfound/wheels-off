@@ -1,6 +1,7 @@
 node_modules
 dist
 dist-itch
+dist-crazygames
 wheels-off-*.zip
 dist-ssr
 *.local

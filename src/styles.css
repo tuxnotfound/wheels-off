@@ -24,7 +24,7 @@ body {
   overflow: hidden;
   background: var(--sage);
   /* a game, not a page: quick taps and long presses select nothing, call up no menu and flash
-     nothing (iOS selected a card's text under fast ollie taps) */
+     nothing (iOS selected a card's text under fast ollie taps; CrazyGames asks for it on mobile) */
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;

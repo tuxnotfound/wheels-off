@@ -10,6 +10,10 @@ export const SITE: string = import.meta.env.VITE_SITE ?? 'https://playwheelsoff.
 /** The portal this build is for ('itch'), or '' on the game's own site. */
 export const PORTAL: string = import.meta.env.VITE_PORTAL ?? ''
 
+/** Whether the run can be shared with a link. CrazyGames allows no in-game link to a playable web
+ * version of a game (its gameplay requirements), and the shared link opens playwheelsoff.com. */
+export const SHARE_LINKS = PORTAL !== 'crazygames'
+
 /** An API route: on this origin at home, on the game's site from a portal. */
 export const api = (route: string) => `${PORTAL ? SITE : ''}/api/${route}`
 

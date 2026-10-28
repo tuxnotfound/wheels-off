@@ -352,11 +352,15 @@ source of their first visit:
 npx wrangler d1 execute wheels-off --remote --command "WITH first AS (SELECT ip_hash, min(day) AS day, min(week) AS week, (SELECT source FROM plays q WHERE q.ip_hash = p.ip_hash ORDER BY created_at LIMIT 1) AS source FROM plays p WHERE ip_hash IS NOT NULL GROUP BY ip_hash), days AS (SELECT f.ip_hash, f.week, f.source, count(DISTINCT p.day) AS n FROM first f JOIN plays p ON p.ip_hash = f.ip_hash AND p.day <= date(f.day, '+14 days') GROUP BY f.ip_hash) SELECT week, source, count(*) AS new_players, sum(n >= 2) AS came_back FROM days GROUP BY week, source ORDER BY week, new_players DESC"
 ```
 
-### Portals: the itch.io build
+### Portals: the itch.io and CrazyGames builds
 
 `npm run build:itch` builds the game for itch.io into `dist-itch` and packs
 `wheels-off-itch.zip` (`scripts/portal-zip.mjs`), the file to upload as an HTML game played in
-the browser. A portal runs the game in its frame, on its own host and in a subfolder, so:
+the browser. `npm run build:crazygames` does the same for CrazyGames (`dist-crazygames`,
+`wheels-off-crazygames.zip`), for its Basic Launch, which needs no SDK. That build has no share
+buttons: CrazyGames allows no in-game link to a playable web version of a game, and the shared
+links open playwheelsoff.com (`SHARE_LINKS` in `src/site.ts`). Its privacy link stays, which
+CrazyGames allows. A portal runs the game in its frame, on its own host and in a subfolder, so:
 
 - Every file loads by a relative path: Vite's base is `./`, the code goes through `asset()` in
   `src/site.ts`, and `public/fonts/fonts.css` points at its files relatively. Absolute paths
@@ -365,8 +369,8 @@ the browser. A portal runs the game in its frame, on its own host and in a subfo
   playwheelsoff.com (`api()` and `SITE` in `src/site.ts`), and the play tracker records the
   visit's source as `itch`.
 - The Worker answers itch.io's game host (`https://html-classic.itch.zone`, and any `itch.zone`
-  host, as itch.io's staff suggest) with CORS headers on `/api/*`, and turns other origins'
-  preflights away (`worker/cors.ts`). Play counts post as plain text, so they need no preflight.
+  host, as itch.io's staff suggest) and any `crazygames.com` host with CORS headers on `/api/*`,
+  and turns other origins' preflights away (`worker/cors.ts`). Play counts post as plain text, so they need no preflight.
 - The zip leaves out the local test model, source maps, the privacy page, `robots.txt` and the
   sitemap, and the script stops if the build breaks itch.io's rules (absolute paths in
   `index.html`, over 1,000 files, over 500 MB, a file over 200 MB). On 2026-10-16: 182 files,
