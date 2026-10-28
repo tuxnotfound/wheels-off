@@ -8,7 +8,8 @@ No code changes are needed.
 
 The current campaign is placeholder art from `scripts/make-ads.mjs`. **Every brand in it is
 fictional**, plus house ads (the game's own skate shop, a festival, a sale) and a
-"広告募集中 / YOUR AD HERE" creative in every format that marks the space as for sale.
+"広告募集中 / YOUR AD HERE" creative in every format that marks the space as for sale. The
+CrazyGames build leaves those out (`AD_SPACE_SIGNS` in `src/site.ts`).
 
 ## Formats
 

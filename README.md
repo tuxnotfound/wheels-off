@@ -359,8 +359,9 @@ npx wrangler d1 execute wheels-off --remote --command "WITH first AS (SELECT ip_
 the browser. `npm run build:crazygames` does the same for CrazyGames (`dist-crazygames`,
 `wheels-off-crazygames.zip`), for its Basic Launch, which needs no SDK. That build has no share
 buttons: CrazyGames allows no in-game link to a playable web version of a game, and the shared
-links open playwheelsoff.com (`SHARE_LINKS` in `src/site.ts`). Its privacy link stays, which
-CrazyGames allows. A portal runs the game in its frame, on its own host and in a subfolder, so:
+links open playwheelsoff.com (`SHARE_LINKS` in `src/site.ts`). Nor has it the town's "YOUR AD
+HERE" signs, since CrazyGames allows no outside ads in a Basic Launch (`AD_SPACE_SIGNS`). Its
+privacy link stays, which CrazyGames allows. A portal runs the game in its frame, on its own host and in a subfolder, so:
 
 - Every file loads by a relative path: Vite's base is `./`, the code goes through `asset()` in
   `src/site.ts`, and `public/fonts/fonts.css` points at its files relatively. Absolute paths

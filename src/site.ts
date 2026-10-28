@@ -14,6 +14,10 @@ export const PORTAL: string = import.meta.env.VITE_PORTAL ?? ''
  * version of a game (its gameplay requirements), and the shared link opens playwheelsoff.com. */
 export const SHARE_LINKS = PORTAL !== 'crazygames'
 
+/** Whether the town's unsold ad space shows its "YOUR AD HERE" signs. CrazyGames allows no outside
+ * ads in a Basic Launch, and a sign selling ad space reads as one there (ADS.md). */
+export const AD_SPACE_SIGNS = PORTAL !== 'crazygames'
+
 /** An API route: on this origin at home, on the game's site from a portal. */
 export const api = (route: string) => `${PORTAL ? SITE : ''}/api/${route}`
 

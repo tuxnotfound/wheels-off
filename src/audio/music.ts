@@ -5,8 +5,8 @@ import { readJson, writeJson } from '../game/storage'
 import { createLofi } from './lofi'
 
 // The soundtrack: lo-fi tunes composed live (lofi.ts). M turns it off and on, and the choice is
-// kept in this browser. A browser only lets a page make sound after a key press or a click, so
-// the music starts with the first one. Under the landing page and the cards over the ride it
+// kept in this browser. A browser only lets a page make sound after a key press, a click or a
+// touch's end (iOS doesn't count a touch's start), so the music starts with the first one. Under the landing page and the cards over the ride it
 // plays muffled, as if from the next room, and it stops while the tab is hidden.
 
 const KEY = 'wheelsoff:music-off'
@@ -65,7 +65,7 @@ function toggleMusic() {
 }
 
 /**
- * The first key press or click starts the music, unless it was turned off. A key that does not
+ * The first key press, click or lifted touch starts the music, unless it was turned off. A key that does not
  * count as a gesture (Esc) leaves the context suspended, so any later one wakes it too.
  */
 function wake() {
@@ -94,6 +94,7 @@ export function installMusic() {
     else if (!m) wake()
   })
   window.addEventListener('pointerdown', wake)
+  window.addEventListener('touchend', wake) // a tap on a phone: iOS lets sound start only here
   document.addEventListener('visibilitychange', apply)
   useArcade.subscribe(muffle)
   useHud.subscribe((s, prev) => {
