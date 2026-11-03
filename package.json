@@ -11,6 +11,7 @@
     "build": "tsc -b && vite build",
     "build:itch": "tsc -b && VITE_PORTAL=itch vite build --outDir dist-itch --emptyOutDir && node scripts/portal-zip.mjs dist-itch wheels-off-itch.zip",
     "build:crazygames": "tsc -b && VITE_PORTAL=crazygames vite build --outDir dist-crazygames --emptyOutDir && node scripts/portal-zip.mjs dist-crazygames wheels-off-crazygames.zip",
+    "media:crazygames": "node scripts/preview-media.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "api": "wrangler dev --port 8788",
@@ -33,6 +34,7 @@
     "@types/react-dom": "19.2.3",
     "@types/three": "0.184.1",
     "@vitejs/plugin-react": "6.0.2",
+    "playwright-core": "1.60.0",
     "typescript": "6.0.3",
     "vite": "8.0.16",
     "wrangler": "4.148.0"
