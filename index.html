@@ -24,6 +24,9 @@
     <!-- the big downloads start with the page, not after the bundle asks for them -->
     <link rel="preload" href="/art/manifest.json" as="fetch" crossorigin />
     <link rel="preload" href="/art/character.vrm" as="fetch" crossorigin />
+    <!-- Openstage's view counter (privacy page). It counts this site only, so a portal build drops
+         it (vite.config.ts) -->
+    <script defer src="https://openstage.dev/v.js" data-project="os_jl7pw78xgyzl"></script>
     <title>Wheels Off: a free 3D skateboarding game in your browser</title>
     <!-- the splash below paints before the bundle arrives; Boot.tsx redraws it with a live bar,
          so these rules mirror the .boot block in styles.css -->
