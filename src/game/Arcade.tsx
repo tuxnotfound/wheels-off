@@ -28,7 +28,7 @@ import { Crown, Note, Trophy, lap, secs } from './icons'
 import { records } from './records'
 import { pressMusic, useMusic } from '../audio/music'
 import { useWebGL } from './webgl'
-import { PORTAL, SHARE_LINKS, SITE } from '../site'
+import { OPENSTAGE_PAGE, PORTAL, SHARE_LINKS, SITE } from '../site'
 import { touchDevice } from '../player/touch'
 
 // What is drawn over the ride. First the landing page, over the attract ride, until someone
@@ -181,6 +181,12 @@ function Landing() {
         <a className="chip" href={PORTAL ? `${SITE}/privacy` : '/privacy'} target="_blank" rel="noopener" onKeyDown={(e) => e.key === 'Enter' && e.stopPropagation()}>
           privacy
         </a>
+        {/* the game's page on Openstage, on this site only: portals keep their own links */}
+        {!PORTAL && (
+          <a className="chip" href={OPENSTAGE_PAGE} target="_blank" rel="noopener" onKeyDown={(e) => e.key === 'Enter' && e.stopPropagation()}>
+            dev log
+          </a>
+        )}
       </nav>
       <div className="landing__body">
         <header className="landing__head">

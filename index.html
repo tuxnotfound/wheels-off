@@ -102,6 +102,12 @@
         <p class="boot__jp">ホイールズ・オフ</p>
         <div class="boot__bar"><div class="boot__fill boot__fill--wait"></div></div>
         <p class="boot__note">loading the town…</p>
+        <!-- Openstage's page link, for a visitor without JavaScript and a crawler that does not
+             run the game. Site only, so a portal build drops it (vite.config.ts) -->
+        <noscript>
+          <p class="boot__note">Wheels Off needs JavaScript to run. I build it in public:
+            <a href="https://openstage.dev/tuxnotfound/wheels-off">its page on Openstage</a>.</p>
+        </noscript>
       </main>
     </div>
     <script type="module" src="/src/main.tsx"></script>

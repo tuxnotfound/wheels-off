@@ -2,7 +2,8 @@ import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
-// Openstage's view counter in index.html counts playwheelsoff.com only, so a portal build drops it.
+// Openstage's view counter and page link in index.html are for playwheelsoff.com only, so a portal
+// build drops both.
 function siteOnly(): Plugin {
   let portal = ''
   return {
@@ -11,7 +12,11 @@ function siteOnly(): Plugin {
       portal = config.env.VITE_PORTAL ?? ''
     },
     transformIndexHtml: (html) =>
-      portal ? html.replace(/\s*<!-- Openstage's view counter[\s\S]*?<\/script>/, '') : html,
+      portal
+        ? html
+            .replace(/\s*<!-- Openstage's view counter[\s\S]*?<\/script>/, '')
+            .replace(/\s*<!-- Openstage's page link[\s\S]*?<\/noscript>/, '')
+        : html,
   }
 }
 
