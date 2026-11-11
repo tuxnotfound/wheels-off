@@ -10,6 +10,10 @@ export const SITE: string = import.meta.env.VITE_SITE ?? 'https://playwheelsoff.
 /** The portal this build is for ('itch'), or '' on the game's own site. */
 export const PORTAL: string = import.meta.env.VITE_PORTAL ?? ''
 
+/** The game's page on Openstage, where it is built in public. Linked from this site only, and in
+ * index.html's noscript note, so a crawler that does not run the game still finds it. */
+export const OPENSTAGE_PAGE = 'https://openstage.dev/tuxnotfound/wheels-off'
+
 /** Whether the run can be shared with a link. CrazyGames allows no in-game link to a playable web
  * version of a game (its gameplay requirements), and the shared link opens playwheelsoff.com. */
 export const SHARE_LINKS = PORTAL !== 'crazygames'
