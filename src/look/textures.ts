@@ -110,3 +110,110 @@ export function cardboardTex(): THREE.CanvasTexture {
     g.strokeRect(2, 2, 124, 124)
   })
 }
+
+/**
+ * The road's marks in a 2x2 atlas (world/roadMarks.tsx), each cell 256 px, transparent around:
+ * top left a manhole cover with a sakura emblem, top right a patch of newer tarmac, bottom left
+ * a crack, bottom right a drain grate filling its cell (stretched to the gutter's shape).
+ * Colors sit near the road's (#86959a): the scene lights them the same way.
+ */
+export function roadMarksTex(): THREE.CanvasTexture {
+  return make('road-marks', 512, 512, (g) => {
+    g.clearRect(0, 0, 512, 512)
+    // the manhole: a dark iron disc, a rim, a ring of studs and five petals
+    g.save()
+    g.translate(128, 128)
+    g.fillStyle = '#69767d'
+    g.beginPath()
+    g.arc(0, 0, 118, 0, Math.PI * 2)
+    g.fill()
+    g.lineWidth = 7
+    g.strokeStyle = INK
+    g.stroke()
+    g.lineWidth = 3
+    g.strokeStyle = '#4c575e'
+    g.beginPath()
+    g.arc(0, 0, 98, 0, Math.PI * 2)
+    g.stroke()
+    g.fillStyle = '#8c989e'
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2
+      g.beginPath()
+      g.arc(Math.cos(a) * 108, Math.sin(a) * 108, 3.5, 0, Math.PI * 2)
+      g.fill()
+    }
+    for (let i = 0; i < 5; i++) {
+      g.save()
+      g.rotate((i / 5) * Math.PI * 2)
+      g.beginPath()
+      g.moveTo(0, -8)
+      g.bezierCurveTo(-34, -34, -26, -78, -9, -80) // petal, with the sakura's notch at its tip
+      g.lineTo(0, -68)
+      g.lineTo(9, -80)
+      g.bezierCurveTo(26, -78, 34, -34, 0, -8)
+      g.fillStyle = '#909ca2'
+      g.fill()
+      g.lineWidth = 3
+      g.strokeStyle = '#4c575e'
+      g.stroke()
+      g.restore()
+    }
+    g.fillStyle = '#4c575e'
+    g.beginPath()
+    g.arc(0, 0, 10, 0, Math.PI * 2)
+    g.fill()
+    g.restore()
+
+    // the patch: an uneven slab of darker tarmac with pale sealed seams
+    g.beginPath()
+    const patch = [
+      [266, 14], [400, 8], [500, 18], [504, 130], [496, 244], [380, 250], [270, 240], [262, 120],
+    ]
+    patch.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)))
+    g.closePath()
+    g.fillStyle = '#6f7d86'
+    g.fill()
+    g.lineWidth = 7
+    g.strokeStyle = '#a9b4b7'
+    g.stroke()
+
+    // the crack: a few jagged branches from one break, from a fixed seed so it never changes
+    let seed = 11
+    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+    g.strokeStyle = '#4e5a61'
+    g.lineCap = 'round'
+    g.lineJoin = 'round'
+    const branch = (x: number, y: number, a: number, len: number, w: number) => {
+      g.lineWidth = w
+      g.beginPath()
+      g.moveTo(x, y)
+      for (let i = 0; i < 6 && len > 0; i++) {
+        a += (rand() - 0.5) * 1.1
+        const step = 10 + rand() * 14
+        x = Math.min(250, Math.max(262 - 256, x + Math.cos(a) * step))
+        y = Math.min(506, Math.max(262, y + Math.sin(a) * step))
+        g.lineTo(x, y)
+        len -= step
+        if (rand() < 0.3 && w > 2) {
+          g.stroke()
+          branch(x, y, a + (rand() < 0.5 ? 0.9 : -0.9), len * 0.6, w - 1.5)
+          g.lineWidth = w
+          g.beginPath()
+          g.moveTo(x, y)
+        }
+      }
+      g.stroke()
+    }
+    for (let i = 0; i < 3; i++) branch(128, 384, (i / 3) * Math.PI * 2 + rand(), 120, 5)
+
+    // the grate: steel bars across a dark slot, in an inked frame
+    g.fillStyle = '#3f4a50'
+    g.fillRect(256, 256, 256, 256)
+    g.fillStyle = '#7f898d'
+    for (let y = 270; y < 500; y += 15) g.fillRect(266, y, 236, 5)
+    g.lineWidth = 12
+    g.strokeStyle = INK
+    g.strokeRect(262, 262, 244, 244)
+  })
+}
+
