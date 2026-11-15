@@ -1,9 +1,14 @@
 import { cleanSource } from '../../shared/play'
 import { PORTAL, api } from '../site'
+import { readJson, writeJson } from './storage'
 
 // The play tracker's side in the game (worker/play.ts): one session per page visit that rides,
 // with where the visit came from, the runs ended and the seconds ridden. The session id is
-// random and lives in memory only; nothing is stored in the browser. The row is made when the
+// random and lives in memory only; nothing is stored in a player's browser. My own browsers
+// carry one mark, set by opening the game with ?me=1, so their rides count as source `me` and
+// the reads (README, Plays) leave them out: my address moves too often to tell them apart by
+// it. On itch.io the frame's storage can't be marked that way, so my rides there still count.
+// The row is made when the
 // ride starts, and raised after each run, every minute of riding, and when the page is hidden
 // or closed (sendBeacon, which survives the page going away).
 
@@ -28,7 +33,22 @@ function sourceOf(): string {
   return 'direct'
 }
 
-const source = PORTAL ? cleanSource(PORTAL) : sourceOf() // in a portal's frame, the portal is the source
+const ME_KEY = 'wheelsoff:me'
+
+/** Whether this is one of my browsers: ?me=1 marks it, ?me=0 unmarks it; the flag then leaves the address bar. */
+function isMe(): boolean {
+  const url = new URL(location.href)
+  const mark = url.searchParams.get('me')
+  if (mark !== null) {
+    url.searchParams.delete('me')
+    history.replaceState(history.state, '', url.pathname + url.search + url.hash)
+    writeJson(ME_KEY, mark === '1')
+  }
+  return readJson(ME_KEY) === true
+}
+
+const from = PORTAL ? cleanSource(PORTAL) : sourceOf() // in a portal's frame, the portal is the source
+const source = isMe() ? 'me' : from
 const play = { session: '', runs: 0, seconds: 0, sentAt: 0 }
 
 function body(): string {
