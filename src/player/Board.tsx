@@ -90,6 +90,9 @@ function decalMat(color: string): THREE.MeshToonMaterial {
   return m
 }
 const NO_GHOST = { noGhost: true }
+/** The board's parts: the rider's material without the kid's rim light (materials.ts). */
+const boardMat = (color: string) => riderMat(color, false, false)
+
 const markMat = decalMat('#fff7e6')
 const blurMat = decalMat('#e2f7f1')
 
@@ -136,11 +139,11 @@ export function Board({ bind }: { bind: (apply: ApplyBoard | null) => void }) {
               <mesh
                 geometry={deckGeo}
                 position-y={DECK_Y}
-                material={[riderMat(DECK), riderMat(DECK), riderMat(DECK), riderMat(DECK_BOTTOM), riderMat(DECK), riderMat(DECK)]}
+                material={[boardMat(DECK), boardMat(DECK), boardMat(DECK), boardMat(DECK_BOTTOM), boardMat(DECK), boardMat(DECK)]}
               />
-              <mesh geometry={gripGeo} position-y={DECK_Y + DECK_T / 2 + GRIP_T / 2} material={riderMat(GRIP)} />
+              <mesh geometry={gripGeo} position-y={DECK_Y + DECK_T / 2 + GRIP_T / 2} material={boardMat(GRIP)} />
               {[-TRUCK_Z, TRUCK_Z].map((z) => (
-                <mesh key={z} material={riderMat(METAL)} position={[0, DECK_Y - DECK_T / 2 - 0.006, z]} scale={[0.056, 0.012, 0.076]}>
+                <mesh key={z} material={boardMat(METAL)} position={[0, DECK_Y - DECK_T / 2 - 0.006, z]} scale={[0.056, 0.012, 0.076]}>
                   <boxGeometry />
                 </mesh>
               ))}
@@ -148,14 +151,14 @@ export function Board({ bind }: { bind: (apply: ApplyBoard | null) => void }) {
           </group>
           {[-TRUCK_Z, TRUCK_Z].map((z, i) => (
             <group key={z} position={[0, WHEEL_R, z]} ref={(g) => { if (g) trucks.current[i] = g }}>
-              <mesh material={riderMat(METAL)} position-y={0.016} scale={[0.08, PIVOT_Y - WHEEL_R - 0.004, 0.034]}>
+              <mesh material={boardMat(METAL)} position-y={0.016} scale={[0.08, PIVOT_Y - WHEEL_R - 0.004, 0.034]}>
                 <boxGeometry />
               </mesh>
-              <mesh geometry={axleGeo} material={riderMat(METAL)} />
+              <mesh geometry={axleGeo} material={boardMat(METAL)} />
               {[-1, 1].map((s, j) => (
                 <group key={s} position-x={s * TRACK} ref={(g) => { if (g) wheels.current[i * 2 + j] = g }}>
-                  <mesh geometry={wheelGeo} material={riderMat(WHEEL)} />
-                  <mesh geometry={hubGeo} material={riderMat(HUB)} />
+                  <mesh geometry={wheelGeo} material={boardMat(WHEEL)} />
+                  <mesh geometry={hubGeo} material={boardMat(HUB)} />
                   {/* decals, left out of the time trial's ghost (silhouette.ts) */}
                   <mesh geometry={markGeo} material={markMat} position={[s * (WHEEL_W / 2 + 0.0012), WHEEL_R * 0.62, 0]} rotation-y={(s * Math.PI) / 2} userData={NO_GHOST} />
                   <mesh geometry={blurGeo} material={blurMat} position-x={s * (WHEEL_W / 2 + 0.0016)} rotation-y={(s * Math.PI) / 2} userData={NO_GHOST} />
