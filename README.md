@@ -385,6 +385,16 @@ npm run build && npx wrangler dev --port 8788 --var CORS_ORIGINS:http://localhos
 cd /tmp/itchroot && python3 -m http.server 8800   # then open http://localhost:8800/html/1/index.html
 ```
 
+`npm run media:crazygames` makes CrazyGames' covers and preview videos in `preview-media/`
+(`scripts/preview-media.mjs`, about 6 minutes): two silent 18 s videos, 1920x1080 and 1080x1620
+(the phone layout), each opening on its cover, the title over the attract ride, then arcade at
+top speed; and the covers, those first frames and an 800x800 one. It runs the game on a dev server
+built as the CrazyGames one, with the API on a dead address so no test run reaches the boards or
+the tracker. Frames are drawn on a virtual clock (`scripts/virtual-clock.js`), so the video stays
+smooth however slowly they render, and a script rides, jumping every obstacle in its line; a take
+with a wipeout is ridden again. It needs ffmpeg (`brew install ffmpeg`) and Playwright's Chromium
+(`npx playwright-core install chromium`).
+
 ### Later: accounts and billboard sales
 
 Both go in the same API and database: a new migration per table (users, ad bookings) and a
