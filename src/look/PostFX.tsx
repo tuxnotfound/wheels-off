@@ -52,7 +52,9 @@ const frag = /* glsl */ `
     float width = mix(0.18, 0.42, h2);
     float line = 1.0 - smoothstep(width * 0.6, width, f);
     float start = mix(0.5, 0.72, h1);
-    return lit * line * smoothstep(start, start + 0.32, r);
+    // on a tall screen (a phone held upright) none cross the touch pad along the bottom
+    float pad = aspect < 1.0 ? smoothstep(0.17, 0.3, q.y) : 1.0;
+    return lit * line * smoothstep(start, start + 0.32, r) * pad;
   }
 
   float invZ(vec2 uv) {
