@@ -398,6 +398,13 @@ smooth however slowly they render, and a script rides, jumping every obstacle in
 with a wipeout is ridden again. It needs ffmpeg (`brew install ffmpeg`) and Playwright's Chromium
 (`npx playwright-core install chromium`).
 
+`npm run shots -- <label>` shoots the same moments of the same ride every time, for judging a
+change to the look: the landing, three arcade frames at top speed, one just after a landing, and
+a phone held upright, in `art-shots/<label>/` (`scripts/art-shots.mjs`, about 30 s). The clock is
+virtual from the page's first script and `Math.random` is seeded, so nothing depends on how fast
+the page loads. Shoot `before` first; any other label then also writes `art-shots/compare-<label>/`,
+before over after. A second argument goes on the game's address, such as `'?vrm=<file>'`.
+
 ### Later: accounts and billboard sales
 
 Both go in the same API and database: a new migration per table (users, ad bookings) and a

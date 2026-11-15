@@ -2,6 +2,7 @@ node_modules
 dist
 dist-itch
 preview-media
+art-shots
 dist-crazygames
 wheels-off-*.zip
 dist-ssr
