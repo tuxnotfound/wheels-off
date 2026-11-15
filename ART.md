@@ -6,8 +6,9 @@ generator lays lots out from whatever the manifest contains, so adding a facade 
 means adding an entry.
 
 The files in `public/art/buildings/` and `public/art/props/` are generated placeholders
-(`node scripts/make-placeholders.mjs`). Replace them one at a time: drop in a PNG with
-the same framing, point the manifest entry at it, and reload.
+(`node scripts/make-placeholders.mjs`). Replace them one at a time: a facade from an image
+model goes in with `npm run art:import` (Generating with an image model, below). The
+placeholder script rewrites the whole manifest, so once real art is in, don't run it again.
 
 ## Style target
 
@@ -86,22 +87,53 @@ or a real model instead.
 
 ## Generating with an image model
 
-The style prompt for every piece (append the subject):
+The style prompt for every facade (append the subject):
 
-> anime background art, flat cel shading, clean dark teal ink outlines, muted pastel
-> palette (cream, sage, teal, dusty pink), painted blue shadow shapes, Japanese small town,
-> straight-on orthographic front elevation, no perspective, isolated on a plain white
-> background, full object visible
+> anime background art, flat cel shading, clean dark teal ink outlines of even weight,
+> muted pastel palette (cream, sage, teal, dusty pink), painted blue shadow shapes, Japanese
+> small town, neutral daylight colors with no sunset light, straight-on orthographic front
+> elevation, no perspective and no vanishing point, the whole building visible and centered
+> with a margin around it, standing on the image's lower edge, no ground and no cast shadow
+> on the ground, sign boards left blank, isolated on a solid flat magenta background
 
-Subjects that fit the manifest: *"three-storey apartment block with solid balcony
-parapets, AC units and a drain pipe"*, *"two-storey wooden house with a gable roof
-facing the viewer"*, *"small ramen shop with a striped awning and a red sign reading
-ラーメン"*, *"convenience store front with a blue and yellow stripe band"*, *"blue drink
-vending machine"*, *"orange traffic cone"*.
+Why each part matters:
+- **Orthographic, no perspective:** the image is mapped onto a flat front. Any perspective
+  bends the street. Reject an image with a visible side wall or a vanishing point.
+- **Ink outline and a solid magenta background:** the importer cuts the background away by
+  flooding it from the image's borders, and the outline is where the flood stops. Magenta
+  is in no building, so a white wall stays.
+- **Neutral daylight:** the game lights every facade itself (Lighting on painted art, above).
+  A painted sunset would be lit twice.
+- **Blank signs:** generated lettering is usually garbled. The town's own signs carry the
+  Japanese.
 
-Then remove the background (to transparency), crop to the object, and measure its
-real-world width for the manifest. Generated text on signs is usually garbled, so paint
-over it or keep signs blank.
+Then bring it in:
+
+```bash
+npm run art:import -- ~/Downloads/ramen.png --id shop-ramen-2 --width 6.4
+npm run art:import -- ~/Downloads/house.png --id house-blue --width 7.2 --roof-shape gable --roof '#5e6f8a'
+```
+
+The importer (`scripts/import-art.mjs`) cuts the background, trims to the building, scales
+to 100 px per meter and saves `public/art/buildings/<id>.webp`. Then it adds the manifest
+entry, its height taken from the image. Check `bodyHeight` when a flat roof carries a tank or
+a sign: pass `--body` with the wall's height. Reusing an existing id replaces that building
+everywhere. Look at it in the town with `npm run dev` and `?facade=<id>`, which stands it on
+about half the lots it fits. `npm run shots -- <label> '?facade=<id>'` shoots the same ride
+with it.
+
+First batch, six to judge the approach before making more (one per kind the town needs):
+
+| id | width | subject |
+|---|---|---|
+| `house-sage-2` | 7.2 | two-storey wooden house, sage siding, gable roof facing the viewer, a small porch light |
+| `apt-cream-3f-2` | 9.6 | three-storey apartment block, cream walls, solid balcony parapets, AC units, a drain pipe |
+| `shop-ramen-2` | 6.4 | small ramen shop, striped awning, noren curtain in the doorway, blank sign board |
+| `shop-kissa-2` | 6.4 | old coffee shop (kissaten), brick lower wall, arched window, a hanging blank sign |
+| `konbini-2` | 10 | convenience store front, blue and yellow stripe band, glass front with shelves inside |
+| `shop-flowers-2` | 6.4 | flower shop, buckets of flowers on stands out front, green awning |
+
+The width is the facade's real width in meters (Buildings, above).
 
 ## Character: VRM
 

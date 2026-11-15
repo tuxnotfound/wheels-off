@@ -13,6 +13,7 @@
     "build:crazygames": "tsc -b && VITE_PORTAL=crazygames vite build --outDir dist-crazygames --emptyOutDir && node scripts/portal-zip.mjs dist-crazygames wheels-off-crazygames.zip",
     "media:crazygames": "node scripts/preview-media.mjs",
     "shots": "node scripts/art-shots.mjs",
+    "art:import": "node scripts/import-art.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "api": "wrangler dev --port 8788",

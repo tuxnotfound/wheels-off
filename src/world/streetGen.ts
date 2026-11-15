@@ -230,10 +230,16 @@ export const POLE_U = [5, 21] // utility poles along the pole side of every bloc
 // (a flat bicycle card reads as a spider edge-on, so it isn't placed until it has real depth)
 const SIDEWALK_PROPS = ['vending-blue', 'vending-red', 'postbox', 'plants']
 
+// dev only: ?facade=<id> stands that building on about half the lots it fits, among the others,
+// to judge new art in the town (scripts/import-art.mjs)
+const FACADE = import.meta.env.DEV && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('facade') : null
+
 /** A building whose art fits in the room left, starting from a hashed pick. */
 function fitBuilding(r: number, room: number): BuildingArt | null {
   const list = art.buildings
   if (!list.length) return null
+  const shown = FACADE ? list.find((b) => b.id === FACADE) : undefined
+  if (shown && shown.width <= room && r < 0.5) return shown
   const i0 = Math.floor(r * list.length)
   for (let i = 0; i < list.length; i++) {
     const b = list[(i0 + i) % list.length]

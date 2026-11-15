@@ -405,6 +405,11 @@ virtual from the page's first script and `Math.random` is seeded, so nothing dep
 the page loads. Shoot `before` first; any other label then also writes `art-shots/compare-<label>/`,
 before over after. A second argument goes on the game's address, such as `'?vrm=<file>'`.
 
+`npm run art:import -- <image> --id <id> --width <m>` brings a facade from an image model into
+the town (`scripts/import-art.mjs`; ART.md, Generating with an image model). `?facade=<id>`, in
+dev only, stands it on about half the lots it fits, and `npm run shots -- <label> '?facade=<id>'`
+shoots the same ride with it.
+
 ### Later: accounts and billboard sales
 
 Both go in the same API and database: a new migration per table (users, ad bookings) and a
