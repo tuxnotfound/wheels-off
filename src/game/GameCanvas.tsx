@@ -8,6 +8,7 @@ import { input, installInput } from '../player/input'
 import { Sky } from '../look/Sky'
 import { PostFX, canvasDpr, useResolution } from '../look/PostFX'
 import { Petals } from '../look/Petals'
+import { Dust } from '../look/Dust'
 import { setTreeSun } from '../world/Tree3D'
 import { toonMat } from '../look/materials'
 import { FOG, LIGHT, SUN_DIR } from '../look/timeOfDay'
@@ -253,6 +254,7 @@ function World() {
           <BlockView key={key} {...b} />
         ))}
         <Skater />
+        <Dust />
         <TrialView />
         <Petals anchor={anchor} />
       </group>

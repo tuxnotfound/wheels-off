@@ -217,3 +217,26 @@ export function roadMarksTex(): THREE.CanvasTexture {
   })
 }
 
+/** A cartoon puff of dust (look/Dust.tsx): three round lobes, pale on top and lilac below. */
+export function dustTex(): THREE.CanvasTexture {
+  return make('dust', 128, 128, (g) => {
+    g.clearRect(0, 0, 128, 128)
+    const lobes: [number, number, number][] = [
+      [44, 76, 30],
+      [80, 70, 34],
+      [62, 46, 30],
+    ]
+    g.fillStyle = '#cbbfd8'
+    for (const [x, y, r] of lobes) {
+      g.beginPath()
+      g.arc(x, y, r, 0, Math.PI * 2)
+      g.fill()
+    }
+    g.fillStyle = '#f6eee6'
+    for (const [x, y, r] of lobes) {
+      g.beginPath()
+      g.arc(x - r * 0.12, y - r * 0.16, r * 0.82, 0, Math.PI * 2)
+      g.fill()
+    }
+  })
+}
