@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm'
 import type { MToonMaterial, VRM, VRMHumanBoneName } from '@pixiv/three-vrm'
-import { RIM, curvedDepth, markRider, riderMat } from '../look/materials'
+import { curvedDepth, markRider, riderMat } from '../look/materials'
 import { BEANIE, BEANIE_CUFF, BEANIE_TAG, PANTS, PANTS_SHADE, PHONES, PHONES_CAP, ProceduralRider } from './ProceduralRider'
 import { DECK_TOP, footFlat, riderLeg, solveLeg, toBody } from './pose'
 import type { Foot, LegAngles, Pose } from './pose'
@@ -702,17 +702,7 @@ function buildRig(vrm: VRM): Rig {
     m.receiveShadow = true
     m.frustumCulled = false // skinned bounds don't follow the pose
     m.customDepthMaterial = curvedDepth
-    for (const mat of ([] as THREE.Material[]).concat(m.material)) {
-      markRider(mat)
-      const mt = mat as MToonMaterial
-      if (mt.isMToonMaterial && !mt.isOutline) {
-        // the rim light (materials.ts, RIM), through MToon's own parametric rim
-        mt.parametricRimColorFactor.set(RIM.mtoon)
-        mt.parametricRimFresnelPowerFactor = RIM.mtoonPower
-        mt.parametricRimLiftFactor = 0
-        mt.rimLightingMixFactor = RIM.mtoonMix
-      }
-    }
+    for (const mat of ([] as THREE.Material[]).concat(m.material)) markRider(mat)
   })
 
   raw('hips')?.scale.setScalar(BODY_SCALE)

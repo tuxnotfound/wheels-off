@@ -125,33 +125,12 @@ export function markRider(m: THREE.Material) {
   m.customProgramCacheKey = () => `${prevKey.call(m)}|rider`
 }
 
-// The kid's rim light: the low sun catching their outline, so they read against the road. Hard
-// edged on the toon parts; the VRM's own MToon materials get the same color through their
-// parametric rim (VrmRider.tsx).
-export const RIM = { color: '#ffc58c', strength: 0.55, edge: 0.64, mtoon: '#c98f5c', mtoonPower: 4, mtoonMix: 0.25 }
-const rimColor = new THREE.Color(RIM.color).multiplyScalar(RIM.strength)
-const RIM_FRAGMENT = /* glsl */ `
-  float rimF = 1.0 - saturate(dot(normal, normalize(vViewPosition)));
-  outgoingLight += uRim * smoothstep(${RIM.edge.toFixed(2)}, ${(RIM.edge + 0.06).toFixed(2)}, rimF);
-  #include <opaque_fragment>
-`
-
-/**
- * Curved toon material for the rider's own parts (board, headwear). The kid's parts take the rim
- * light; the board's don't, since its deck seen from behind is all edge and lit up whole.
- */
-export function riderMat(color: string, doubleSided = false, rim = true): THREE.MeshToonMaterial {
-  return cached(`rider:${color}:${doubleSided}:${rim}`, () => {
+/** Curved toon material for the rider's own parts (board, headwear). */
+export function riderMat(color: string, doubleSided = false): THREE.MeshToonMaterial {
+  return cached(`rider:${color}:${doubleSided}`, () => {
     const m = new THREE.MeshToonMaterial({ color, gradientMap: celRamp(), side: doubleSided ? THREE.DoubleSide : THREE.FrontSide })
-    m.onBeforeCompile = (shader) => {
-      patchCurve(shader)
-      if (!rim) return
-      shader.uniforms.uRim = { value: rimColor }
-      shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nuniform vec3 uRim;')
-        .replace('#include <opaque_fragment>', RIM_FRAGMENT)
-    }
-    m.customProgramCacheKey = () => (rim ? 'toon-curve-rim' : 'toon-curve')
+    m.onBeforeCompile = patchCurve
+    m.customProgramCacheKey = () => 'toon-curve'
     markRider(m)
     return m
   })
