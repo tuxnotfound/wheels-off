@@ -93,8 +93,8 @@ The style prompt for every facade (append the subject):
 > muted pastel palette (cream, sage, teal, dusty pink), painted blue shadow shapes, Japanese
 > small town, neutral daylight colors with no sunset light, straight-on orthographic front
 > elevation, no perspective and no vanishing point, the whole building visible and centered
-> with a margin around it, standing on the image's lower edge, no ground and no cast shadow
-> on the ground, sign boards left blank, isolated on a solid flat magenta background
+> with a margin around it, its base a straight level line, no ground and no cast shadow on
+> the ground, sign boards left blank, isolated on a solid flat magenta background
 
 Why each part matters:
 - **Orthographic, no perspective:** the image is mapped onto a flat front. Any perspective
