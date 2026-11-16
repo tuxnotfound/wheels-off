@@ -8,6 +8,7 @@ import { input, installInput } from '../player/input'
 import { Sky } from '../look/Sky'
 import { PostFX, canvasDpr, useResolution } from '../look/PostFX'
 import { Petals } from '../look/Petals'
+import { Dust } from '../look/Dust'
 import { setTreeSun } from '../world/Tree3D'
 import { toonMat } from '../look/materials'
 import { FOG, LIGHT, SUN_DIR } from '../look/timeOfDay'
@@ -253,6 +254,7 @@ function World() {
           <BlockView key={key} {...b} />
         ))}
         <Skater />
+        <Dust />
         <TrialView />
         <Petals anchor={anchor} />
       </group>
@@ -315,8 +317,9 @@ const LANDING = { r: 5.4, h: 1.15, fov: 52, drift: 0.6, off: 1.9, aim: 0.95, aim
 // the chase: behind (d) and above (h) the kid, aimed at y down the street; fov is the base field
 // of view (vertical, as three.js counts it), widened by `widen` degrees per m/s over 8. A tall
 // screen (a phone held upright) sits closer and lower, so the kid fills more of a narrow screen
-// and rides above the touch pad, and widens less with speed.
-const CHASE = { d: 7.6, h: 3.0, y: 1.1, fov: 72, widen: 0.9 }
+// and rides above the touch pad, and widens less with speed. On a wide screen the kid was about
+// 60 px tall at 720p from 7.6 m back; 6.2 m back and less widening make them a third bigger.
+const CHASE = { d: 6.2, h: 2.55, y: 1.05, fov: 72, widen: 0.6 }
 const CHASE_TALL = { d: 5.2, h: 2.3, y: 0.9, fov: 70, widen: 0.4 }
 const SWING_TIME = 1.5 // seconds
 
