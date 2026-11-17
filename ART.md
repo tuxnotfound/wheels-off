@@ -5,10 +5,9 @@ listed in `public/art/manifest.json` with its real-world size in meters. The str
 generator lays lots out from whatever the manifest contains, so adding a facade just
 means adding an entry.
 
-Ten facades in `public/art/buildings/` are painted, by gpt-image-2 (the table at the end of
-Generating with an image model). Three are still generated placeholders (`apt-pink-4f`,
-`house-grey`, `office-5f`), and so is everything in `public/art/props/`
-(`node scripts/make-placeholders.mjs`). The placeholder script rewrites the whole manifest, so
+Every facade in `public/art/buildings/` is painted, by gpt-image-2 (the table at the end of
+Generating with an image model). Everything in `public/art/props/` is still a generated
+placeholder (`node scripts/make-placeholders.mjs`). The placeholder script rewrites the whole manifest, so
 don't run it again; a new facade goes in with `npm run art:import`.
 
 ## Style target
@@ -134,7 +133,7 @@ meter, from the bottom. Look at it in the town with `npm run dev` and `?facade=<
 about half the lots it fits. `npm run shots -- <label> '?facade=<id>'` shoots the same ride
 with it.
 
-The first ten, by gpt-image-2 (quality high, one image each), picked over Gemini 3 Pro Image,
+The thirteen, by gpt-image-2 (quality high, one image each), picked over Gemini 3 Pro Image,
 which drew four of ten at an angle or with a side wall showing. Each subject followed the style
 prompt above; the import flags are the ones it went in with:
 
@@ -150,9 +149,13 @@ prompt above; the import flags are the ones it went in with:
 | `shop-flowers-2` | a two-storey flower shop about 6.5 m wide, buckets of flowers on stands out front, a green awning, a tiled roof with its eaves facing the viewer | `--width 6.4 --body 5.2 --roof-shape pitched --awning 2.05,2.78` |
 | `shop-books-2` | a small two-storey used bookshop about 6.5 m wide, sliding glass doors, wooden shelves of books visible inside, a cart of books out front, a tiled roof with its eaves facing the viewer | `--width 6.4 --body 5.85 --roof-shape pitched --awning 2.8,3.32` |
 | `shokudo-2` | an old two-storey diner (shokudo) about 7 m wide, a wooden front, a noren curtain, a display case of plastic food samples, a tiled roof with its eaves facing the viewer | `--width 7.2 --body 6.45 --roof-shape pitched --awning 3.35,3.85` |
+| `apt-pink-4f-2` | a four-storey apartment building about 8 m wide with a flat roof, dusty pink tiled walls, balconies with railings and some laundry, AC units, a drain pipe, an entrance with a small canopy and mailboxes | `--width 8 --body 12.95` |
+| `house-grey-2` | a two-storey house about 7 m wide, light grey siding, its gable end facing the viewer, a small balcony, a front door under a little canopy, a potted plant by the door | `--width 5.4 --body 5.25 --roof-shape gable --roof '#4f6a76'` |
+| `office-5f-2` | a five-storey small office building about 8 m wide with a flat roof, concrete walls with horizontal bands of windows, blinds in some windows, a ground-floor entrance with glass doors, a vertical sign column left blank | `--width 8 --body 13.1` |
 
 The width is the facade's real width in meters (Buildings, above): pick it so a door comes out
-about 2.2 m tall. The apartment block asked for 10 m went in at 8, or it stood 16.8 m tall. A
+about 2.2 m tall. The apartment block asked for 10 m went in at 8, or it stood 16.8 m tall; the grey house asked
+for 7 m went in at 5.4, or its door stood 2.9 m. A
 lower tiled roof over the ground floor (the bookshop, the diner) goes in as the `--awning`, so it
 leans out too.
 
