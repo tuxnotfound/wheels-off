@@ -42,9 +42,18 @@ Anime background art, the look of the reference shots:
   "depth": 9,            // meters back from the street
   "side": "#efe9d8",     // side wall color (seen at corners)
   "roof": "#6e7a78",     // roof color
-  "roofShape": "flat"    // or "gable" when the painted front shows a gable end
+  "roofShape": "flat",   // "gable" when the painted front shows a gable end, "pitched" below
+  "awning": [2.45, 3.68] // optional: its lower edge and where it meets the wall, in meters
 }
 ```
+
+The 3D body behind the front is a box to `bodyHeight`. Its side walls, seen at corners and
+down the gaps between lots, are drawn in code from the `side` color (a window a storey, a drain
+pipe, an AC unit, inked edges; `src/look/buildingTex.ts`), all in one texture. Two parts of a
+painted front stand out in 3D, so it doesn't read as a picture glued to a box:
+- **`"pitched"` roof:** a tiled roof with its ridge along the street, overhanging the walls. The
+  painted roof is cut off at `bodyHeight`, which is where the eaves meet the wall.
+- **`awning`:** that band of the image leans out from the wall, its lower edge 0.9 m out.
 
 Widths between 5 and 10 m work best (a block's frontage is about 20 to 28 m).
 
@@ -110,7 +119,7 @@ Why each part matters:
 Then bring it in:
 
 ```bash
-npm run art:import -- ~/Downloads/ramen.png --id shop-ramen-2 --width 6.4
+npm run art:import -- ~/Downloads/ramen.png --id shop-ramen-2 --width 6.4 --body 5.75 --roof-shape pitched --awning 2.45,3.68
 npm run art:import -- ~/Downloads/house.png --id house-blue --width 7.2 --roof-shape gable --roof '#5e6f8a'
 ```
 
@@ -118,7 +127,9 @@ The importer (`scripts/import-art.mjs`) cuts the background, trims to the buildi
 to 100 px per meter and saves `public/art/buildings/<id>.webp`. Then it adds the manifest
 entry, its height taken from the image. Check `bodyHeight` when a flat roof carries a tank or
 a sign: pass `--body` with the wall's height. Reusing an existing id replaces that building
-everywhere. Look at it in the town with `npm run dev` and `?facade=<id>`, which stands it on
+everywhere. A painted tiled roof wants `--roof-shape pitched` and `--body` at the eaves; an
+awning wants `--awning` with its lower edge and its top. Read both off the image at 100 px per
+meter, from the bottom. Look at it in the town with `npm run dev` and `?facade=<id>`, which stands it on
 about half the lots it fits. `npm run shots -- <label> '?facade=<id>'` shoots the same ride
 with it.
 

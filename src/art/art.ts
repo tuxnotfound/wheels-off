@@ -12,11 +12,14 @@ export type BuildingArt = {
   front: string // front elevation image, transparent around the silhouette
   width: number // meters, along the street
   height: number // meters, full image height (roof, tank, sign included)
-  bodyHeight: number // meters, the wall the 3D body is built to
+  bodyHeight: number // meters, the wall the 3D body is built to (the eaves, under a pitched roof)
   depth: number // meters, how far the body extends back
   side: string // side wall color
   roof: string // roof color
-  roofShape?: 'flat' | 'gable'
+  // flat: the box's top; gable: a painted gable end faces the street, the ridge runs back;
+  // pitched: a tiled 3D roof, its ridge along the street, and the painted roof cut off at the eaves
+  roofShape?: 'flat' | 'gable' | 'pitched'
+  awning?: [number, number] // meters from the ground, its lower edge and where it meets the wall: leans out in 3D
 }
 export type PropArt = {
   id: string

@@ -6,9 +6,13 @@
 // The facade's real width says how big it is; its height follows from the image.
 //
 // Usage: npm run art:import -- <image> --id <id> --width <m> [--body <m>] [--depth <m>]
-//          [--roof-shape flat|gable] [--roof <#hex>] [--side <#hex>] [--tolerance <0-255>]
-//  --body   where the wall stops, under a roof, a tank or a sign above it (default: the full
-//           height on a flat roof, three quarters of it under a gable)
+//          [--roof-shape flat|gable|pitched] [--awning <m>,<m>] [--roof <#hex>] [--side <#hex>]
+//          [--tolerance <0-255>]
+//  --body   where the wall stops, under a roof, a tank or a sign above it; under a pitched roof,
+//           the eaves, where the painted roof is cut off for a 3D one (default: the full height on
+//           a flat roof, three quarters of it under a gable, four fifths under a pitched roof)
+//  --awning the awning's lower edge and where it meets the wall, in meters from the ground: that
+//           band leans out from the wall in 3D
 //  --side   the side wall's color, seen at corners (default: the commonest color at its edges)
 // Needs Playwright's Chromium (`npx playwright-core install chromium`), which does the image work.
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -24,6 +28,7 @@ const { values: o, positionals } = parseArgs({
     body: { type: 'string' },
     depth: { type: 'string', default: '8' },
     'roof-shape': { type: 'string', default: 'flat' },
+    awning: { type: 'string' },
     roof: { type: 'string', default: '#6e7a78' },
     side: { type: 'string' },
     tolerance: { type: 'string', default: '28' },
@@ -34,7 +39,9 @@ const width = Number(o.width)
 if (!src || !o.id || !/^[a-z0-9-]+$/.test(o.id) || !(width > 0)) {
   throw new Error('usage: npm run art:import -- <image> --id <lowercase-id> --width <meters> [options]')
 }
-if (!['flat', 'gable'].includes(o['roof-shape'])) throw new Error('--roof-shape is flat or gable')
+if (!['flat', 'gable', 'pitched'].includes(o['roof-shape'])) throw new Error('--roof-shape is flat, gable or pitched')
+const awning = o.awning?.split(',').map(Number)
+if (awning && !(awning.length === 2 && awning[0] >= 0 && awning[1] > awning[0])) throw new Error('--awning is <lower edge>,<top> in meters, as 2.45,3.68')
 const PX_PER_M = 100
 const MANIFEST = 'public/art/manifest.json'
 const file = `buildings/${o.id}.webp`
@@ -195,11 +202,12 @@ const entry = {
   front: file,
   width,
   height,
-  bodyHeight: o.body ? Number(o.body) : o['roof-shape'] === 'gable' ? round(height * 0.75) : height,
+  bodyHeight: o.body ? Number(o.body) : { flat: height, gable: round(height * 0.75), pitched: round(height * 0.8) }[o['roof-shape']],
   depth: Number(o.depth),
   side: o.side ?? out.side,
   roof: o.roof,
   roofShape: o['roof-shape'],
+  ...(awning && { awning }),
 }
 const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'))
 const at = manifest.buildings.findIndex((b) => b.id === o.id)

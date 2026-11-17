@@ -2,10 +2,10 @@ import * as THREE from 'three'
 
 // Procedural hand-drawn textures (canvas), cached by key. Zero asset files.
 
-const INK = '#2b3634'
+export const INK = '#2b3634'
 const cache = new Map<string, THREE.CanvasTexture>()
 
-function make(key: string, w: number, h: number, draw: (g: CanvasRenderingContext2D) => void, repeat = false) {
+export function make(key: string, w: number, h: number, draw: (g: CanvasRenderingContext2D) => void, repeat = false) {
   const hit = cache.get(key)
   if (hit) return hit
   const c = document.createElement('canvas')
@@ -21,7 +21,7 @@ function make(key: string, w: number, h: number, draw: (g: CanvasRenderingContex
   return t
 }
 
-function box(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, fill: string, line = 3) {
+export function box(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, fill: string, line = 3) {
   g.fillStyle = fill
   g.fillRect(x, y, w, h)
   g.lineWidth = line

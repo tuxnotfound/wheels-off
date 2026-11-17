@@ -353,7 +353,7 @@ function makePlan(seed: number, k: number, width: number, u0: number, course: bo
         // It faces oncoming riders, so its width runs across the lot (from the facade toward
         // the back), turned toward the road. Size and place it from its turned footprint so
         // all of it (face, legs, braces, catwalk) stands on this roof.
-        if (b.roofShape !== 'gable' && b.bodyHeight <= 9.5 && len >= 6.4) {
+        if ((b.roofShape ?? 'flat') === 'flat' && b.bodyHeight <= 9.5 && len >= 6.4) {
           const f = billboardFootprint(side)
           const scale = Math.min(1, (len - 0.6) / (f.uMax - f.uMin), (b.depth - 0.8) / (f.latMax - f.latMin))
           const back = 0.4 - f.latMin * scale // nearest point 0.4 m behind the facade line
