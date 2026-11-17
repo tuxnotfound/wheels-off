@@ -3,17 +3,6 @@
   "character": "character.vrm",
   "buildings": [
     {
-      "id": "apt-cream-3f",
-      "front": "buildings/apt-cream-3f.svg",
-      "width": 9.6,
-      "height": 9.5,
-      "bodyHeight": 9,
-      "depth": 9,
-      "side": "#efe9d8",
-      "roof": "#6e7a78",
-      "roofShape": "flat"
-    },
-    {
       "id": "apt-pink-4f",
       "front": "buildings/apt-pink-4f.svg",
       "width": 9.6,
@@ -23,39 +12,6 @@
       "side": "#e7b9a8",
       "roof": "#6e7a78",
       "roofShape": "flat"
-    },
-    {
-      "id": "apt-teal-5f",
-      "front": "buildings/apt-teal-5f.svg",
-      "width": 9.6,
-      "height": 17.9,
-      "bodyHeight": 15,
-      "depth": 9,
-      "side": "#9fcac0",
-      "roof": "#6e7a78",
-      "roofShape": "flat"
-    },
-    {
-      "id": "house-sage",
-      "front": "buildings/house-sage.svg",
-      "width": 7.2,
-      "height": 8.2,
-      "bodyHeight": 6,
-      "depth": 8,
-      "side": "#b5cfbd",
-      "roof": "#5e7b7a",
-      "roofShape": "gable"
-    },
-    {
-      "id": "house-cream",
-      "front": "buildings/house-cream.svg",
-      "width": 7.2,
-      "height": 8.2,
-      "bodyHeight": 6,
-      "depth": 8,
-      "side": "#f1e6cf",
-      "roof": "#9b5a4a",
-      "roofShape": "gable"
     },
     {
       "id": "house-grey",
@@ -69,61 +25,6 @@
       "roofShape": "gable"
     },
     {
-      "id": "shop-ramen",
-      "front": "buildings/shop-ramen.svg",
-      "width": 6.4,
-      "height": 6.6,
-      "bodyHeight": 6.6,
-      "depth": 8,
-      "side": "#ece7d8",
-      "roof": "#6e5f5a",
-      "roofShape": "flat"
-    },
-    {
-      "id": "shop-kissa",
-      "front": "buildings/shop-kissa.svg",
-      "width": 6.4,
-      "height": 6.6,
-      "bodyHeight": 6.6,
-      "depth": 8,
-      "side": "#d8c7a6",
-      "roof": "#6e5f5a",
-      "roofShape": "flat"
-    },
-    {
-      "id": "shop-books",
-      "front": "buildings/shop-books.svg",
-      "width": 6.4,
-      "height": 6.6,
-      "bodyHeight": 6.6,
-      "depth": 8,
-      "side": "#f3efe6",
-      "roof": "#6e5f5a",
-      "roofShape": "flat"
-    },
-    {
-      "id": "shop-flowers",
-      "front": "buildings/shop-flowers.svg",
-      "width": 6.4,
-      "height": 6.6,
-      "bodyHeight": 6.6,
-      "depth": 8,
-      "side": "#e8bfb0",
-      "roof": "#6e5f5a",
-      "roofShape": "flat"
-    },
-    {
-      "id": "konbini-blue",
-      "front": "buildings/konbini-blue.svg",
-      "width": 9.6,
-      "height": 4.6,
-      "bodyHeight": 4.6,
-      "depth": 10,
-      "side": "#f1f1ea",
-      "roof": "#9aa39f",
-      "roofShape": "flat"
-    },
-    {
       "id": "office-5f",
       "front": "buildings/office-5f.svg",
       "width": 8,
@@ -135,17 +36,6 @@
       "roofShape": "flat"
     },
     {
-      "id": "shokudo-wood",
-      "front": "buildings/shokudo-wood.svg",
-      "width": 6.4,
-      "height": 6.800000000000001,
-      "bodyHeight": 5.4,
-      "depth": 8,
-      "side": "#8a6f5a",
-      "roof": "#4f5a5c",
-      "roofShape": "flat"
-    },
-    {
       "id": "shop-ramen-2",
       "front": "buildings/shop-ramen-2.webp",
       "width": 6.4,
@@ -153,11 +43,122 @@
       "bodyHeight": 5.75,
       "depth": 8,
       "side": "#f4e4cc",
-      "roof": "#5b7779",
+      "roof": "#668b8b",
       "roofShape": "pitched",
       "awning": [
         2.45,
         3.68
+      ]
+    },
+    {
+      "id": "house-sage-2",
+      "front": "buildings/house-sage-2.webp",
+      "width": 7.2,
+      "height": 8.2,
+      "bodyHeight": 6,
+      "depth": 8,
+      "side": "#bcbc9c",
+      "roof": "#5d7480",
+      "roofShape": "gable"
+    },
+    {
+      "id": "house-cream-2",
+      "front": "buildings/house-cream-2.webp",
+      "width": 7.2,
+      "height": 7.6,
+      "bodyHeight": 6.2,
+      "depth": 8,
+      "side": "#fcecd4",
+      "roof": "#929a9e",
+      "roofShape": "pitched"
+    },
+    {
+      "id": "apt-cream-3f-2",
+      "front": "buildings/apt-cream-3f-2.webp",
+      "width": 9.6,
+      "height": 10.3,
+      "bodyHeight": 10.3,
+      "depth": 8,
+      "side": "#fcecd4",
+      "roof": "#6e7a78",
+      "roofShape": "flat"
+    },
+    {
+      "id": "apt-teal-4f-2",
+      "front": "buildings/apt-teal-4f-2.webp",
+      "width": 8,
+      "height": 14,
+      "bodyHeight": 12.45,
+      "depth": 8,
+      "side": "#b4bcb4",
+      "roof": "#6e7a78",
+      "roofShape": "flat"
+    },
+    {
+      "id": "shop-kissa-2",
+      "front": "buildings/shop-kissa-2.webp",
+      "width": 6.4,
+      "height": 6.5,
+      "bodyHeight": 5.5,
+      "depth": 8,
+      "side": "#dcc49c",
+      "roof": "#63807e",
+      "roofShape": "pitched"
+    },
+    {
+      "id": "konbini-2",
+      "front": "buildings/konbini-2.webp",
+      "width": 10,
+      "height": 5.3,
+      "bodyHeight": 4.72,
+      "depth": 8,
+      "side": "#f4e4d4",
+      "roof": "#6e7a78",
+      "roofShape": "flat"
+    },
+    {
+      "id": "shop-flowers-2",
+      "front": "buildings/shop-flowers-2.webp",
+      "width": 6.4,
+      "height": 6.2,
+      "bodyHeight": 5.2,
+      "depth": 8,
+      "side": "#fcecd4",
+      "roof": "#9ea8aa",
+      "roofShape": "pitched",
+      "awning": [
+        2.05,
+        2.78
+      ]
+    },
+    {
+      "id": "shop-books-2",
+      "front": "buildings/shop-books-2.webp",
+      "width": 6.4,
+      "height": 6.7,
+      "bodyHeight": 5.85,
+      "depth": 8,
+      "side": "#f4e4c4",
+      "roof": "#6f868e",
+      "roofShape": "pitched",
+      "awning": [
+        2.8,
+        3.32
+      ]
+    },
+    {
+      "id": "shokudo-2",
+      "front": "buildings/shokudo-2.webp",
+      "width": 7.2,
+      "height": 7.6,
+      "bodyHeight": 6.45,
+      "depth": 8,
+      "side": "#a48c74",
+      "roof": "#718082",
+      "roofShape": "pitched",
+      "awning": [
+        3.35,
+        3.85
       ]
     }
   ],
