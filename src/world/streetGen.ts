@@ -335,8 +335,13 @@ function makePlan(seed: number, k: number, width: number, u0: number, course: bo
         vehicles.push({ kind, side, s: side * (half + 0.35), u: vu, r: h(seed, k * 5 + i, side + 813), flip: h(seed, k * 5 + i, side + 814) > 0.6, curb: true })
       }
     }
-    // buildings keep clear of the corner sidewalks
-    const la = start + (roadFrom > 0 || gs > 0 ? SIDEWALK + 0.4 : 0.2)
+    // buildings keep clear of the corner sidewalks. A side street's own first block also leaves
+    // its corners to the parent street's corner buildings, which stand as deep as the deepest
+    // building: there their side walls face this street. Lots started at the parent's facade
+    // line once, and two buildings filled each corner, each one's side wall and roof showing
+    // through the other's front.
+    const corner = roadFrom > 0 ? Math.max(8, ...art.buildings.map((b) => b.depth)) + 0.1 : 0
+    const la = start + (roadFrom > 0 || gs > 0 ? SIDEWALK + 0.4 : 0.2) + corner
     const lb = BLOCK - (ge > 0 ? ge + SIDEWALK + 0.4 : 0.2)
     let u = la
     let i = 0
