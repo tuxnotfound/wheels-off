@@ -144,6 +144,21 @@
       "side": "#8a6f5a",
       "roof": "#4f5a5c",
       "roofShape": "flat"
+    },
+    {
+      "id": "shop-ramen-2",
+      "front": "buildings/shop-ramen-2.webp",
+      "width": 6.4,
+      "height": 7.1,
+      "bodyHeight": 5.75,
+      "depth": 8,
+      "side": "#f4e4cc",
+      "roof": "#5b7779",
+      "roofShape": "pitched",
+      "awning": [
+        2.45,
+        3.68
+      ]
     }
   ],
   "props": [
