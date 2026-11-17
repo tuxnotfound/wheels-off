@@ -14,6 +14,8 @@
 //  --awning the awning's lower edge and where it meets the wall, in meters from the ground: that
 //           band leans out from the wall in 3D
 //  --side   the side wall's color, seen at corners (default: the commonest color at its edges)
+//  --roof   the roof's color (default: under a pitched roof, the painted tiles' median color just
+//           above --body; otherwise #6e7a78)
 // Needs Playwright's Chromium (`npx playwright-core install chromium`), which does the image work.
 import { readFileSync, writeFileSync } from 'node:fs'
 import { extname } from 'node:path'
@@ -29,7 +31,7 @@ const { values: o, positionals } = parseArgs({
     depth: { type: 'string', default: '8' },
     'roof-shape': { type: 'string', default: 'flat' },
     awning: { type: 'string' },
-    roof: { type: 'string', default: '#6e7a78' },
+    roof: { type: 'string' },
     side: { type: 'string' },
     tolerance: { type: 'string', default: '28' },
   },
@@ -55,7 +57,7 @@ let out
 try {
   const page = await browser.newPage()
   out = await page.evaluate(
-    async ({ dataUrl, tol, target }) => {
+    async ({ dataUrl, tol, target, widthM, body }) => {
       const img = new Image()
       img.src = dataUrl
       await img.decode()
@@ -176,6 +178,22 @@ try {
       const hex = (v) => (((v & 31) << 3) | 4).toString(16).padStart(2, '0')
       const side = `#${hex(best >> 10)}${hex(best >> 5)}${hex(best)}`
 
+      // the painted roof's color: the median of the tiles a quarter to three quarters of a meter
+      // above the eaves (taken when the 3D roof will stand over them)
+      let roof = null
+      if (body) {
+        const ppm = (x1 - x0 + 1) / widthM
+        const rs = [[], [], []]
+        for (let y = Math.round(y1 - (body + 0.75) * ppm); y <= Math.round(y1 - (body + 0.25) * ppm); y++) {
+          for (let x = x0; x <= x1; x++) {
+            const i = y * W + x
+            if (y < y0 || bg[i]) continue
+            for (let ch = 0; ch < 3; ch++) rs[ch].push(px[i * 4 + ch])
+          }
+        }
+        if (rs[0].length) roof = `#${rs.map((v) => v.sort((a, b) => a - b)[v.length >> 1].toString(16).padStart(2, '0')).join('')}`
+      }
+
       // trimmed, at the target width
       const tw = target
       const th = Math.round(((y1 - y0 + 1) / (x1 - x0 + 1)) * tw)
@@ -185,9 +203,15 @@ try {
       const og = o.getContext('2d')
       og.imageSmoothingQuality = 'high'
       og.drawImage(c, x0, y0, x1 - x0 + 1, y1 - y0 + 1, 0, 0, tw, th)
-      return { webp: o.toDataURL('image/webp', 0.88), tw, th, side, bg: med }
+      return { webp: o.toDataURL('image/webp', 0.88), tw, th, side, roof, bg: med }
     },
-    { dataUrl, tol: Number(o.tolerance), target: Math.round(width * PX_PER_M) },
+    {
+      dataUrl,
+      tol: Number(o.tolerance),
+      target: Math.round(width * PX_PER_M),
+      widthM: width,
+      body: o['roof-shape'] === 'pitched' && o.body ? Number(o.body) : null,
+    },
   )
 } finally {
   await browser.close()
@@ -205,7 +229,7 @@ const entry = {
   bodyHeight: o.body ? Number(o.body) : { flat: height, gable: round(height * 0.75), pitched: round(height * 0.8) }[o['roof-shape']],
   depth: Number(o.depth),
   side: o.side ?? out.side,
-  roof: o.roof,
+  roof: o.roof ?? out.roof ?? '#6e7a78',
   roofShape: o['roof-shape'],
   ...(awning && { awning }),
 }
