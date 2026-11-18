@@ -224,14 +224,16 @@ try {
       }
       const luma = (i) => 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2]
       const toBg = (i) => Math.abs(px[i * 4] - med[0]) + Math.abs(px[i * 4 + 1] - med[1]) + Math.abs(px[i * 4 + 2] - med[2])
-      // ink takes a light color from inside; a half-background pixel takes any color inside,
-      // a tire's too
+      // ink is dark and grey: a red tail lamp is as dark, but no ink, and the outline beside it
+      // takes its red. Ink takes a color from inside that isn't ink; a half-background pixel takes
+      // any color inside, a tire's too
+      const ink = (i) => luma(i) < 100 && Math.max(px[i * 4], px[i * 4 + 1], px[i * 4 + 2]) - Math.min(px[i * 4], px[i * 4 + 1], px[i * 4 + 2]) < 50
       const fixed = new Uint8Array(W * H)
       for (let d = EDGE; d >= 1; d--) {
         for (let i = 0; i < W * H; i++) {
           const halo = toBg(i) < 160
-          if (depth[i] !== d || (!halo && luma(i) >= 90)) continue
-          const from = near(i).find((j) => depth[j] > d && (fixed[j] || (toBg(j) >= 160 && (halo || luma(j) >= 90))))
+          if (depth[i] !== d || (!halo && !ink(i))) continue
+          const from = near(i).find((j) => depth[j] > d && (fixed[j] || (toBg(j) >= 160 && (halo || !ink(j)))))
           if (from === undefined) continue
           for (let ch = 0; ch < 3; ch++) px[i * 4 + ch] = px[from * 4 + ch]
           fixed[i] = 1
