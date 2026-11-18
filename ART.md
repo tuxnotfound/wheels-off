@@ -214,7 +214,9 @@ the side view there and as wide as the narrower of the front and top views at ea
 point is painted from the three views it can be seen in (the side, the end it faces, the top),
 mixed by how squarely it faces each, so a rounded corner fades from one view into the next; the
 underside is ink. Chosen per triangle instead, the views flipped back and forth over a corner: a
-tail lamp painted twice, a pillar in teeth. The importer also paints over each view's outer ink
+tail lamp painted twice, a pillar in teeth. A vehicle's last 20 cm of each side, at the nose and
+the tail, takes the end view too, carried round the corner: the model draws a wraparound lamp on
+the side and on the rear differently, and two lamps met at the corner, a dark strip between. The importer also paints over each view's outer ink
 outline from the color inside it, as the game's ink pass draws the shape's silhouette: where the
 body curves away, a view lands at a grazing angle and its outline stretched into a stripe across
 a door or a fender. Door mirrors and an aerial

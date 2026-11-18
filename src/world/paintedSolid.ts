@@ -9,6 +9,12 @@ import { patchCurve } from '../look/materials'
 const NZ = 48 // slices nose to tail
 const NY = 24 // and up the height; across, the shape is straight, so one is enough
 const SHARP = 10 // how quickly a view's weight falls off as a surface turns away from it
+// A vehicle's last 20 cm of each side, at the nose and the tail, take the end view: its edge carries
+// round the corner. The model draws a wraparound lamp on the side and on the rear inconsistently
+// (one car had a strip of rear glass behind its side lamp), and two lamps met at the corner, not
+// one. Not an obstacle's: on a box, the end's edge carried over its front left a dark band.
+const END_REACH = 0.2
+const END_RAMP = 0.04
 
 /** A profile's pair at t (0 to 1 over its span): samples are bands, read at their middles. */
 function at(a: [number, number][], t: number): [number, number] {
@@ -57,6 +63,7 @@ export function solidGeometry(v: SolidArt): THREE.BufferGeometry {
   // The underside takes ink in the top's place.
   const p = box.attributes.position
   const nrm = box.attributes.normal
+  const reach = v.kind === 'kei-car' || v.kind === 'kei-truck' || v.kind === 'van' ? END_REACH : 0
   const uvSide = new Float32Array(p.count * 2)
   const uvEnd = new Float32Array(p.count * 2)
   const uvTop = new Float32Array(p.count * 2)
@@ -70,14 +77,18 @@ export function solidGeometry(v: SolidArt): THREE.BufferGeometry {
     const [x, y, z] = [p.getX(i), p.getY(i), p.getZ(i)]
     const [nx, ny, nz] = [nrm.getX(i), nrm.getY(i), nrm.getZ(i)]
     put(uvSide, i, side, (z + side.w / 2) / side.w, y / side.h)
-    // facing its front, the solid's right is on the view's left
-    if (nz < 0) put(uvEnd, i, front, (front.w / 2 - x) / front.w, y / front.h)
+    // facing its front, the solid's right is on the view's left. The end it faces, or on a side,
+    // the end it is near
+    if (Math.abs(nz) > 0.3 ? nz < 0 : z < 0) put(uvEnd, i, front, (front.w / 2 - x) / front.w, y / front.h)
     else put(uvEnd, i, rear, (x + rear.w / 2) / rear.w, y / rear.h)
     if (ny < 0) [uvTop[i * 2], uvTop[i * 2 + 1]] = v.dark
     // seen from above, nose left: the solid's right is at the top of the view
     else put(uvTop, i, top, (z + top.w / 2) / top.w, (x + top.h / 2) / top.h)
-    weights[i * 3] = Math.abs(nx) ** SHARP
-    weights[i * 3 + 1] = Math.abs(nz) ** SHARP
+    // the side's weight handed to the end view near the nose and the tail
+    const fromEnd = side.w / 2 - Math.abs(z)
+    const keep = reach ? THREE.MathUtils.smoothstep(fromEnd, reach - END_RAMP, reach) : 1
+    weights[i * 3] = Math.abs(nx) ** SHARP * keep
+    weights[i * 3 + 1] = Math.abs(nz) ** SHARP + Math.abs(nx) ** SHARP * (1 - keep)
     weights[i * 3 + 2] = Math.abs(ny) ** SHARP
   }
   box.setAttribute('uv', new THREE.BufferAttribute(uvSide, 2))
