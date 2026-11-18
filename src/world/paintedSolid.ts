@@ -1,11 +1,14 @@
 import * as THREE from 'three'
+import { paintedMat } from '../art/art'
 import type { SolidArt, SolidView } from '../art/art'
+import { patchCurve } from '../look/materials'
 
 // A vehicle or an obstacle from four painted views (ART.md, Vehicles): its shape is where the
 // side, front and top outlines overlap, and each surface is painted from the view it faces.
 
 const NZ = 48 // slices nose to tail
 const NY = 24 // and up the height; across, the shape is straight, so one is enough
+const SHARP = 10 // how quickly a view's weight falls off as a surface turns away from it
 
 /** A profile's pair at t (0 to 1 over its span): samples are bands, read at their middles. */
 function at(a: [number, number][], t: number): [number, number] {
@@ -46,45 +49,71 @@ export function solidGeometry(v: SolidArt): THREE.BufferGeometry {
     pos.setXYZ(i, x0 + (pos.getX(i) + 0.5) * (x1 - x0), y, z)
   }
   box.computeVertexNormals() // smooth across each face of the box, sharp between them
-  const g = box.toNonIndexed()
-  box.dispose()
 
-  // each triangle painted from the view its face looks along
-  const p = g.attributes.position
-  const uv = new Float32Array(p.count * 2)
-  const [a, b, c, ab, ac, n] = [0, 0, 0, 0, 0, 0].map(() => new THREE.Vector3())
-  const put = (i: number, view: SolidView, u: number, w: number) => {
+  // every point painted from all three views it can be seen in (the side, the end it faces, the
+  // top), weighted by how squarely it faces each: a rounded corner fades from one view into the
+  // next. Chosen per triangle, the views flipped back and forth over a corner (a tail lamp painted
+  // twice, a pillar in teeth, a stripe across a fender where a view landed at a grazing angle).
+  // The underside takes ink in the top's place.
+  const p = box.attributes.position
+  const nrm = box.attributes.normal
+  const uvSide = new Float32Array(p.count * 2)
+  const uvEnd = new Float32Array(p.count * 2)
+  const uvTop = new Float32Array(p.count * 2)
+  const weights = new Float32Array(p.count * 3)
+  const put = (out: Float32Array, i: number, view: SolidView, u: number, w: number) => {
     const [u0, v0, u1, v1] = view.rect
-    uv[i * 2] = u0 + Math.min(Math.max(u, 0), 1) * (u1 - u0)
-    uv[i * 2 + 1] = v0 + Math.min(Math.max(w, 0), 1) * (v1 - v0)
+    out[i * 2] = u0 + Math.min(Math.max(u, 0), 1) * (u1 - u0)
+    out[i * 2 + 1] = v0 + Math.min(Math.max(w, 0), 1) * (v1 - v0)
   }
-  for (let f = 0; f < p.count; f += 3) {
-    a.fromBufferAttribute(p, f)
-    b.fromBufferAttribute(p, f + 1)
-    c.fromBufferAttribute(p, f + 2)
-    n.crossVectors(ab.subVectors(b, a), ac.subVectors(c, a))
-    const [nx, ny, nz] = [Math.abs(n.x), Math.abs(n.y), Math.abs(n.z)]
-    for (let k = f; k < f + 3; k++) {
-      const x = p.getX(k)
-      const y = p.getY(k)
-      const z = p.getZ(k)
-      if (ny >= nx && ny >= nz && n.y < 0) {
-        uv[k * 2] = v.dark[0]
-        uv[k * 2 + 1] = v.dark[1]
-      } else if (ny >= nx && ny >= nz) {
-        // seen from above, nose left: the vehicle's right is at the top of the view
-        put(k, top, (z + top.w / 2) / top.w, (x + top.h / 2) / top.h)
-      } else if (nx >= nz) {
-        put(k, side, (z + side.w / 2) / side.w, y / side.h)
-      } else if (n.z < 0) {
-        // facing its front, the vehicle's right is on the view's left
-        put(k, front, (front.w / 2 - x) / front.w, y / front.h)
-      } else {
-        put(k, rear, (x + rear.w / 2) / rear.w, y / rear.h)
-      }
+  for (let i = 0; i < p.count; i++) {
+    const [x, y, z] = [p.getX(i), p.getY(i), p.getZ(i)]
+    const [nx, ny, nz] = [nrm.getX(i), nrm.getY(i), nrm.getZ(i)]
+    put(uvSide, i, side, (z + side.w / 2) / side.w, y / side.h)
+    // facing its front, the solid's right is on the view's left
+    if (nz < 0) put(uvEnd, i, front, (front.w / 2 - x) / front.w, y / front.h)
+    else put(uvEnd, i, rear, (x + rear.w / 2) / rear.w, y / rear.h)
+    if (ny < 0) [uvTop[i * 2], uvTop[i * 2 + 1]] = v.dark
+    // seen from above, nose left: the solid's right is at the top of the view
+    else put(uvTop, i, top, (z + top.w / 2) / top.w, (x + top.h / 2) / top.h)
+    weights[i * 3] = Math.abs(nx) ** SHARP
+    weights[i * 3 + 1] = Math.abs(nz) ** SHARP
+    weights[i * 3 + 2] = Math.abs(ny) ** SHARP
+  }
+  box.setAttribute('uv', new THREE.BufferAttribute(uvSide, 2))
+  box.setAttribute('uvEnd', new THREE.BufferAttribute(uvEnd, 2))
+  box.setAttribute('uvTop', new THREE.BufferAttribute(uvTop, 2))
+  box.setAttribute('viewW', new THREE.BufferAttribute(weights, 3))
+  geos.set(v.id, box)
+  return box
+}
+
+const mats = new Map<string, THREE.MeshToonMaterial>()
+
+/**
+ * A painted solid's material: the painted art's (toon, curved like the world), sampling its
+ * texture three times, at the side, end and top views, mixed by the weights. Left out of the
+ * block's batching (bake.ts), which keeps only one set of UVs.
+ */
+export function solidMat(path: string): THREE.MeshToonMaterial {
+  let m = mats.get(path)
+  if (!m) {
+    m = paintedMat(path).clone()
+    m.userData.solid = true
+    m.onBeforeCompile = (sh) => {
+      patchCurve(sh)
+      const decl = 'varying vec2 vUvEnd;\nvarying vec2 vUvTop;\nvarying vec3 vViewW;'
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', `#include <common>\nattribute vec2 uvEnd;\nattribute vec2 uvTop;\nattribute vec3 viewW;\n${decl}`)
+        .replace('#include <uv_vertex>', '#include <uv_vertex>\nvUvEnd = uvEnd;\nvUvTop = uvTop;\nvViewW = viewW;')
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\n${decl}`).replace(
+        '#include <map_fragment>',
+        `vec3 sw = vViewW / max(vViewW.x + vViewW.y + vViewW.z, 1e-4);
+        diffuseColor *= texture2D(map, vMapUv) * sw.x + texture2D(map, vUvEnd) * sw.y + texture2D(map, vUvTop) * sw.z;`,
+      )
     }
+    m.customProgramCacheKey = () => 'toon-curve-solid'
+    mats.set(path, m)
   }
-  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
-  geos.set(v.id, g)
-  return g
+  return m
 }

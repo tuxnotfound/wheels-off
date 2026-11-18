@@ -211,7 +211,13 @@ into one texture, `public/art/vehicles/<id>.webp`, and puts the outlines in the 
 The game shapes the vehicle from where the side, front and top outlines overlap
 (`src/world/paintedSolid.ts`). It is a box cut in slices nose to tail, each slice as tall as
 the side view there and as wide as the narrower of the front and top views at each height. Each
-surface is painted from the view it faces, and the underside is ink. Door mirrors and an aerial
+point is painted from the three views it can be seen in (the side, the end it faces, the top),
+mixed by how squarely it faces each, so a rounded corner fades from one view into the next; the
+underside is ink. Chosen per triangle instead, the views flipped back and forth over a corner: a
+tail lamp painted twice, a pillar in teeth. The importer also paints over each view's outer ink
+outline from the color inside it, as the game's ink pass draws the shape's silhouette: where the
+body curves away, a view lands at a grazing angle and its outline stretched into a stripe across
+a door or a fender. Door mirrors and an aerial
 are too thin to shape, so the importer drops them from the outlines and they stay painted on the
 views. The model draws the front, rear and top up to 25% wider or narrower than each other, so
 the importer stretches each across to the body's real width, `--width`.

@@ -37,6 +37,8 @@ function groupOf(mesh: THREE.Mesh): { key: string; kind: Kind; mat: THREE.Materi
   }
   if (mats.length !== 1) return null
   const m = mats[0] as THREE.MeshToonMaterial
+  // a painted solid samples its texture through three sets of UVs; the merge keeps one
+  if (m.userData.solid) return null
   if (m.userData.canopy) return { key: `canopy:${m.uuid}`, kind: 'canopy', mat: m }
   if (m.isMeshToonMaterial && m.map && g.attributes.normal && g.attributes.uv) return { key: `textured:${m.uuid}:${shadow}`, kind: 'textured', mat: m }
   return null

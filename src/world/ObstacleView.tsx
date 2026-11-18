@@ -12,9 +12,9 @@ import { obstaclesFor } from './streetGen'
 import type { Obstacle } from './streetGen'
 import { BLOCK } from './worldConfig'
 import { LIVE, bakeStatic } from './bake'
-import { art, paintedMat } from '../art/art'
+import { art } from '../art/art'
 import type { ObstacleArt } from '../art/art'
-import { solidGeometry } from './paintedSolid'
+import { solidGeometry, solidMat } from './paintedSolid'
 
 const INK_DARK = '#2f3332'
 const WHITE = '#f1f1ea'
@@ -44,7 +44,7 @@ function Body({ ob }: { ob: Obstacle }) {
   const painted = paintedFor(ob)
   // a quarter turn: its length across the road, and the sheet's front (the solid's left side)
   // toward oncoming riders, who come from +z
-  if (painted) return <M g={solidGeometry(painted)} m={paintedMat(painted.atlas)} p={[0, 0, 0]} s={[1, 1, 1]} r={[0, Math.PI / 2, 0]} />
+  if (painted) return <M g={solidGeometry(painted)} m={solidMat(painted.atlas)} p={[0, 0, 0]} s={[1, 1, 1]} r={[0, Math.PI / 2, 0]} />
   const hazard = decalMat('hazard', hazardTex())
   const cardboard = decalMat('cardboard', cardboardTex())
   switch (ob.kind) {

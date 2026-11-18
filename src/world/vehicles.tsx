@@ -1,9 +1,9 @@
 import { CYL, RBOX, RING } from '../look/geom'
 import { AdSlot } from '../ads/AdSlot'
-import { art, paintedMat } from '../art/art'
+import { art } from '../art/art'
 import type { VehicleArt } from '../art/art'
 import { M } from './parts'
-import { edgesAt, solidGeometry } from './paintedSolid'
+import { edgesAt, solidGeometry, solidMat } from './paintedSolid'
 import type { VehicleSpot } from './streetGen'
 
 // Parked vehicles and bikes. Chunky rounded toon shapes, inked by the post pass like
@@ -318,7 +318,7 @@ export function Vehicle({ spot, slot }: { spot: VehicleSpot; slot: string }) {
   const painted = paintedFor(kind, r)
   const body = painted ? (
     <>
-      <M g={solidGeometry(painted)} m={paintedMat(painted.atlas)} p={[0, 0, 0]} s={[1, 1, 1]} />
+      <M g={solidGeometry(painted)} m={solidMat(painted.atlas)} p={[0, 0, 0]} s={[1, 1, 1]} />
       {painted.kind === 'van' && <VanAds v={painted} r={r} slot={slot} />}
     </>
   ) : kind === 'kei-truck' ? (
