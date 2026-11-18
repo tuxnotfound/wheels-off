@@ -3,7 +3,7 @@ import { AdSlot } from '../ads/AdSlot'
 import { art, paintedMat } from '../art/art'
 import type { VehicleArt } from '../art/art'
 import { M } from './parts'
-import { halfWidthAt, vehicleGeometry } from './paintedVehicle'
+import { edgesAt, solidGeometry } from './paintedSolid'
 import type { VehicleSpot } from './streetGen'
 
 // Parked vehicles and bikes. Chunky rounded toon shapes, inked by the post pass like
@@ -302,11 +302,11 @@ function paintedFor(kind: VehicleKind, r: number): VehicleArt | undefined {
 function VanAds({ v, r, slot }: { v: VehicleArt; r: number; slot: string }) {
   const z = v.length * 0.13
   const y = v.height * 0.65
-  const x = halfWidthAt(v, y, z) + 0.012
+  const [x0, x1] = edgesAt(v, y, z)
   return (
     <>
       {[-1, 1].map((sx) => (
-        <AdSlot key={sx} format="van" r={r} slot={`${slot}:${sx}`} p={[sx * x, y, z]} rot={[0, (sx * Math.PI) / 2, 0]} />
+        <AdSlot key={sx} format="van" r={r} slot={`${slot}:${sx}`} p={[sx > 0 ? x1 + 0.012 : x0 - 0.012, y, z]} rot={[0, (sx * Math.PI) / 2, 0]} />
       ))}
     </>
   )
@@ -318,7 +318,7 @@ export function Vehicle({ spot, slot }: { spot: VehicleSpot; slot: string }) {
   const painted = paintedFor(kind, r)
   const body = painted ? (
     <>
-      <M g={vehicleGeometry(painted)} m={paintedMat(painted.atlas)} p={[0, 0, 0]} s={[1, 1, 1]} />
+      <M g={solidGeometry(painted)} m={paintedMat(painted.atlas)} p={[0, 0, 0]} s={[1, 1, 1]} />
       {painted.kind === 'van' && <VanAds v={painted} r={r} slot={slot} />}
     </>
   ) : kind === 'kei-truck' ? (

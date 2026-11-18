@@ -1,15 +1,17 @@
-// Brings a parked vehicle from an image model into the town (ART.md, Vehicles). The image is a
-// reference sheet: four orthographic views of one vehicle at one scale, in a two by two grid on a
+// Brings a parked vehicle, or a pile of bin bags or boxes in the road, from an image model into the
+// town (ART.md, Vehicles). The image is a reference sheet: four orthographic views of one vehicle
+// (or obstacle) at one scale, in a two by two grid on a
 // plain background (top left its left side, nose left; top right its front; bottom left seen from
 // above, nose left; bottom right its rear). This cuts the background away, splits the views at
 // the empty bands between them, measures each view's outline in meters and packs the four into
-// one texture, then adds or updates the vehicle's manifest entry with those outlines. The game
-// shapes the vehicle from where the outlines overlap and paints each surface from the view it
-// faces (src/world/paintedVehicle.ts).
+// one texture, then adds or updates its entry in the manifest's vehicles (or obstacles) with those
+// outlines. The game shapes it from where the outlines overlap and paints each surface from the
+// view it faces (src/world/paintedVehicle.ts).
 //
-// Usage: npm run art:vehicle -- <sheet> --id <id> --kind kei-car|kei-truck|van --length <m>
-//          [--width <m>] [--tolerance <0-255>]
-//  --length  nose to tail in meters: sets the scale of all four views
+// Usage: npm run art:vehicle -- <sheet> --id <id> --kind kei-car|kei-truck|van|bags|boxes
+//          --length <m> [--width <m>] [--tolerance <0-255>]
+//  --kind    a vehicle's, or an obstacle's (bags, boxes), whose front faces oncoming riders
+//  --length  nose to tail (front to back) in meters: sets the scale of all four views
 //  --width   the body's width without its mirrors (default: as the top view has it). The model
 //            draws the front, rear and top a little wider or narrower than each other, so each is
 //            stretched across to this
@@ -33,13 +35,15 @@ const { values: o, positionals } = parseArgs({
 })
 const [src] = positionals
 const length = Number(o.length)
-if (!src || !o.id || !/^[a-z0-9-]+$/.test(o.id) || !(length > 0) || !['kei-car', 'kei-truck', 'van'].includes(o.kind)) {
-  throw new Error('usage: npm run art:vehicle -- <sheet> --id <lowercase-id> --kind kei-car|kei-truck|van --length <meters>')
+const LIST = { 'kei-car': 'vehicles', 'kei-truck': 'vehicles', van: 'vehicles', bags: 'obstacles', boxes: 'obstacles' }
+if (!src || !o.id || !/^[a-z0-9-]+$/.test(o.id) || !(length > 0) || !LIST[o.kind]) {
+  throw new Error('usage: npm run art:vehicle -- <sheet> --id <lowercase-id> --kind kei-car|kei-truck|van|bags|boxes --length <meters>')
 }
 const types = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' }
 const type = types[extname(src).toLowerCase()]
 if (!type) throw new Error(`a .png, .jpg or .webp image, not ${src}`)
-const file = `vehicles/${o.id}.webp`
+const list = LIST[o.kind]
+const file = `${list}/${o.id}.webp`
 
 const browser = await chromium.launch({ channel: 'chromium' })
 let out
@@ -138,43 +142,55 @@ try {
       }
       const hiOpen = open(sideHi, 7)
 
-      // front and rear: for each slice up the height, the half width from the view's middle
-      const halfWidths = (v) => {
-        const cx = (v.x0 + v.x1 + 1) / 2
+      // front, rear and top: for each slice, its left and right edges in meters across the
+      // vehicle, +x to its right: on the front's left, the rear's right and the top's top edge.
+      // Kept apart, not as a half width, so a lopsided pile of bin bags keeps its shape.
+      const edges = (v, n, across) => {
         const out = []
-        for (let j = 0; j < M; j++) {
-          // slice j spans j/M to (j+1)/M of the view's height, from the ground up
-          const ya = v.y1 - Math.floor(((j + 1) * v.h) / M) + 1
-          const yb = v.y1 - Math.floor((j * v.h) / M)
-          let hw = 0
-          for (let y = ya; y <= Math.max(ya, yb); y++) for (let x = v.x0; x <= v.x1; x++) if (solid(x, y)) hw = Math.max(hw, Math.abs(x + 0.5 - cx) / ppm)
-          out.push(hw)
+        for (let j = 0; j < n; j++) {
+          let lo = Infinity, hi = -Infinity
+          for (const [x, y] of across(v, j, n)) {
+            if (!solid(x, y)) continue
+            const m = v.toX(x, y)
+            lo = Math.min(lo, m)
+            hi = Math.max(hi, m)
+          }
+          out.push(lo === Infinity ? [0, 0] : [lo, hi])
         }
         return out
       }
-      const fw = halfWidths(front)
-      const rw = halfWidths(rear)
-
-      // top: for each slice along the length, the half width, with the door mirrors opened away
-      const cy = (top.y0 + top.y1 + 1) / 2
-      const topHw = []
-      for (let i = 0; i < N; i++) {
-        const xa = top.x0 + Math.floor((i * top.w) / N)
-        const xb = top.x0 + Math.floor(((i + 1) * top.w) / N)
-        let hw = 0
-        for (let x = xa; x < Math.max(xb, xa + 1); x++) for (let y = top.y0; y <= top.y1; y++) if (solid(x, y)) hw = Math.max(hw, Math.abs(y + 0.5 - cy) / ppm)
-        topHw.push(hw)
+      // slice j up a view's height, from the ground, every pixel in it
+      function* row(v, j, n) {
+        const ya = v.y1 - Math.floor(((j + 1) * v.h) / n) + 1
+        const yb = v.y1 - Math.floor((j * v.h) / n)
+        for (let y = ya; y <= Math.max(ya, yb); y++) for (let x = v.x0; x <= v.x1; x++) yield [x, y]
       }
-      const topOpen = open(topHw, 9)
+      // slice i along a view's length, nose first
+      function* col(v, i, n) {
+        const xa = v.x0 + Math.floor((i * v.w) / n)
+        const xb = v.x0 + Math.floor(((i + 1) * v.w) / n)
+        for (let x = xa; x < Math.max(xb, xa + 1); x++) for (let y = v.y0; y <= v.y1; y++) yield [x, y]
+      }
+      const mid = (v) => [(v.x0 + v.x1 + 1) / 2, (v.y0 + v.y1 + 1) / 2]
+      front.toX = (x) => (mid(front)[0] - x - 0.5) / ppm
+      rear.toX = (x) => (x + 0.5 - mid(rear)[0]) / ppm
+      top.toX = (x, y) => (mid(top)[1] - y - 0.5) / ppm
+      const fe = edges(front, M, row)
+      const re = edges(rear, M, row)
+      const te = edges(top, N, col)
+      // the mirrors opened away from each side of the top
+      const tLo = open(te.map((e) => -e[0]), 9).map((v) => -v)
+      const tHi = open(te.map((e) => e[1]), 9)
       // the model draws the front, rear and top a little wider or narrower than each other: each
-      // is stretched across to the body's width, measured without its door mirrors
-      const half = width ? width / 2 : Math.max(...topOpen)
-      const kt = half / Math.max(...topOpen)
-      // (a van's mirrors stand 40 cm tall: the opening spans 17 of 64 slices, over a quarter)
-      const kf = half / Math.max(...open(fw, 17))
-      const kr = half / Math.max(...open(rw, 17))
-      const frontHw = fw.map((v, j) => Math.max(v * kf, rw[j] * kr))
-      const topHalf = topOpen.map((v) => v * kt)
+      // is stretched across to the body's width, measured without its door mirrors (a van's stand
+      // 40 cm tall, so the front's and rear's opening spans 17 of 64 slices)
+      const across = (lo, hi) => Math.max(...hi) - Math.min(...lo)
+      const body = width ?? across(tLo, tHi)
+      const kt = body / across(tLo, tHi)
+      const kf = body / across(open(fe.map((e) => -e[0]), 17).map((v) => -v), open(fe.map((e) => e[1]), 17))
+      const kr = body / across(open(re.map((e) => -e[0]), 17).map((v) => -v), open(re.map((e) => e[1]), 17))
+      const frontEdges = fe.map((e, j) => [Math.min(e[0] * kf, re[j][0] * kr), Math.max(e[1] * kf, re[j][1] * kr)])
+      const topEdges = tLo.map((lo, i) => [lo * kt, tHi[i] * kt])
 
       // the texture: side and top down the left, front and rear on the right, ink around and
       // between them, so a surface at an outline's edge reads as inked
@@ -217,10 +233,10 @@ try {
         dark: [Math.round((PAD / 2 / AW) * 1e5) / 1e5, Math.round((1 - PAD / 2 / AH) * 1e5) / 1e5],
         profile: {
           side: sideLo.map((lo, i) => [r3(lo), r3(Math.max(lo, hiOpen[i]))]),
-          front: frontHw.map(r3),
-          top: topHalf.map(r3),
+          front: frontEdges.map((e) => e.map(r3)),
+          top: topEdges.map((e) => e.map(r3)),
         },
-        dims: { width: r3(2 * half), height: r3(Math.max(...hiOpen)) },
+        dims: { width: r3(body), height: r3(Math.max(...hiOpen)) },
       }
     },
     { dataUrl: `data:${type};base64,${readFileSync(src).toString('base64')}`, tol: Number(o.tolerance), length, width: o.width ? Number(o.width) : null },
@@ -230,7 +246,7 @@ try {
 }
 
 if (!out.webp.startsWith('data:image/webp')) throw new Error('this Chromium cannot write WebP')
-mkdirSync('public/art/vehicles', { recursive: true })
+mkdirSync(`public/art/${list}`, { recursive: true })
 const bytes = Buffer.from(out.webp.split(',')[1], 'base64')
 writeFileSync(`public/art/${file}`, bytes)
 const entry = {
@@ -245,12 +261,12 @@ const entry = {
   profile: out.profile,
 }
 const manifest = readManifest()
-manifest.vehicles ??= []
-const at = manifest.vehicles.findIndex((v) => v.id === o.id)
-if (at >= 0) manifest.vehicles[at] = entry
-else manifest.vehicles.push(entry)
+manifest[list] ??= []
+const at = manifest[list].findIndex((v) => v.id === o.id)
+if (at >= 0) manifest[list][at] = entry
+else manifest[list].push(entry)
 writeManifest(manifest)
 console.log(`public/art/${file}: ${out.size.join('x')} px, ${Math.round(bytes.length / 1024)} KB, ${out.ppm.toFixed(0)} px a meter (background ${out.bg.join(',')} cut away)`)
 console.log(`front, rear and top stretched across by ${out.stretch.map((k) => k.toFixed(2)).join(', ')} to ${o.width ? 'its width' : "the top view's width"}`)
-console.log(`${at >= 0 ? 'updated' : 'added'} in the manifest: ${o.id}, ${o.kind}, ${length} x ${entry.width} x ${entry.height} m`)
+console.log(`${at >= 0 ? 'updated' : 'added'} in the manifest's ${list}: ${o.id}, ${o.kind}, ${length} x ${entry.width} x ${entry.height} m`)
 for (const [k, v] of Object.entries(out.views)) console.log(`  ${k}: ${v.w} x ${v.h} m`)

@@ -208,7 +208,7 @@ into one texture, `public/art/vehicles/<id>.webp`, and puts the outlines in the 
 `vehicles` list.
 
 The game shapes the vehicle from where the side, front and top outlines overlap
-(`src/world/paintedVehicle.ts`). It is a box cut in slices nose to tail, each slice as tall as
+(`src/world/paintedSolid.ts`). It is a box cut in slices nose to tail, each slice as tall as
 the side view there and as wide as the narrower of the front and top views at each height. Each
 surface is painted from the view it faces, and the underside is ink. Door mirrors and an aerial
 are too thin to shape, so the importer drops them from the outlines and they stay painted on the

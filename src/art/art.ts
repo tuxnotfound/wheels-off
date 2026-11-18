@@ -35,29 +35,33 @@ export type PropArt = {
   color?: string // a box's or a wall's sides and top
   base?: number // a box on a post: where the box starts, in meters from the ground
 }
-/** One of a vehicle's four views in its texture: where (UVs, v up) and its size in meters. */
-export type VehicleView = { rect: [number, number, number, number]; w: number; h: number }
+/** One of a solid's four views in its texture: where (UVs, v up) and its size in meters. */
+export type SolidView = { rect: [number, number, number, number]; w: number; h: number }
 /**
- * A parked vehicle from four painted views (scripts/import-vehicle.mjs). Its outlines, in
- * meters: `side`, the lowest and highest point of each slice nose to tail; `front`, the half
- * width of each slice up the height; `top`, the half width of each slice nose to tail.
+ * A vehicle or an obstacle from four painted views (scripts/import-vehicle.mjs). Its outlines,
+ * in meters: `side`, the lowest and highest point of each slice nose to tail; `front`, the left
+ * and right edge of each slice up the height; `top`, the same of each slice nose to tail (+x to
+ * its right).
  */
-export type VehicleArt = {
+export type SolidArt = {
   id: string
-  kind: 'kei-car' | 'kei-truck' | 'van'
+  kind: string
   atlas: string
   length: number
   width: number
   height: number
-  views: { side: VehicleView; front: VehicleView; rear: VehicleView; top: VehicleView }
+  views: { side: SolidView; front: SolidView; rear: SolidView; top: SolidView }
   dark: [number, number] // an ink texel, for the underside
-  profile: { side: [number, number][]; front: number[]; top: number[] }
+  profile: { side: [number, number][]; front: [number, number][]; top: [number, number][] }
 }
+export type VehicleArt = SolidArt & { kind: 'kei-car' | 'kei-truck' | 'van' }
+export type ObstacleArt = SolidArt & { kind: 'bags' | 'boxes' }
 export type ArtManifest = {
   character: string | null
   buildings: BuildingArt[]
   props: PropArt[]
   vehicles?: VehicleArt[]
+  obstacles?: ObstacleArt[]
 }
 
 export let art: ArtManifest = { character: null, buildings: [], props: [] }
