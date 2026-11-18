@@ -8,8 +8,11 @@
 // faces (src/world/paintedVehicle.ts).
 //
 // Usage: npm run art:vehicle -- <sheet> --id <id> --kind kei-car|kei-truck|van --length <m>
-//          [--tolerance <0-255>]
+//          [--width <m>] [--tolerance <0-255>]
 //  --length  nose to tail in meters: sets the scale of all four views
+//  --width   the body's width without its mirrors (default: as the top view has it). The model
+//            draws the front, rear and top a little wider or narrower than each other, so each is
+//            stretched across to this
 // Needs Playwright's Chromium (`npx playwright-core install chromium`), which does the image work.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { extname } from 'node:path'
@@ -24,6 +27,7 @@ const { values: o, positionals } = parseArgs({
     id: { type: 'string' },
     kind: { type: 'string' },
     length: { type: 'string' },
+    width: { type: 'string' },
     tolerance: { type: 'string', default: '28' },
   },
 })
@@ -43,7 +47,7 @@ try {
   const page = await browser.newPage()
   await page.addScriptTag({ content: `window.cutBackground = ${cutBackground}` })
   out = await page.evaluate(
-    async ({ dataUrl, tol, length }) => {
+    async ({ dataUrl, tol, length, width }) => {
       const N = 96 // samples along the length
       const M = 64 // samples up the height
       const INK = [43, 54, 52] // #2b3634, what fills the views around their outlines
@@ -162,12 +166,15 @@ try {
         topHw.push(hw)
       }
       const topOpen = open(topHw, 9)
-      // the model draws the front and rear a little wider or narrower than the top: each is
-      // stretched across to the top's width, measured without its door mirrors
-      const half = Math.max(...topOpen)
-      const kf = half / Math.max(...open(fw, 9))
-      const kr = half / Math.max(...open(rw, 9))
+      // the model draws the front, rear and top a little wider or narrower than each other: each
+      // is stretched across to the body's width, measured without its door mirrors
+      const half = width ? width / 2 : Math.max(...topOpen)
+      const kt = half / Math.max(...topOpen)
+      // (a van's mirrors stand 40 cm tall: the opening spans 17 of 64 slices, over a quarter)
+      const kf = half / Math.max(...open(fw, 17))
+      const kr = half / Math.max(...open(rw, 17))
       const frontHw = fw.map((v, j) => Math.max(v * kf, rw[j] * kr))
+      const topHalf = topOpen.map((v) => v * kt)
 
       // the texture: side and top down the left, front and rear on the right, ink around and
       // between them, so a surface at an outline's edge reads as inked
@@ -189,14 +196,14 @@ try {
       g.putImageData(data, 0, 0)
       ag.fillStyle = `rgb(${INK.join(',')})`
       ag.fillRect(0, 0, AW, AH)
-      const place = (v, x, y, kw = 1) => {
+      const place = (v, x, y, kw = 1, kh = 1) => {
         ag.drawImage(c, v.x0, v.y0, v.w, v.h, x, y, v.w, v.h)
-        // as UVs, v up from the bottom; its size in meters, kw across
-        return { rect: [x / AW, 1 - (y + v.h) / AH, (x + v.w) / AW, 1 - y / AH].map((n) => Math.round(n * 1e5) / 1e5), w: r3((v.w / ppm) * kw), h: r3(v.h / ppm) }
+        // as UVs, v up from the bottom; its size in meters, stretched by kw and kh
+        return { rect: [x / AW, 1 - (y + v.h) / AH, (x + v.w) / AW, 1 - y / AH].map((n) => Math.round(n * 1e5) / 1e5), w: r3((v.w / ppm) * kw), h: r3((v.h / ppm) * kh) }
       }
       const views = {
         side: place(side, PAD, PAD),
-        top: place(top, PAD, 2 * PAD + side.h),
+        top: place(top, PAD, 2 * PAD + side.h, 1, kt),
         front: place(front, 2 * PAD + Math.max(side.w, top.w), PAD, kf),
         rear: place(rear, 3 * PAD + Math.max(side.w, top.w) + front.w, PAD, kr),
       }
@@ -204,19 +211,19 @@ try {
         webp: a.toDataURL('image/webp', 0.9),
         size: [AW, AH],
         ppm,
-        stretch: [kf, kr],
+        stretch: [kf, kr, kt],
         bg: med,
         views,
         dark: [Math.round((PAD / 2 / AW) * 1e5) / 1e5, Math.round((1 - PAD / 2 / AH) * 1e5) / 1e5],
         profile: {
           side: sideLo.map((lo, i) => [r3(lo), r3(Math.max(lo, hiOpen[i]))]),
           front: frontHw.map(r3),
-          top: topOpen.map(r3),
+          top: topHalf.map(r3),
         },
-        dims: { width: r3(2 * Math.max(...topOpen)), height: r3(Math.max(...hiOpen)) },
+        dims: { width: r3(2 * half), height: r3(Math.max(...hiOpen)) },
       }
     },
-    { dataUrl: `data:${type};base64,${readFileSync(src).toString('base64')}`, tol: Number(o.tolerance), length },
+    { dataUrl: `data:${type};base64,${readFileSync(src).toString('base64')}`, tol: Number(o.tolerance), length, width: o.width ? Number(o.width) : null },
   )
 } finally {
   await browser.close()
@@ -244,6 +251,6 @@ if (at >= 0) manifest.vehicles[at] = entry
 else manifest.vehicles.push(entry)
 writeManifest(manifest)
 console.log(`public/art/${file}: ${out.size.join('x')} px, ${Math.round(bytes.length / 1024)} KB, ${out.ppm.toFixed(0)} px a meter (background ${out.bg.join(',')} cut away)`)
-console.log(`front and rear stretched across by ${out.stretch.map((k) => k.toFixed(2)).join(' and ')} to the top view's width`)
+console.log(`front, rear and top stretched across by ${out.stretch.map((k) => k.toFixed(2)).join(', ')} to ${o.width ? 'its width' : "the top view's width"}`)
 console.log(`${at >= 0 ? 'updated' : 'added'} in the manifest: ${o.id}, ${o.kind}, ${length} x ${entry.width} x ${entry.height} m`)
 for (const [k, v] of Object.entries(out.views)) console.log(`  ${k}: ${v.w} x ${v.h} m`)
