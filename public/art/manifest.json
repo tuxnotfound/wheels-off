@@ -12,10 +12,7 @@
       "side": "#f4e4cc",
       "roof": "#668b8b",
       "roofShape": "pitched",
-      "awning": [
-        2.45,
-        3.68
-      ]
+      "awning": [2.45, 3.68]
     },
     {
       "id": "house-sage-2",
@@ -93,10 +90,7 @@
       "side": "#fcecd4",
       "roof": "#9ea8aa",
       "roofShape": "pitched",
-      "awning": [
-        2.05,
-        2.78
-      ]
+      "awning": [2.05, 2.78]
     },
     {
       "id": "shop-books-2",
@@ -108,10 +102,7 @@
       "side": "#f4e4c4",
       "roof": "#6f868e",
       "roofShape": "pitched",
-      "awning": [
-        2.8,
-        3.32
-      ]
+      "awning": [2.8, 3.32]
     },
     {
       "id": "shokudo-2",
@@ -123,10 +114,7 @@
       "side": "#a48c74",
       "roof": "#718082",
       "roofShape": "pitched",
-      "awning": [
-        3.35,
-        3.85
-      ]
+      "awning": [3.35, 3.85]
     },
     {
       "id": "apt-pink-4f-2",
