@@ -298,10 +298,10 @@ function paintedFor(kind: VehicleKind, r: number): VehicleArt | undefined {
   return mine.length ? mine[Math.floor(r * mine.length) % mine.length] : undefined
 }
 
-/** A painted van's ad slots, on its flat sides behind the cab, a little above the middle. */
+/** A painted van's ad slots, on its flat sides behind the cab, about two thirds up. */
 function VanAds({ v, r, slot }: { v: VehicleArt; r: number; slot: string }) {
   const z = v.length * 0.13
-  const y = v.height * 0.6
+  const y = v.height * 0.65
   const x = halfWidthAt(v, y, z) + 0.012
   return (
     <>

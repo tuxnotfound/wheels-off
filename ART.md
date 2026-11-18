@@ -205,8 +205,8 @@ The game shapes the vehicle from where the side, front and top outlines overlap
 the side view there and as wide as the narrower of the front and top views at each height. Each
 surface is painted from the view it faces, and the underside is ink. Door mirrors and an aerial
 are too thin to shape, so the importer drops them from the outlines and they stay painted on the
-views. The model draws the front and rear a few percent wider or narrower than the top, so the
-importer stretches them across to the top's width.
+views. The model draws the front, rear and top up to 25% wider or narrower than each other, so
+the importer stretches each across to the body's real width, `--width`.
 
 A kind with painted vehicles (`kei-car`, `kei-truck`, `van`) shows one of them, picked per spot.
 A kind with none keeps its code model (`src/world/vehicles.tsx`). The scooter and the bicycle stay
@@ -227,14 +227,23 @@ The sheet's prompt (append the subject):
 > blank, isolated on a solid flat magenta background
 
 ```bash
-npm run art:vehicle -- ~/Downloads/kei.png --id kei-car-mint --kind kei-car --length 3.4
+npm run art:vehicle -- ~/Downloads/kei.png --id kei-car-mint --kind kei-car --length 3.4 --width 1.48
 ```
 
-`--length` is nose to tail in meters and sets the scale of all four views.
+`--length` is nose to tail in meters and sets the scale of all four views. `--width` is the body's
+width without its mirrors: 1.48 m for any kei vehicle, the legal limit.
 
 | id | subject | import flags |
 |---|---|---|
-| `kei-car-mint` | a tall boxy Japanese kei hatchback, 3.4 m long, 1.48 m wide and 1.7 m tall, a short sloping bonnet, a tall glasshouse with dark teal glass, pale mint green paint with a white roof, round headlamps, small black door mirrors, yellow number plates | `--kind kei-car --length 3.4` |
+| `kei-car-mint` | a tall boxy Japanese kei hatchback, 3.4 m long, 1.48 m wide and 1.7 m tall, a short sloping bonnet, a tall glasshouse with dark teal glass, pale mint green paint with a white roof, round headlamps, small black door mirrors, yellow number plates | `--kind kei-car --length 3.4 --width 1.48` |
+| `kei-car-cream` | a boxy Japanese kei wagon, 3.4 m long, 1.48 m wide and 1.7 m tall, a flat upright front with square headlamps, a tall upright glasshouse with dark teal glass, cream paint, black bumpers, small black door mirrors, yellow number plates | `--kind kei-car --length 3.4 --width 1.48` |
+| `kei-car-blue` | a rounded Japanese kei hatchback, 3.4 m long, 1.48 m wide and 1.55 m tall, dusty blue paint, a short rounded bonnet, oval headlamps, dark teal glass, small door mirrors in the body color, yellow number plates | `--kind kei-car --length 3.4 --width 1.48` |
+| `kei-truck-white` | a Japanese kei truck, 3.4 m long, 1.48 m wide and 1.8 m tall, white, a flat-nosed cab over the front wheels with a tall windscreen, an open flat bed behind the cab with low drop sides and a guard frame behind the cab, the bed empty, round headlamps, small black door mirrors, yellow number plates | `--kind kei-truck --length 3.4 --width 1.48` |
+| `van-white` | a Japanese cab-over delivery van, 4.7 m long, 1.7 m wide and 1.98 m tall, white, a flat upright front with the windscreen right above the front wheels and almost no bonnet, a tall boxy body with plain flat sides and no windows behind the front doors, dark teal glass, grey bumpers, small black door mirrors, white number plates | `--kind van --length 4.7 --width 1.69` |
+
+The truck's open bed comes out filled to its rails, its painted floor on top: from the riding
+height it reads as a bed. A van carries its two ad slots on its flat sides, as the code van did.
+Ask for a cab-over van in words: asked for a delivery van, the model drew a long-nosed European one.
 ## Character: VRM
 
 The default `public/art/character.vrm` is pixiv's VRM sample model
