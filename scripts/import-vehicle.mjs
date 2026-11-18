@@ -204,13 +204,62 @@ try {
       a.width = AW
       a.height = AH
       const ag = a.getContext('2d')
-      // every cut-away pixel in ink, so the views read solid where the shape is wider than a view
+      // each view's outer ink outline, and the pixels half background around it, painted over in
+      // the color just inside. Where the body curves away near a corner, a view lands on it at a
+      // grazing angle and its outline would stretch into a stripe across a door or a fender; the
+      // game's ink pass draws the shape's own silhouette. A dark bumper or tire reaching the edge
+      // has no light color inside it, so it keeps its edge.
+      const EDGE = 6 // pixels in from the background
+      const near = (i) => {
+        const x = i % W
+        return [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, i - W, i + W].filter((j) => j >= 0 && j < W * H)
+      }
+      const depth = new Uint8Array(W * H).fill(255)
+      let ring = []
+      for (let i = 0; i < W * H; i++) if (bg[i]) (depth[i] = 0), ring.push(i)
+      for (let d = 1; d <= EDGE; d++) {
+        const next = []
+        for (const i of ring) for (const j of near(i)) if (depth[j] === 255) (depth[j] = d), next.push(j)
+        ring = next
+      }
+      const luma = (i) => 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2]
+      const toBg = (i) => Math.abs(px[i * 4] - med[0]) + Math.abs(px[i * 4 + 1] - med[1]) + Math.abs(px[i * 4 + 2] - med[2])
+      // ink takes a light color from inside; a half-background pixel takes any color inside,
+      // a tire's too
+      const fixed = new Uint8Array(W * H)
+      for (let d = EDGE; d >= 1; d--) {
+        for (let i = 0; i < W * H; i++) {
+          const halo = toBg(i) < 160
+          if (depth[i] !== d || (!halo && luma(i) >= 90)) continue
+          const from = near(i).find((j) => depth[j] > d && (fixed[j] || (toBg(j) >= 160 && (halo || luma(j) >= 90))))
+          if (from === undefined) continue
+          for (let ch = 0; ch < 3; ch++) px[i * 4 + ch] = px[from * 4 + ch]
+          fixed[i] = 1
+        }
+      }
+      // the colors bled four pixels out over the background, so the texture's filtering at an
+      // outline never pulls in the ink beyond; every other cut-away pixel in ink, so the views read
+      // solid where the shape is wider than a view
+      const color = new Uint8Array(W * H)
+      for (let i = 0; i < W * H; i++) color[i] = bg[i] ? 0 : 1
+      for (let pass = 0; pass < 4; pass++) {
+        const grown = []
+        for (let i = 0; i < W * H; i++) {
+          if (color[i]) continue
+          const from = near(i).find((j) => color[j])
+          if (from !== undefined) grown.push(i, from)
+        }
+        for (let k = 0; k < grown.length; k += 2) {
+          for (let ch = 0; ch < 3; ch++) px[grown[k] * 4 + ch] = px[grown[k + 1] * 4 + ch]
+          color[grown[k]] = 1
+        }
+      }
       for (let i = 0; i < W * H; i++) {
-        if (!bg[i]) continue
+        px[i * 4 + 3] = 255
+        if (color[i]) continue
         px[i * 4] = INK[0]
         px[i * 4 + 1] = INK[1]
         px[i * 4 + 2] = INK[2]
-        px[i * 4 + 3] = 255
       }
       g.putImageData(data, 0, 0)
       ag.fillStyle = `rgb(${INK.join(',')})`
