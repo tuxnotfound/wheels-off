@@ -90,10 +90,11 @@ shade. Sakura and green palettes, three shapes, and they are rare on purpose: an
 occasional tree at the back of a sidewalk, and some gardens behind block walls.
 
 Obstacles are **not** painted cards. They get jumped over and knocked flying, and flat
-cards looked like cardboard cut-outs tumbling. They are solid toon-shaded 3D shapes with
-hand-drawn textures, built in `src/world/ObstacleView.tsx` (cone, cone row, barricade,
-cardboard boxes, bin bags). Their sizes match the hitboxes in `src/world/streetGen.ts`
-(`OBST_SIZE`).
+cards looked like cardboard cut-outs tumbling. The bin bags and the cardboard boxes are painted
+solids, shaped from four views like the vehicles (Vehicles, below). The cone, the cone row and the
+barricade are toon-shaded 3D shapes with hand-drawn textures in `src/world/ObstacleView.tsx`: a
+cone's views would shape a square cone, and the barricade's A-frame legs would fill in solid. Their
+sizes match the hitboxes in `src/world/streetGen.ts` (`OBST_SIZE`).
 
 Cards seen edge-on from the street turn into thin scribbles (a bicycle card looked like a
 spider). Anything that stands along the street and is thin from the side needs a `box`
@@ -215,6 +216,13 @@ are too thin to shape, so the importer drops them from the outlines and they sta
 views. The model draws the front, rear and top up to 25% wider or narrower than each other, so
 the importer stretches each across to the body's real width, `--width`.
 
+The bin bags and the cardboard boxes (`--kind bags` or `boxes`) come the same way, into the
+manifest's `obstacles`. An obstacle's long front faces the rider, so its sheet asks for that front
+top left, where a vehicle's left side goes, its two ends on the right and the top view under the
+front; the game turns it a quarter turn. `--length` is then its front end to end, and `--width` its
+depth. Asked for its front only as "its long side", the model drew the long side in every view.
+In dev, `?obstacle=<kind>` makes every obstacle that kind.
+
 A kind with painted vehicles (`kei-car`, `kei-truck`, `van`) shows one of them, picked per spot.
 A kind with none keeps its code model (`src/world/vehicles.tsx`). The scooter and the bicycle stay
 code models: a bicycle is mostly holes, which outlines can't shape. In dev, `?vehicle=<id>` parks
@@ -247,6 +255,13 @@ width without its mirrors: 1.48 m for any kei vehicle, the legal limit.
 | `kei-car-blue` | a rounded Japanese kei hatchback, 3.4 m long, 1.48 m wide and 1.55 m tall, dusty blue paint, a short rounded bonnet, oval headlamps, dark teal glass, small door mirrors in the body color, yellow number plates | `--kind kei-car --length 3.4 --width 1.48` |
 | `kei-truck-white` | a Japanese kei truck, 3.4 m long, 1.48 m wide and 1.8 m tall, white, a flat-nosed cab over the front wheels with a tall windscreen, an open flat bed behind the cab with low drop sides and a guard frame behind the cab, the bed empty, round headlamps, small black door mirrors, yellow number plates | `--kind kei-truck --length 3.4 --width 1.48` |
 | `van-white` | a Japanese cab-over delivery van, 4.7 m long, 1.7 m wide and 1.98 m tall, white, a flat upright front with the windscreen right above the front wheels and almost no bonnet, a tall boxy body with plain flat sides and no windows behind the front doors, dark teal glass, grey bumpers, small black door mirrors, white number plates | `--kind van --length 4.7 --width 1.69` |
+
+| `bags-white` | a pile of three tied Japanese household rubbish bags left out for collection, semi-transparent white and pale blue plastic with crumpled paper showing through, each knotted at the top, in a row along its front, about 1.2 m long, 0.8 m from front to back and 0.55 m tall | `--kind bags --length 1.2 --width 0.45` |
+| `boxes-brown` | a stack of three brown cardboard boxes with packing tape: a big box on the ground, a smaller box on top of it set a little back, and a small box on the ground beside them, about 1.1 m long, 0.9 m from front to back and 0.72 m tall | `--kind boxes --length 1.1 --width 0.6` |
+
+The two obstacles took the sheet's prompt with "vehicle" changed to "object" and its views named
+as above. The bags came out 0.3 m deep and went in at 0.45; stretched to their hitbox's 0.8 they
+would bloat.
 
 The truck's open bed comes out filled to its rails, its painted floor on top: from the riding
 height it reads as a bed. A van carries its two ad slots on its flat sides, as the code van did.

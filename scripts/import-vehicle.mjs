@@ -10,9 +10,12 @@
 //
 // Usage: npm run art:vehicle -- <sheet> --id <id> --kind kei-car|kei-truck|van|bags|boxes
 //          --length <m> [--width <m>] [--tolerance <0-255>]
-//  --kind    a vehicle's, or an obstacle's (bags, boxes), whose front faces oncoming riders
-//  --length  nose to tail (front to back) in meters: sets the scale of all four views
-//  --width   the body's width without its mirrors (default: as the top view has it). The model
+//  --kind    a vehicle's, or an obstacle's (bags, boxes). An obstacle's sheet shows its long front
+//            where a vehicle's shows its left side, and its ends where a vehicle's shows its front
+//            and rear: the game turns it a quarter turn, so that front faces oncoming riders
+//  --length  nose to tail in meters (an obstacle's front, end to end): sets the scale of all four views
+//  --width   the body's width without its mirrors, or an obstacle's front to back (default: as the
+//            top view has it). The model
 //            draws the front, rear and top a little wider or narrower than each other, so each is
 //            stretched across to this
 // Needs Playwright's Chromium (`npx playwright-core install chromium`), which does the image work.

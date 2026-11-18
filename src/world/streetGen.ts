@@ -113,6 +113,9 @@ export function laneLimit(width: number): number {
   return width / 2 - 0.9
 }
 
+// dev only: ?obstacle=<kind> makes every obstacle that kind, to judge its art in the town
+const OBST_ONLY = import.meta.env.DEV && typeof location !== 'undefined' ? (new URLSearchParams(location.search).get('obstacle') as ObstacleKind | null) : null
+
 const obstCache = new Map<string, Obstacle[]>()
 export function blockObstacles(seed: number, k: number, width: number): Obstacle[] {
   const key = `${seed}:${k}`
@@ -124,7 +127,7 @@ export function blockObstacles(seed: number, k: number, width: number): Obstacle
     const n = Math.floor(h(seed, k, 401) * 3.2) // 0..3
     const span = OBST_MAX - OBST_MIN
     for (let i = 0; i < n; i++) {
-      const kind = pick(OBST_KINDS, h(seed, k, 410 + i))
+      const kind = OBST_ONLY && OBST_SIZE[OBST_ONLY] ? OBST_ONLY : pick(OBST_KINDS, h(seed, k, 410 + i))
       const [w, d, hh] = OBST_SIZE[kind]
       const u = k * BLOCK + OBST_MIN + (span * (i + 0.2 + 0.6 * h(seed, k, 420 + i))) / n
       const lim = Math.max(0, laneLimit(width) - w / 2 + 0.3)
