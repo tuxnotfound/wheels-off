@@ -1,13 +1,20 @@
-// Brings a facade from an image model into the town (ART.md, Generating with an image model).
-// The image is a front elevation on a plain background. This cuts the background away (a flood
-// fill from the borders, so a white wall inside the ink outline stays), trims to the building,
-// scales it to 100 px per meter (the placeholders' density, so the GPU holds no more than it did)
-// and saves it as WebP with alpha, then adds or updates its entry in the manifest.
-// The facade's real width says how big it is; its height follows from the image.
+// Brings a facade or a prop from an image model into the town (ART.md, Generating with an image
+// model). The image is a front view on a plain background. This cuts the background away (a flood
+// fill from the borders, so a white wall inside the ink outline stays), trims to the subject,
+// scales it (a facade to 100 px per meter, the placeholders' density; a prop, seen up close on the
+// sidewalk, to 400) and saves it as WebP with alpha, then adds or updates its manifest entry.
+// The real width says how big it is; its height follows from the image.
 //
 // Usage: npm run art:import -- <image> --id <id> --width <m> [--body <m>] [--depth <m>]
 //          [--roof-shape flat|gable|pitched] [--awning <m>,<m>] [--roof <#hex>] [--side <#hex>]
 //          [--tolerance <0-255>]
+//        npm run art:import -- <image> --id <id> --width <m> --prop card|cross|box|wall
+//          [--depth <m>] [--color <#hex>] [--base <m>] [--glow] [--tolerance <0-255>]
+//  --prop   a prop instead of a facade, shown as that mode (ART.md, Props and obstacles)
+//  --depth  a facade's body, back from the street (default 8); a box prop's depth; a wall's thickness
+//  --color  a box's or a wall's color, on its sides and top (default: the commonest at its edges)
+//  --glow   keeps its painted color in shade (foliage)
+//  --base   a box on a post: where the box starts, in meters from the ground
 //  --body   where the wall stops, under a roof, a tank or a sign above it; under a pitched roof,
 //           the eaves, where the painted roof is cut off for a 3D one (default: the full height on
 //           a flat roof, three quarters of it under a gable, four fifths under a pitched roof)
@@ -28,7 +35,11 @@ const { values: o, positionals } = parseArgs({
     id: { type: 'string' },
     width: { type: 'string' },
     body: { type: 'string' },
-    depth: { type: 'string', default: '8' },
+    depth: { type: 'string' },
+    prop: { type: 'string' },
+    color: { type: 'string' },
+    base: { type: 'string' },
+    glow: { type: 'boolean' },
     'roof-shape': { type: 'string', default: 'flat' },
     awning: { type: 'string' },
     roof: { type: 'string' },
@@ -42,11 +53,13 @@ if (!src || !o.id || !/^[a-z0-9-]+$/.test(o.id) || !(width > 0)) {
   throw new Error('usage: npm run art:import -- <image> --id <lowercase-id> --width <meters> [options]')
 }
 if (!['flat', 'gable', 'pitched'].includes(o['roof-shape'])) throw new Error('--roof-shape is flat, gable or pitched')
+const prop = o.prop
+if (prop && !['card', 'cross', 'box', 'wall'].includes(prop)) throw new Error('--prop is card, cross, box or wall')
 const awning = o.awning?.split(',').map(Number)
 if (awning && !(awning.length === 2 && awning[0] >= 0 && awning[1] > awning[0])) throw new Error('--awning is <lower edge>,<top> in meters, as 2.45,3.68')
-const PX_PER_M = 100
+const PX_PER_M = prop ? 400 : 100
 const MANIFEST = 'public/art/manifest.json'
-const file = `buildings/${o.id}.webp`
+const file = `${prop ? 'props' : 'buildings'}/${o.id}.webp`
 const types = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' }
 const type = types[extname(src).toLowerCase()]
 if (!type) throw new Error(`a .png, .jpg or .webp image, not ${src}`)
@@ -57,7 +70,7 @@ let out
 try {
   const page = await browser.newPage()
   out = await page.evaluate(
-    async ({ dataUrl, tol, target, widthM, body }) => {
+    async ({ dataUrl, tol, target, widthM, body, minLuma }) => {
       const img = new Image()
       img.src = dataUrl
       await img.decode()
@@ -158,7 +171,8 @@ try {
       g.putImageData(data, 0, 0)
 
       // the side wall's color: the commonest one near the facade's outer edges, where the wall
-      // turns the corner (light enough not to be ink or glass)
+      // turns the corner (light enough not to be ink or glass; for a prop, only not ink, as a blue
+      // vending machine is darker than any wall)
       const counts = new Map()
       const bw = x1 - x0 + 1
       const edges = []
@@ -168,7 +182,7 @@ try {
           const i = (y * W + x) * 4
           if (px[i + 3] === 0) continue
           const [r, gg, b] = [px[i], px[i + 1], px[i + 2]]
-          if (0.299 * r + 0.587 * gg + 0.114 * b < 110) continue
+          if (0.299 * r + 0.587 * gg + 0.114 * b < minLuma) continue
           const key = ((r >> 3) << 10) | ((gg >> 3) << 5) | (b >> 3)
           counts.set(key, (counts.get(key) ?? 0) + 1)
         }
@@ -210,7 +224,8 @@ try {
       tol: Number(o.tolerance),
       target: Math.round(width * PX_PER_M),
       widthM: width,
-      body: o['roof-shape'] === 'pitched' && o.body ? Number(o.body) : null,
+      body: !prop && o['roof-shape'] === 'pitched' && o.body ? Number(o.body) : null,
+      minLuma: prop ? 60 : 110,
     },
   )
 } finally {
@@ -220,25 +235,40 @@ try {
 if (!out.webp.startsWith('data:image/webp')) throw new Error('this Chromium cannot write WebP')
 writeFileSync(`public/art/${file}`, Buffer.from(out.webp.split(',')[1], 'base64'))
 const round = (x) => Math.round(x * 10) / 10
-const height = round((out.th / out.tw) * width)
-const entry = {
+// a prop to the centimeter: at a meter tall, a tenth would stretch it by a twentieth
+const height = prop ? Math.round((out.th / out.tw) * width * 100) / 100 : round((out.th / out.tw) * width)
+const depth = o.depth ? Number(o.depth) : undefined
+const building = () => ({
   id: o.id,
   front: file,
   width,
   height,
   bodyHeight: o.body ? Number(o.body) : { flat: height, gable: round(height * 0.75), pitched: round(height * 0.8) }[o['roof-shape']],
-  depth: Number(o.depth),
+  depth: depth ?? 8,
   side: o.side ?? out.side,
   roof: o.roof ?? out.roof ?? '#6e7a78',
   roofShape: o['roof-shape'],
   ...(awning && { awning }),
-}
+})
+const propEntry = () => ({
+  id: o.id,
+  image: file,
+  width,
+  height,
+  mode: prop,
+  ...(o.glow && { glow: true }),
+  ...(depth && { depth }),
+  ...(o.base && { base: Number(o.base) }),
+  ...((prop === 'box' || prop === 'wall') && { color: o.color ?? out.side }),
+})
+const entry = prop ? propEntry() : building()
 const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'))
-const at = manifest.buildings.findIndex((b) => b.id === o.id)
-if (at >= 0) manifest.buildings[at] = entry
-else manifest.buildings.push(entry)
+const list = manifest[prop ? 'props' : 'buildings']
+const at = list.findIndex((b) => b.id === o.id)
+if (at >= 0) list[at] = entry
+else list.push(entry)
 writeFileSync(MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`)
 const kb = Math.round(Buffer.from(out.webp.split(',')[1], 'base64').length / 1024)
 console.log(`public/art/${file}: ${out.tw}x${out.th} px, ${kb} KB (background ${out.bg.join(',')} cut away)`)
 console.log(`${at >= 0 ? 'updated' : 'added'} in the manifest:`, entry)
-console.log(`see it in the town: npm run dev, then http://localhost:5173/?facade=${o.id}`)
+console.log(`see it in the town: npm run dev, then http://localhost:5173/?${prop ? 'prop' : 'facade'}=${o.id}`)
