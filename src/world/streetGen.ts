@@ -239,6 +239,16 @@ const FACADE = import.meta.env.DEV && typeof location !== 'undefined' ? new URLS
 const PROP = import.meta.env.DEV && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('prop') : null
 // and ?vehicle=<id> parks a car on both sides of every block (vehicles.tsx paints them all as it)
 const PARK = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('vehicle')
+// and ?footbridge puts a footbridge over every block
+const BRIDGES = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('footbridge')
+
+/**
+ * A footbridge's layout (Footbridge.tsx draws it): its middle along the block, its deck from face
+ * to face, the clearance under its girder, its walkway's height, and its stairs, which run from
+ * the deck's near face back down the sidewalk on the side without poles.
+ */
+export const FOOTBRIDGE = { u: 16, deck: 2.3, under: 4.7, walk: 5.1, steps: 28, run: 0.28 }
+const STAIR_FOOT = FOOTBRIDGE.u - FOOTBRIDGE.deck / 2 - FOOTBRIDGE.steps * FOOTBRIDGE.run
 
 /** A building whose art fits in the room left, starting from a hashed pick. */
 function fitBuilding(r: number, room: number): BuildingArt | null {
@@ -288,7 +298,7 @@ function makePlan(seed: number, k: number, width: number, u0: number, course: bo
   const aheadL = open(k + 1, -1) ? widthForSeed(childSeed(seed, k + 1, -1)) / 2 : 0
   const aheadR = open(k + 1, 1) ? widthForSeed(childSeed(seed, k + 1, 1)) / 2 : 0
   const cross = Math.max(aheadL, aheadR)
-  const overpass = width >= 6 && h(seed, k, 603) > 0.86
+  const overpass = (width >= 6 && h(seed, k, 603) > 0.86) || BRIDGES
 
   // what already stands on each sidewalk, as [from, to] spans along u, so nothing overlaps
   const taken: Record<number, [number, number][]> = { [-1]: [], [1]: [] }
@@ -296,7 +306,11 @@ function makePlan(seed: number, k: number, width: number, u0: number, course: bo
   const take = (side: number, a: number, b: number) => taken[side].push([a, b])
   for (const p of POLE_U) take(poleSide, p - 0.7, p + 0.7)
   if (cross) take(-1, BLOCK - cross - 4, BLOCK)
-  if (overpass) take(-poleSide, 9.5, 18.5)
+  if (overpass) {
+    // the stairs, and a pillar on each side
+    take(-poleSide, STAIR_FOOT - 0.5, FOOTBRIDGE.u + 0.8)
+    take(poleSide, FOOTBRIDGE.u - 0.8, FOOTBRIDGE.u + 0.8)
+  }
 
   // a banner strung over the street now and then (never under the footbridge)
   let banner: BlockPlan['banner'] = null

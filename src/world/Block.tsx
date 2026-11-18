@@ -1,14 +1,15 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import type { ReactNode } from 'react'
 import * as THREE from 'three'
-import { BOX, CYL, FLAT, PANEL } from '../look/geom'
+import { BOX, FLAT } from '../look/geom'
 import { decalMat, lineMat, paintMat } from '../look/materials'
-import { roadTextTex, signTex } from '../look/textures'
+import { roadTextTex } from '../look/textures'
 import { M, StopSign, UtilityPole } from './parts'
 import { Vehicle } from './vehicles'
 import { Nobori, RooftopBillboard, StreetBanner, WallPoster } from '../ads/fixtures'
 import { LitterView, PaintedLot, PropView, StreetTree } from './painted'
 import { BlockObstacles } from './ObstacleView'
+import { Footbridge } from './Footbridge'
 import { blockPlan, h, POLE_U } from './streetGen'
 import type { BlockPlan } from './streetGen'
 import { BLOCK, CURB, SIDEWALK } from './worldConfig'
@@ -127,28 +128,7 @@ function Block({ seed, k, ix, iz, dir, width, u0 }: Omit<BlockDesc, 'key'>) {
   plan.nobori.forEach((n, i) => els.push(<Nobori key={`nobori${i}`} {...n} slot={`${id}:nobori${i}`} />))
   plan.posters.forEach((p, i) => els.push(<WallPoster key={`poster${i}`} {...p} slot={`${id}:poster${i}`} />))
 
-  if (plan.overpass) {
-    const uc = 16
-    const span = width + 2 * SIDEWALK + 2
-    const ss = -plan.poleSide * (half + SIDEWALK / 2 + 0.2)
-    els.push(
-      <group key="overpass">
-        <M c="#8fd0bd" p={[0, 5.4, -uc]} s={[span, 0.45, 2.4]} />
-        <M c="#a6dccb" p={[0, 6.1, -(uc - 1.15)]} s={[span, 1.0, 0.1]} />
-        <M c="#a6dccb" p={[0, 6.1, -(uc + 1.15)]} s={[span, 1.0, 0.1]} />
-        {[-1, 1].map((sd) => (
-          <M key={sd} g={CYL} c="#7fc1ad" p={[sd * (half + SIDEWALK - 0.4), 2.7, -uc]} s={[0.45, 5.4, 0.45]} />
-        ))}
-        <M g={BOX} c="#8fd0bd" p={[ss, 2.7, -(uc - 1.2 - 4.5)]} s={[1.4, 0.3, 10.5]} r={[0.54, 0, 0]} />
-        <M
-          g={PANEL}
-          m={decalMat('sign-h:歩道橋', signTex('歩道橋', '#e9f3ee', false))}
-          p={[0, 5.45, -(uc - 1.23)]}
-          s={[3.2, 0.8, 1]}
-        />
-      </group>,
-    )
-  }
+  if (plan.overpass) els.push(<Footbridge key="overpass" half={half} poleSide={plan.poleSide} />)
 
   els.push(<BlockObstacles key="obstacles" seed={seed} k={k} width={width} />)
 

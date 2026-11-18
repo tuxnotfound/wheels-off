@@ -233,6 +233,14 @@
       "height": 1.05,
       "mode": "cross",
       "glow": true
+    },
+    {
+      "id": "bridge-span",
+      "image": "props/bridge-span.webp",
+      "width": 4,
+      "height": 1.54,
+      "mode": "wall",
+      "color": "#acd4b4"
     }
   ],
   "vehicles": [

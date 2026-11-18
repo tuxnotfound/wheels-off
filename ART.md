@@ -76,7 +76,7 @@ close on the sidewalk, so they go in at 400 px per meter, four times a facade's 
 | `card`  | anything seen mostly face-on          | one upright plane facing the street |
 | `cross` | plant pots (`pot-*`)                  | two crossed planes (reads from any angle) |
 | `box`   | vending machines, post box            | solid box with the image on the front (`depth`, `color`; `base` stands it on a post) |
-| `wall`  | the block-wall tile (`wall-block`)    | repeated along empty frontage, the last tile cut short, the wall `depth` thick in its `color` |
+| `wall`  | the block-wall tile (`wall-block`), the footbridge's span (`bridge-span`) | repeated along empty frontage (or across the footbridge's faces), the end tiles cut short, the wall `depth` thick in its `color` |
 | `decal` | fallen petals (`petals-ground`)       | flat on the pavement or road, seen from above |
 
 A `plants` spot on the sidewalk is two to four different `pot-*` props side by side. One card
@@ -185,6 +185,7 @@ the dark face of the box behind them, as the shadow inside the holes.
 | `vending-blue` | a Japanese drink vending machine, about 1 m wide and 1.85 m tall, a flat top, a blue body, a glass display of three rows of small drink cans and bottles with a little button under each, a coin slot and a note slot on the right, a dark pick-up flap across the bottom, a blank panel above the display | `--width 1.0 --prop box --depth 0.8` |
 | `vending-red` | the same with a red body and a blank white panel | `--width 1.0 --prop box --depth 0.8` |
 | `postbox` | a modern Japanese red post box, a rectangular pillar about 0.5 m wide and 1.35 m tall on a short dark stand, a flat top, two letter slots side by side with small blank white plates above them, a small blank collection-times plate below | `--width 0.55 --prop box --depth 0.4 --base 0.31` |
+| `bridge-span` | a straight-on front elevation of one 4 m long section of a Japanese pedestrian footbridge span: along the bottom a steel girder about 0.8 m deep painted pale mint green with a thin darker lip and a row of bolts, above it a pedestrian railing about 1.2 m tall of slim vertical bars between a flat top rail and a bottom rail in the same mint green, both ends cut off straight and vertical at a railing post, open background showing between the bars, nothing behind it | `--width 4 --prop wall` |
 | `wall-block` | a straight section of a Japanese concrete block garden wall, 3.2 m long and 1.8 m tall, grey concrete blocks in neat courses with thin mortar lines, one row of decorative pierced breeze blocks near the top, a flat concrete cap along the top, a few faint weather stains, both ends cut off straight and vertical, nothing behind it | `--width 3.2 --prop wall --depth 0.15` |
 | `pot-1` | a single potted plant: a leafy green shrub in a terracotta pot, about 0.5 m wide and 0.8 m tall, nothing beside it | `--width 0.6 --prop cross --glow` |
 | `pot-2` | a single potted plant: a spiky striped spider plant in a round blue glazed pot, about 0.45 m wide and 0.5 m tall, nothing beside it | `--width 0.65 --prop cross --glow` |
@@ -192,6 +193,12 @@ the dark face of the box behind them, as the shadow inside the holes.
 | `pot-4` | a single potted plant: yellow flowers over round leaves in a small terracotta pot, about 0.4 m wide and 0.45 m tall, nothing beside it | `--width 0.45 --prop cross --glow` |
 
 A pot's width is picked so the pot itself comes out 30 to 38 cm across; the plant spreads wider.
+
+The footbridge (`src/world/Footbridge.tsx`) wears `bridge-span` on both faces of its deck, centered
+and cut short at each end, its bars cut out so they cast striped shadows. The deck box, its
+pillars and its stairs are code in the tile's `color`; the stairs are real steps. The girder came
+out 0.41 m deep, not 0.8, and the walkway (`FOOTBRIDGE.walk` in `streetGen.ts`) stands on top of
+it. In dev, `?footbridge` puts one over every block.
 ## Vehicles
 
 The parked kei cars, kei trucks and vans are painted too, each from one image: a reference sheet
