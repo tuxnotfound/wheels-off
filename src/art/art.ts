@@ -31,8 +31,9 @@ export type PropArt = {
   // decal: flat on the ground
   mode: 'card' | 'cross' | 'box' | 'wall' | 'decal'
   glow?: boolean // keep its painted color in shade (foliage, signs)
-  depth?: number
-  color?: string
+  depth?: number // a box's depth, a wall's thickness
+  color?: string // a box's or a wall's sides and top
+  base?: number // a box on a post: where the box starts, in meters from the ground
 }
 export type ArtManifest = {
   character: string | null

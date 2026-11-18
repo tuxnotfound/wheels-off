@@ -1,9 +1,9 @@
 import type * as THREE from 'three'
-import { BOX, FLAT, PANEL, PRISM, panelWindow, roofSlab } from '../look/geom'
+import { BOX, CYL, FLAT, PANEL, PRISM, panelWindow, roofSlab } from '../look/geom'
 import { decalMat, toonMat } from '../look/materials'
 import { roofTileTex, sideWall } from '../look/buildingTex'
 import { art, decalPaintMat, paintedDepth, paintedMat, propArt } from '../art/art'
-import type { BuildingArt } from '../art/art'
+import type { BuildingArt, PropArt } from '../art/art'
 import { M } from './parts'
 import type { Litter, Lot, PropSpot } from './streetGen'
 import { Tree3D } from './Tree3D'
@@ -39,16 +39,10 @@ export function PaintedLot({ lot, half }: { lot: Lot; half: number }) {
   const cu = lot.a + lot.len / 2
 
   if (lot.kind === 'wall') {
-    const tiles = Math.ceil(lot.len / 3.2 - 0.01)
     const wall = propArt('wall-block')
     return (
       <group>
-        {wall &&
-          Array.from({ length: tiles }, (_, i) => {
-            const a = lot.a + i * 3.2
-            const w = Math.min(3.2, lot.a + lot.len - a)
-            return <Card key={i} path={wall.image} w={w} h={wall.height} p={at(sd * (front + 0.2), 0, a + w / 2)} rotY={faceRoad(sd)} />
-          })}
+        {wall && <BlockWall wall={wall} sd={sd} s={sd * (front + 0.2)} a={lot.a} len={lot.len} />}
         {lot.tree && <Tree3D p={at(sd * (front + 2.6 + lot.r), 0, cu)} r={lot.r} kind={lot.tree} />}
       </group>
     )
@@ -81,6 +75,43 @@ export function PaintedLot({ lot, half }: { lot: Lot; half: number }) {
       {pitched && <PitchedRoof b={b} p={at(bodyS, b.bodyHeight, cu)} along={along} />}
     </group>
   )
+}
+
+/**
+ * A stretch of block wall: the painted tile repeated from the lot's start, the last one cut short
+ * rather than squeezed, with the wall's thickness (`depth`) behind it in its color, so its top and
+ * its ends aren't paper thin.
+ */
+function BlockWall({ wall, sd, s, a, len }: { wall: PropArt; sd: number; s: number; a: number; len: number }) {
+  const T = wall.width
+  const mat = paintedMat(wall.image)
+  const depth = paintedDepth(wall.image)
+  const thick = wall.depth ?? 0
+  return (
+    <group>
+      {Array.from({ length: Math.ceil(len / T - 0.01) }, (_, i) => {
+        const a0 = a + i * T
+        const w = Math.min(T, a + len - a0)
+        // a cut tile keeps the end that meets the tile before it: the image's right on the right
+        // side of the street, where the card's +x runs back toward -u
+        const k = w / T
+        const geo = sd > 0 ? panelWindow(1 - k, 0, 1, 1) : panelWindow(0, 0, k, 1)
+        return <mesh key={i} geometry={geo} material={mat} position={at(s, wall.height / 2, a0 + w / 2)} rotation={[0, faceRoad(sd), 0]} scale={[w, wall.height, 1]} castShadow receiveShadow customDepthMaterial={depth} />
+      })}
+      {thick > 0 && <M m={wallFaces(wall.color ?? '#a3a8a2', sd)} p={at(s + sd * (thick / 2 + 0.01), (wall.height - 0.03) / 2, a + len / 2)} s={[thick, wall.height - 0.03, len]} />}
+    </group>
+  )
+}
+
+/**
+ * The wall's box in its color, but dark on the face behind the painted one: that face shows only
+ * through the pierced blocks' holes, as the shadow inside them. BoxGeometry groups: +x, -x, +y,
+ * -y, +z, -z; the road is toward -x on the right side.
+ */
+function wallFaces(color: string, sd: number): THREE.Material[] {
+  const c = toonMat(color)
+  const hole = toonMat('#55605e')
+  return sd > 0 ? [c, hole, c, c, c, c] : [hole, c, c, c, c, c]
 }
 
 const AWNING_OUT = 0.9 // how far an awning's lower edge stands out from the wall
@@ -150,14 +181,17 @@ export function PropView({ spot, half }: { spot: PropSpot; half: number }) {
   const s = spot.side * (half + SIDEWALK - 0.2 - (a.depth ?? 0.3) / 2)
   if (a.mode === 'box') {
     const d = a.depth ?? 0.8
+    const base = a.base ?? 0
     return (
       <group position={at(s, 0, spot.u)}>
-        <M c={a.color ?? '#cccccc'} p={[0, a.height / 2, 0]} s={[d, a.height, a.width]} />
+        <M c={a.color ?? '#cccccc'} p={[0, base + (a.height - base) / 2, 0]} s={[d, a.height - base, a.width]} />
+        {/* the post a raised box stands on, seen from the side; the painted front shows its own */}
+        {base > 0 && <M g={CYL} c="#3b4644" p={[0, base / 2, 0]} s={[0.15, base, 0.15]} />}
         <Card path={a.image} w={a.width} h={a.height} p={[(-spot.side * (d / 2 + 0.01)), 0, 0]} rotY={faceRoad(spot.side)} />
       </group>
     )
   }
-  return <Card path={a.image} w={a.width} h={a.height} p={at(s, 0, spot.u)} rotY={faceRoad(spot.side)} cross={a.mode === 'cross'} double />
+  return <Card path={a.image} w={a.width} h={a.height} p={at(s, 0, spot.u)} rotY={faceRoad(spot.side)} cross={a.mode === 'cross'} double glow={a.glow} />
 }
 
 /** An occasional tree at the back of the sidewalk, its canopy arching over the pavement. */

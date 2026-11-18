@@ -5,10 +5,11 @@ listed in `public/art/manifest.json` with its real-world size in meters. The str
 generator lays lots out from whatever the manifest contains, so adding a facade just
 means adding an entry.
 
-Every facade in `public/art/buildings/` is painted, by gpt-image-2 (the table at the end of
-Generating with an image model). Everything in `public/art/props/` is still a generated
-placeholder (`node scripts/make-placeholders.mjs`). The placeholder script rewrites the whole manifest, so
-don't run it again; a new facade goes in with `npm run art:import`.
+Every facade in `public/art/buildings/` and every sidewalk prop and the block wall in
+`public/art/props/` are painted, by gpt-image-2 (the tables at the end of Generating with an image
+model). The fallen petals and the unused bicycle card are still generated placeholders
+(`node scripts/make-placeholders.mjs`). The placeholder script rewrites the whole manifest, so
+don't run it again; new art goes in with `npm run art:import`.
 
 ## Style target
 
@@ -67,15 +68,19 @@ dims in shade instead of turning purple.
 
 ## Props and obstacles
 
-Same rules: transparent PNG, drawn straight-on, ground line at the bottom.
+Same rules: transparent PNG, drawn straight-on, ground line at the bottom. Props are seen up
+close on the sidewalk, so they go in at 400 px per meter, four times a facade's density.
 
 | mode    | use for                               | how it's shown                     |
 |---------|---------------------------------------|------------------------------------|
-| `card`  | plant pots, anything viewed mostly face-on | one upright plane facing the street |
-| `cross` | trees, post box                        | two crossed planes (reads from any angle) |
-| `box`   | vending machines                      | solid box with the image on the front (`depth`, `color`) |
-| `wall`  | the block-wall tile (3.2 m)           | repeated along empty frontage       |
+| `card`  | anything seen mostly face-on          | one upright plane facing the street |
+| `cross` | plant pots (`pot-*`)                  | two crossed planes (reads from any angle) |
+| `box`   | vending machines, post box            | solid box with the image on the front (`depth`, `color`; `base` stands it on a post) |
+| `wall`  | the block-wall tile (`wall-block`)    | repeated along empty frontage, the last tile cut short, the wall `depth` thick in its `color` |
 | `decal` | fallen petals (`petals-ground`)       | flat on the pavement or road, seen from above |
+
+A `plants` spot on the sidewalk is two to four different `pot-*` props side by side. One card
+of a whole row of pots turned into a sliver seen down the street.
 
 Trees are not painted cards: flat cards looked like cut-outs and turned into a line
 edge-on. They are 3D (`src/world/Tree3D.tsx`): a toon-shaded trunk and branches under a
@@ -159,6 +164,34 @@ for 7 m went in at 5.4, or its door stood 2.9 m. A
 lower tiled roof over the ground floor (the bookshop, the diner) goes in as the `--awning`, so it
 leans out too.
 
+### Props
+
+Props take the same prompt with the subject changed: "Japanese small town street furniture",
+"straight-on orthographic front view, no perspective and no vanishing point, no side or top
+visible, the whole object visible and centered", and "any lettering left blank". Bring one in
+with `--prop <mode>`, and for a box its `--depth` (and `--base` on a post):
+
+```bash
+npm run art:import -- ~/Downloads/vending.png --id vending-blue --width 1.0 --prop box --depth 0.8
+npm run art:import -- ~/Downloads/pot.png --id pot-1 --width 0.5 --prop cross --glow
+```
+
+The box's color, on its sides and top, is taken from the image's edges unless `--color` sets it.
+The block wall is a `wall` 3.2 m wide whose `--depth` is its thickness. Its pierced blocks show
+the dark face of the box behind them, as the shadow inside the holes.
+
+| id | subject | import flags |
+|---|---|---|
+| `vending-blue` | a Japanese drink vending machine, about 1 m wide and 1.85 m tall, a flat top, a blue body, a glass display of three rows of small drink cans and bottles with a little button under each, a coin slot and a note slot on the right, a dark pick-up flap across the bottom, a blank panel above the display | `--width 1.0 --prop box --depth 0.8` |
+| `vending-red` | the same with a red body and a blank white panel | `--width 1.0 --prop box --depth 0.8` |
+| `postbox` | a modern Japanese red post box, a rectangular pillar about 0.5 m wide and 1.35 m tall on a short dark stand, a flat top, two letter slots side by side with small blank white plates above them, a small blank collection-times plate below | `--width 0.55 --prop box --depth 0.4 --base 0.31` |
+| `wall-block` | a straight section of a Japanese concrete block garden wall, 3.2 m long and 1.8 m tall, grey concrete blocks in neat courses with thin mortar lines, one row of decorative pierced breeze blocks near the top, a flat concrete cap along the top, a few faint weather stains, both ends cut off straight and vertical, nothing behind it | `--width 3.2 --prop wall --depth 0.15` |
+| `pot-1` | a single potted plant: a leafy green shrub in a terracotta pot, about 0.5 m wide and 0.8 m tall, nothing beside it | `--width 0.6 --prop cross --glow` |
+| `pot-2` | a single potted plant: a spiky striped spider plant in a round blue glazed pot, about 0.45 m wide and 0.5 m tall, nothing beside it | `--width 0.65 --prop cross --glow` |
+| `pot-3` | a single potted plant: a leafy bush with a few white flowers in a tall blue glazed pot, about 0.5 m wide and 0.9 m tall, nothing beside it | `--width 0.6 --prop cross --glow` |
+| `pot-4` | a single potted plant: yellow flowers over round leaves in a small terracotta pot, about 0.4 m wide and 0.45 m tall, nothing beside it | `--width 0.45 --prop cross --glow` |
+
+A pot's width is picked so the pot itself comes out 30 to 38 cm across; the plant spreads wider.
 ## Character: VRM
 
 The default `public/art/character.vrm` is pixiv's VRM sample model

@@ -165,10 +165,12 @@
   "props": [
     {
       "id": "wall-block",
-      "image": "props/wall-block.svg",
+      "image": "props/wall-block.webp",
       "width": 3.2,
-      "height": 2.2,
-      "mode": "wall"
+      "height": 1.62,
+      "mode": "wall",
+      "depth": 0.15,
+      "color": "#b4b4ac"
     },
     {
       "id": "petals-ground",
@@ -179,28 +181,31 @@
     },
     {
       "id": "vending-blue",
-      "image": "props/vending-blue.svg",
-      "width": 0.95,
-      "height": 1.85,
+      "image": "props/vending-blue.webp",
+      "width": 1,
+      "height": 1.82,
       "mode": "box",
       "depth": 0.8,
-      "color": "#3f7fc4"
+      "color": "#2c7cc4"
     },
     {
       "id": "vending-red",
-      "image": "props/vending-red.svg",
-      "width": 0.95,
-      "height": 1.85,
+      "image": "props/vending-red.webp",
+      "width": 1,
+      "height": 1.77,
       "mode": "box",
       "depth": 0.8,
-      "color": "#d24a3c"
+      "color": "#d43434"
     },
     {
       "id": "postbox",
-      "image": "props/postbox.svg",
-      "width": 0.6,
-      "height": 1.4,
-      "mode": "cross"
+      "image": "props/postbox.webp",
+      "width": 0.55,
+      "height": 1.27,
+      "mode": "box",
+      "depth": 0.4,
+      "base": 0.31,
+      "color": "#d4443c"
     },
     {
       "id": "bicycle",
@@ -210,11 +215,36 @@
       "mode": "card"
     },
     {
-      "id": "plants",
-      "image": "props/plants.svg",
-      "width": 1.4,
-      "height": 0.9,
-      "mode": "card"
+      "id": "pot-4",
+      "image": "props/pot-4.webp",
+      "width": 0.45,
+      "height": 0.62,
+      "mode": "cross",
+      "glow": true
+    },
+    {
+      "id": "pot-1",
+      "image": "props/pot-1.webp",
+      "width": 0.6,
+      "height": 1.09,
+      "mode": "cross",
+      "glow": true
+    },
+    {
+      "id": "pot-2",
+      "image": "props/pot-2.webp",
+      "width": 0.65,
+      "height": 0.73,
+      "mode": "cross",
+      "glow": true
+    },
+    {
+      "id": "pot-3",
+      "image": "props/pot-3.webp",
+      "width": 0.6,
+      "height": 1.05,
+      "mode": "cross",
+      "glow": true
     }
   ]
 }

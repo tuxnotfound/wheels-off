@@ -228,11 +228,15 @@ function billboardFootprint(side: number) {
 
 export const POLE_U = [5, 21] // utility poles along the pole side of every block
 // (a flat bicycle card reads as a spider edge-on, so it isn't placed until it has real depth)
+// 'plants' is a cluster of the manifest's pot-* props, which each stand alone as crossed cards: a
+// row of pots on one card turned into a sliver seen down the street
 const SIDEWALK_PROPS = ['vending-blue', 'vending-red', 'postbox', 'plants']
 
 // dev only: ?facade=<id> stands that building on about half the lots it fits, among the others,
 // to judge new art in the town (scripts/import-art.mjs)
 const FACADE = import.meta.env.DEV && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('facade') : null
+// and ?prop=<id> puts that prop (or 'plants') on every sidewalk spot
+const PROP = import.meta.env.DEV && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('prop') : null
 
 /** A building whose art fits in the room left, starting from a hashed pick. */
 function fitBuilding(r: number, room: number): BuildingArt | null {
@@ -274,7 +278,8 @@ function makePlan(seed: number, k: number, width: number, u0: number, course: bo
   const billboardSpots: BlockPlan['billboards'] = [] // roofs that could carry one
   const nobori: BlockPlan['nobori'] = []
   const posters: BlockPlan['posters'] = []
-  const propIds = SIDEWALK_PROPS.filter((id) => propArt(id))
+  const pots = art.props.filter((p) => p.id.startsWith('pot-')).map((p) => p.id)
+  const propIds = SIDEWALK_PROPS.filter((id) => (id === 'plants' ? pots.length : propArt(id)))
   const half = width / 2
   const front = half + SIDEWALK + 0.3 // where facades stand
 
@@ -398,10 +403,22 @@ function makePlan(seed: number, k: number, width: number, u0: number, course: bo
       }
       // something on the sidewalk in front
       if (propIds.length && r(505) > 0.55 && len > 2) {
-        const pu = u + 0.8 + r(506) * (len - 1.6)
-        if (free(side, pu - 0.7, pu + 0.7)) {
-          take(side, pu - 0.7, pu + 0.7)
-          props.push({ id: pick(propIds, r(507)), side, u: pu })
+        const id = PROP && (propArt(PROP) || (PROP === 'plants' && pots.length)) ? PROP : pick(propIds, r(507))
+        // plant pots stand two to four together, each one different, close enough to overlap a little
+        const p0 = Math.floor(r(511) * pots.length)
+        const group = id === 'plants' ? Array.from({ length: Math.min(pots.length, 2 + Math.floor(r(510) * 3)) }, (_, j) => pots[(p0 + j) % pots.length]) : [id]
+        const widths = group.map((g) => propArt(g)!.width * (group.length > 1 ? 0.85 : 1))
+        const run = widths.reduce((x, y) => x + y, 0)
+        // the room it takes along the sidewalk: 0.7 m each way, more for a long cluster
+        const reach = Math.max(0.7, run / 2 + 0.2)
+        const pu = u + reach + 0.1 + r(506) * (len - 2 * reach - 0.2)
+        if (len > 2 * reach + 0.2 && free(side, pu - reach, pu + reach)) {
+          take(side, pu - reach, pu + reach)
+          let gu = pu - run / 2
+          group.forEach((g, j) => {
+            props.push({ id: g, side, u: gu + widths[j] / 2 })
+            gu += widths[j]
+          })
         }
       }
       u += len + 0.25 + r(508) * 0.6
