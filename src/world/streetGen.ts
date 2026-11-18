@@ -237,6 +237,8 @@ const SIDEWALK_PROPS = ['vending-blue', 'vending-red', 'postbox', 'plants']
 const FACADE = import.meta.env.DEV && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('facade') : null
 // and ?prop=<id> puts that prop (or 'plants') on every sidewalk spot
 const PROP = import.meta.env.DEV && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('prop') : null
+// and ?vehicle=<id> parks a car on both sides of every block (vehicles.tsx paints them all as it)
+const PARK = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('vehicle')
 
 /** A building whose art fits in the room left, starting from a hashed pick. */
 function fitBuilding(r: number, room: number): BuildingArt | null {
@@ -326,8 +328,8 @@ function makePlan(seed: number, k: number, width: number, u0: number, course: bo
       }
     }
     // parked cars, half up on the curb on the side without poles
-    if (side === -poleSide && width >= 6) {
-      const n = width >= 7 ? Math.floor(h(seed, k, side + 810) * 2.6) : h(seed, k, side + 810) > 0.65 ? 1 : 0
+    if ((side === -poleSide && width >= 6) || PARK) {
+      const n = PARK ? 1 : width >= 7 ? Math.floor(h(seed, k, side + 810) * 2.6) : h(seed, k, side + 810) > 0.65 ? 1 : 0
       for (let i = 0; i < n; i++) {
         const kind = weighted(ROAD_VEHICLES, h(seed, k * 5 + i, side + 811))
         const len = VEHICLE_LEN[kind]

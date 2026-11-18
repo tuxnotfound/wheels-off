@@ -35,10 +35,29 @@ export type PropArt = {
   color?: string // a box's or a wall's sides and top
   base?: number // a box on a post: where the box starts, in meters from the ground
 }
+/** One of a vehicle's four views in its texture: where (UVs, v up) and its size in meters. */
+export type VehicleView = { rect: [number, number, number, number]; w: number; h: number }
+/**
+ * A parked vehicle from four painted views (scripts/import-vehicle.mjs). Its outlines, in
+ * meters: `side`, the lowest and highest point of each slice nose to tail; `front`, the half
+ * width of each slice up the height; `top`, the half width of each slice nose to tail.
+ */
+export type VehicleArt = {
+  id: string
+  kind: 'kei-car' | 'kei-truck' | 'van'
+  atlas: string
+  length: number
+  width: number
+  height: number
+  views: { side: VehicleView; front: VehicleView; rear: VehicleView; top: VehicleView }
+  dark: [number, number] // an ink texel, for the underside
+  profile: { side: [number, number][]; front: number[]; top: number[] }
+}
 export type ArtManifest = {
   character: string | null
   buildings: BuildingArt[]
   props: PropArt[]
+  vehicles?: VehicleArt[]
 }
 
 export let art: ArtManifest = { character: null, buildings: [], props: [] }

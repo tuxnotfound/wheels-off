@@ -192,6 +192,49 @@ the dark face of the box behind them, as the shadow inside the holes.
 | `pot-4` | a single potted plant: yellow flowers over round leaves in a small terracotta pot, about 0.4 m wide and 0.45 m tall, nothing beside it | `--width 0.45 --prop cross --glow` |
 
 A pot's width is picked so the pot itself comes out 30 to 38 cm across; the plant spreads wider.
+## Vehicles
+
+The parked kei cars, kei trucks and vans are painted too, each from one image: a reference sheet
+of four views of the vehicle at one scale, in a two by two grid. `npm run art:vehicle` splits the
+sheet at the empty bands between the views and measures each view's outline. It packs the four
+into one texture, `public/art/vehicles/<id>.webp`, and puts the outlines in the manifest's
+`vehicles` list.
+
+The game shapes the vehicle from where the side, front and top outlines overlap
+(`src/world/paintedVehicle.ts`). It is a box cut in slices nose to tail, each slice as tall as
+the side view there and as wide as the narrower of the front and top views at each height. Each
+surface is painted from the view it faces, and the underside is ink. Door mirrors and an aerial
+are too thin to shape, so the importer drops them from the outlines and they stay painted on the
+views. The model draws the front and rear a few percent wider or narrower than the top, so the
+importer stretches them across to the top's width.
+
+A kind with painted vehicles (`kei-car`, `kei-truck`, `van`) shows one of them, picked per spot.
+A kind with none keeps its code model (`src/world/vehicles.tsx`). The scooter and the bicycle stay
+code models: a bicycle is mostly holes, which outlines can't shape. In dev, `?vehicle=<id>` parks
+that vehicle on both sides of every block.
+
+The sheet's prompt (append the subject):
+
+> anime background art, flat cel shading, clean dark teal ink outlines of even weight, muted
+> pastel palette, painted blue shadow shapes, neutral daylight colors with no sunset light. An
+> orthographic vehicle reference sheet of one vehicle: four separate views of the same vehicle
+> at exactly the same scale, laid out in a two by two grid with wide empty gaps between them so
+> no view touches another. Top left: its left side, nose pointing left. Top right: its front.
+> Bottom left: seen from directly above, nose pointing left. Bottom right: its rear. Every view
+> perfectly straight-on with no perspective, no vanishing point and no three-quarter angle, the
+> side and top views the same length and lined up, the front and rear views the same height as
+> the side view. No labels, no text, no arrows, no ground and no cast shadow, number plates
+> blank, isolated on a solid flat magenta background
+
+```bash
+npm run art:vehicle -- ~/Downloads/kei.png --id kei-car-mint --kind kei-car --length 3.4
+```
+
+`--length` is nose to tail in meters and sets the scale of all four views.
+
+| id | subject | import flags |
+|---|---|---|
+| `kei-car-mint` | a tall boxy Japanese kei hatchback, 3.4 m long, 1.48 m wide and 1.7 m tall, a short sloping bonnet, a tall glasshouse with dark teal glass, pale mint green paint with a white roof, round headlamps, small black door mirrors, yellow number plates | `--kind kei-car --length 3.4` |
 ## Character: VRM
 
 The default `public/art/character.vrm` is pixiv's VRM sample model

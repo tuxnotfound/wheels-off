@@ -1,6 +1,9 @@
 import { CYL, RBOX, RING } from '../look/geom'
 import { AdSlot } from '../ads/AdSlot'
+import { art, paintedMat } from '../art/art'
+import type { VehicleArt } from '../art/art'
 import { M } from './parts'
+import { halfWidthAt, vehicleGeometry } from './paintedVehicle'
 import type { VehicleSpot } from './streetGen'
 
 // Parked vehicles and bikes. Chunky rounded toon shapes, inked by the post pass like
@@ -282,11 +285,43 @@ function Bicycle({ r }: { r: number }) {
   )
 }
 
+// dev only: ?vehicle=<id> parks that painted vehicle in every car's, truck's and van's place
+const SHOWN = import.meta.env.DEV && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('vehicle') : null
+
+/** A painted vehicle of this kind, picked by r, when the manifest has one (ART.md, Vehicles). */
+function paintedFor(kind: VehicleKind, r: number): VehicleArt | undefined {
+  if (kind !== 'kei-car' && kind !== 'kei-truck' && kind !== 'van') return undefined
+  const list = art.vehicles ?? []
+  const shown = SHOWN ? list.find((v) => v.id === SHOWN) : undefined
+  if (shown) return shown
+  const mine = list.filter((v) => v.kind === kind)
+  return mine.length ? mine[Math.floor(r * mine.length) % mine.length] : undefined
+}
+
+/** A painted van's ad slots, on its flat sides behind the cab, a little above the middle. */
+function VanAds({ v, r, slot }: { v: VehicleArt; r: number; slot: string }) {
+  const z = v.length * 0.13
+  const y = v.height * 0.6
+  const x = halfWidthAt(v, y, z) + 0.012
+  return (
+    <>
+      {[-1, 1].map((sx) => (
+        <AdSlot key={sx} format="van" r={r} slot={`${slot}:${sx}`} p={[sx * x, y, z]} rot={[0, (sx * Math.PI) / 2, 0]} />
+      ))}
+    </>
+  )
+}
+
 /** A parked vehicle or bike. Curb-parked ones sit half up on the sidewalk, tilted onto it. */
 export function Vehicle({ spot, slot }: { spot: VehicleSpot; slot: string }) {
   const { kind, s, u, r, flip, curb, side } = spot
-  const body =
-    kind === 'kei-truck' ? (
+  const painted = paintedFor(kind, r)
+  const body = painted ? (
+    <>
+      <M g={vehicleGeometry(painted)} m={paintedMat(painted.atlas)} p={[0, 0, 0]} s={[1, 1, 1]} />
+      {painted.kind === 'van' && <VanAds v={painted} r={r} slot={slot} />}
+    </>
+  ) : kind === 'kei-truck' ? (
       <KeiTruck r={r} />
     ) : kind === 'kei-car' ? (
       <KeiCar r={r} />

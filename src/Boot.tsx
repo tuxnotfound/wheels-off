@@ -23,7 +23,7 @@ async function run() {
   const m = await loadManifest()
   const url = characterUrl()
   await Promise.all([
-    loadTextures([...m.buildings.map((b) => b.front), ...m.props.map((p) => p.image)]),
+    loadTextures([...m.buildings.map((b) => b.front), ...m.props.map((p) => p.image), ...(m.vehicles ?? []).map((v) => v.atlas)]),
     loadAds(),
     // the character is most of the bytes, so its download alone drives the bar
     url
