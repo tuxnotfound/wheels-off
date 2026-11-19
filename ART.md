@@ -102,6 +102,21 @@ or a real model instead.
 
 ## Generating with an image model
 
+`npm run art:gen` paints one image with gpt-image-2 (quality high, about a minute) and saves it
+under `art-gen/` (gitignored). It holds the style prompt for each kind: `facade`, `prop`, and
+the four-view sheets of a `vehicle` or an `obstacle` (Vehicles, below). Give it the kind and the
+subject; the tables below hold every subject so far. It needs `OPENAI_API_KEY` in the
+environment, and prints the import command to run next:
+
+```bash
+OPENAI_API_KEY=... npm run art:gen -- facade "a small ramen shop, striped awning, noren curtain in the doorway, blank sign board"
+OPENAI_API_KEY=... npm run art:gen -- vehicle "a tall boxy Japanese kei hatchback, ..." --shape wide
+```
+
+`--shape` picks the frame: `square` (the default for a facade or a prop), `wide` (a sheet's
+default) or `tall` (a vending machine, a tower). Run one at a time: on a slow day, requests sent
+together hung for 17 minutes, and one alone took one to four.
+
 The style prompt for every facade (append the subject):
 
 > anime background art, flat cel shading, clean dark teal ink outlines of even weight,
@@ -263,12 +278,11 @@ width without its mirrors: 1.48 m for any kei vehicle, the legal limit.
 | `kei-car-blue` | a rounded Japanese kei hatchback, 3.4 m long, 1.48 m wide and 1.55 m tall, dusty blue paint, a short rounded bonnet, oval headlamps, dark teal glass, small door mirrors in the body color, yellow number plates | `--kind kei-car --length 3.4 --width 1.48` |
 | `kei-truck-white` | a Japanese kei truck, 3.4 m long, 1.48 m wide and 1.8 m tall, white, a flat-nosed cab over the front wheels with a tall windscreen, an open flat bed behind the cab with low drop sides and a guard frame behind the cab, the bed empty, round headlamps, small black door mirrors, yellow number plates | `--kind kei-truck --length 3.4 --width 1.48` |
 | `van-white` | a Japanese cab-over delivery van, 4.7 m long, 1.7 m wide and 1.98 m tall, white, a flat upright front with the windscreen right above the front wheels and almost no bonnet, a tall boxy body with plain flat sides and no windows behind the front doors, dark teal glass, grey bumpers, small black door mirrors, white number plates | `--kind van --length 4.7 --width 1.69` |
-
 | `bags-white` | a pile of three tied Japanese household rubbish bags left out for collection, semi-transparent white and pale blue plastic with crumpled paper showing through, each knotted at the top, in a row along its front, about 1.2 m long, 0.8 m from front to back and 0.55 m tall | `--kind bags --length 1.2 --width 0.45` |
 | `boxes-brown` | a stack of three brown cardboard boxes with packing tape: a big box on the ground, a smaller box on top of it set a little back, and a small box on the ground beside them, about 1.1 m long, 0.9 m from front to back and 0.72 m tall | `--kind boxes --length 1.1 --width 0.6` |
 
 The two obstacles took the sheet's prompt with "vehicle" changed to "object" and its views named
-as above. The bags came out 0.3 m deep and went in at 0.45; stretched to their hitbox's 0.8 they
+as above (`art:gen obstacle`). The bags came out 0.3 m deep and went in at 0.45; stretched to their hitbox's 0.8 they
 would bloat.
 
 The truck's open bed comes out filled to its rails, its painted floor on top: from the riding

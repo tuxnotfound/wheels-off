@@ -13,3 +13,4 @@ node_modules/.tmp
 public/art/_dev/
 .wrangler
 .dev.vars
+art-gen
