@@ -1,6 +1,6 @@
 import { CYL, RBOX, RING } from '../look/geom'
 import { AdSlot } from '../ads/AdSlot'
-import { art } from '../art/art'
+import { art, paintedDepth } from '../art/art'
 import type { VehicleArt } from '../art/art'
 import { M } from './parts'
 import { edgesAt, solidGeometry, solidMat } from './paintedSolid'
@@ -285,15 +285,17 @@ function Bicycle({ r }: { r: number }) {
   )
 }
 
-// dev only: ?vehicle=<id> parks that painted vehicle in every car's, truck's and van's place
+// dev only: ?vehicle=<id> parks that painted vehicle in every car's, truck's and van's place, or a
+// scooter or a bicycle in every bike's
 const SHOWN = import.meta.env.DEV && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('vehicle') : null
+
+const twoWheeled = (kind: VehicleKind) => kind === 'scooter' || kind === 'bicycle'
 
 /** A painted vehicle of this kind, picked by r, when the manifest has one (ART.md, Vehicles). */
 function paintedFor(kind: VehicleKind, r: number): VehicleArt | undefined {
-  if (kind !== 'kei-car' && kind !== 'kei-truck' && kind !== 'van') return undefined
   const list = art.vehicles ?? []
   const shown = SHOWN ? list.find((v) => v.id === SHOWN) : undefined
-  if (shown) return shown
+  if (shown && twoWheeled(shown.kind) === twoWheeled(kind)) return shown
   const mine = list.filter((v) => v.kind === kind)
   return mine.length ? mine[Math.floor(r * mine.length) % mine.length] : undefined
 }
@@ -316,7 +318,12 @@ function VanAds({ v, r, slot }: { v: VehicleArt; r: number; slot: string }) {
 export function Vehicle({ spot, slot }: { spot: VehicleSpot; slot: string }) {
   const { kind, s, u, r, flip, curb, side } = spot
   const painted = paintedFor(kind, r)
-  const body = painted ? (
+  const body = painted && twoWheeled(painted.kind) ? (
+    // leaning on its stand, as the code ones do; its shadow cut out like its frame
+    <group rotation={[0, 0, painted.kind === 'bicycle' ? 0.12 : 0.1]}>
+      <M g={solidGeometry(painted)} m={solidMat(painted.atlas)} d={paintedDepth(painted.atlas)} p={[0, 0, 0]} s={[1, 1, 1]} />
+    </group>
+  ) : painted ? (
     <>
       <M g={solidGeometry(painted)} m={solidMat(painted.atlas)} p={[0, 0, 0]} s={[1, 1, 1]} />
       {painted.kind === 'van' && <VanAds v={painted} r={r} slot={slot} />}

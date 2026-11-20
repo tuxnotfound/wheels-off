@@ -15,6 +15,11 @@ const SHARP = 10 // how quickly a view's weight falls off as a surface turns awa
 // one. Not an obstacle's: on a box, the end's edge carried over its front left a dark band.
 const END_REACH = 0.2
 const END_RAMP = 0.04
+// An open vehicle (a scooter, a bicycle) steps up and down along its length (a saddle, a basket,
+// handlebars), and every step faces an end: painted from that end's view, each step showed a
+// second basket. A step takes the end's view only where nothing of the vehicle stands between it
+// and that end, as the view shows it; behind something, it takes the side view carried across,
+// as a frame or a seat seen end-on looks.
 
 /** A profile's pair at t (0 to 1 over its span): samples are bands, read at their middles. */
 function at(a: [number, number][], t: number): [number, number] {
@@ -64,6 +69,19 @@ export function solidGeometry(v: SolidArt): THREE.BufferGeometry {
   const p = box.attributes.position
   const nrm = box.attributes.normal
   const reach = v.kind === 'kei-car' || v.kind === 'kei-truck' || v.kind === 'van' ? END_REACH : 0
+  const open = v.kind === 'scooter' || v.kind === 'bicycle'
+  const filled = (x: number, y: number, z: number) => {
+    const [y0, y1] = at(v.profile.side, z / side.w + 0.5)
+    if (y < y0 || y > y1) return false
+    const [x0, x1] = edgesAt(v, y, z)
+    return x >= x0 && x <= x1
+  }
+  // nothing of it from a slice and a half on, toward the end at dir (-1 the nose)
+  const clear = (x: number, y: number, z: number, dir: number) => {
+    const dz = side.w / NZ
+    for (let zz = z + dir * 1.5 * dz; Math.abs(zz) < side.w / 2; zz += (dir * dz) / 2) if (filled(x, y, zz)) return false
+    return true
+  }
   const uvSide = new Float32Array(p.count * 2)
   const uvEnd = new Float32Array(p.count * 2)
   const uvTop = new Float32Array(p.count * 2)
@@ -86,6 +104,12 @@ export function solidGeometry(v: SolidArt): THREE.BufferGeometry {
     else put(uvTop, i, top, (z + top.w / 2) / top.w, (x + top.h / 2) / top.h)
     // the side's weight handed to the end view near the nose and the tail
     const fromEnd = side.w / 2 - Math.abs(z)
+    if (open) {
+      const end = Math.abs(nz) > 0.3 && clear(x, y, z, Math.sign(nz)) ? Math.abs(nz) ** SHARP : 0
+      const up = Math.abs(ny) ** SHARP
+      weights.set([1 - end - up, end, up], i * 3)
+      continue
+    }
     const keep = reach ? THREE.MathUtils.smoothstep(fromEnd, reach - END_RAMP, reach) : 1
     weights[i * 3] = Math.abs(nx) ** SHARP * keep
     weights[i * 3 + 1] = Math.abs(nz) ** SHARP + Math.abs(nx) ** SHARP * (1 - keep)

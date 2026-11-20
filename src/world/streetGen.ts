@@ -240,7 +240,8 @@ const SIDEWALK_PROPS = ['vending-blue', 'vending-red', 'postbox', 'plants']
 const FACADE = import.meta.env.DEV && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('facade') : null
 // and ?prop=<id> puts that prop (or 'plants') on every sidewalk spot
 const PROP = import.meta.env.DEV && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('prop') : null
-// and ?vehicle=<id> parks a car on both sides of every block (vehicles.tsx paints them all as it)
+// and ?vehicle=<id> parks a car on both sides of every block and a bike outside every building
+// (vehicles.tsx paints them all as it, the cars or the bikes)
 const PARK = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('vehicle')
 // and ?footbridge puts a footbridge over every block
 const BRIDGES = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('footbridge')
@@ -398,8 +399,8 @@ function makePlan(seed: number, k: number, width: number, u0: number, course: bo
             nobori.push({ s: side * (half + 0.35), u: nu, side, r: h(seed, k * 31 + i * 3 + j, side + 830) })
           }
         }
-        // a scooter or a bicycle left outside
-        if (r(524) > 0.7) {
+        // a scooter or a bicycle left outside (outside every building with ?vehicle)
+        if (r(524) > 0.7 || PARK) {
           const bu = u + len - 1.3
           if (free(side, bu - 1, bu + 1)) {
             take(side, bu - 1, bu + 1)

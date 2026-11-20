@@ -5,11 +5,11 @@ listed in `public/art/manifest.json` with its real-world size in meters. The str
 generator lays lots out from whatever the manifest contains, so adding a facade just
 means adding an entry.
 
-Every facade in `public/art/buildings/` and every sidewalk prop and the block wall in
-`public/art/props/` are painted, by gpt-image-2 (the tables at the end of Generating with an image
-model). The fallen petals and the unused bicycle card are still generated placeholders
-(`node scripts/make-placeholders.mjs`). The placeholder script rewrites the whole manifest, so
-don't run it again; new art goes in with `npm run art:import`.
+Every facade in `public/art/buildings/`, every sidewalk prop, the block wall, the utility pole,
+the stop sign and the fallen petals in `public/art/props/` are painted, by gpt-image-2 (the tables
+at the end of Generating with an image model). No generated placeholder is left. The placeholder
+script (`node scripts/make-placeholders.mjs`) rewrites the whole manifest, so don't run it again;
+new art goes in with `npm run art:import`.
 
 ## Style target
 
@@ -78,6 +78,7 @@ close on the sidewalk, so they go in at 400 px per meter, four times a facade's 
 | `box`   | vending machines, post box            | solid box with the image on the front (`depth`, `color`; `base` stands it on a post) |
 | `wall`  | the block-wall tile (`wall-block`), the footbridge's span (`bridge-span`) | repeated along empty frontage (or across the footbridge's faces), the end tiles cut short, the wall `depth` thick in its `color` |
 | `decal` | fallen petals (`petals-ground`)       | flat on the pavement or road, seen from above |
+| `pole`  | the utility pole (`pole`)             | its front and its side as two crossed planes, wires hung from it (Street fixtures, below) |
 
 A `plants` spot on the sidewalk is two to four different `pot-*` props side by side. One card
 of a whole row of pots turned into a sliver seen down the street.
@@ -97,14 +98,15 @@ cone's views would shape a square cone, and the barricade's A-frame legs would f
 sizes match the hitboxes in `src/world/streetGen.ts` (`OBST_SIZE`).
 
 Cards seen edge-on from the street turn into thin scribbles (a bicycle card looked like a
-spider). Anything that stands along the street and is thin from the side needs a `box`
-or a real model instead.
+spider). Anything that stands along the street and is thin from the side needs a `box`, crossed
+views or a painted solid instead.
 
 ## Generating with an image model
 
 `npm run art:gen` paints one image with gpt-image-2 (quality high, about a minute) and saves it
-under `art-gen/` (gitignored). It holds the style prompt for each kind: `facade`, `prop`, and
-the four-view sheets of a `vehicle` or an `obstacle` (Vehicles, below). Give it the kind and the
+under `art-gen/` (gitignored). It holds the style prompt for each kind: `facade`, `prop`, the
+four-view sheets of a `vehicle` or an `obstacle` (Vehicles, below), a `pole`'s sheet of its
+views in a row and something lying flat seen from above, `ground` (Street fixtures, below). Give it the kind and the
 subject; the tables below hold every subject so far. It needs `OPENAI_API_KEY` in the
 environment, and prints the import command to run next:
 
@@ -215,9 +217,47 @@ and cut short at each end, its bars cut out so they cast striped shadows. The de
 pillars and its stairs are code in the tile's `color`; the stairs are real steps. The girder came
 out 0.41 m deep, not 0.8, and the walkway (`FOOTBRIDGE.walk` in `streetGen.ts`) stands on top of
 it. In dev, `?footbridge` puts one over every block.
+
+### Street fixtures
+
+**The utility pole** comes from one tall sheet (`art:gen pole`): the pole from the front, its
+crossarms across, the same pole from its side, and, as a third piece apart from them, the
+transformer some poles carry. `art:import --prop pole --height <m>` (`scripts/import-pole.mjs`)
+cuts the pieces apart at the empty columns between them, scales all three by the front view's
+height, and centers each view on its shaft. The game stands the front across the street and the
+side along it, crossed (`PaintedPole` in `src/world/parts.tsx`), every normal facing the road, so
+both planes take the light as one surface. Lit each as itself, one plane fell in shade and the
+other didn't. The transformer hangs on the road side of the shaft on two poles in five, the same
+can crossed with itself.
+
+Every pole in the town is the one painted pole, so the wires line up. The importer finds the
+wires' anchors on the front view: a crossarm is a band of rows with one run far wider than the
+shaft, and each short run standing on it is an insulator. A run going on up for more than half a
+meter is the shaft, past a lower crossarm. `--wires x,y;x,y` gives them by hand if the ones found
+are wrong. The wires (`useWires` in `src/world/Block.tsx`) are ink ribbons 3 cm wide, one
+upright and one flat, crossed, so a wire has a width from below and from the side; the 1 px lines
+before them all but vanished on a supersampled screen. Each hangs a little lower than the last.
+
+The pole was drawn chunkier than a real one: at 9 m tall its shaft is 41 cm across, and the
+transformer 1.4 m wide with its brackets. Left as drawn, to the same scale as the pole.
+
+**The stop sign** is a painted `card` plate (`stop-sign`, `--glow` so it stays readable in shade)
+on a code post, its back the plate's shape in plain metal grey (`silhouetteMat`). The prop prompt
+says "any lettering left blank"; asked in the subject to write 止まれ, the model did.
+
+**Fallen petals** are a `decal` (`petals-ground`) from `art:gen ground`: the style prompt seen from
+directly above, things lying flat, no ground drawn. The petals are drawn about ten times life size,
+as the placeholder's were, or a drift on the road is a few pink pixels.
+
+| id | kind | subject | import flags |
+|---|---|---|---|
+| `pole` | `pole` | a Japanese concrete utility pole about ten meters tall, pale grey, round and slightly tapering toward the top, a long steel crossarm near the top and a shorter one below it, white insulators standing on both crossarms, step bolts up its upper half, a yellow and black diagonally striped guard sleeve around its foot, a small blank sign plate at eye level. As a third separate piece, to the right of the side view and not attached to anything: the grey cylindrical pole transformer that hangs on such a pole, with its two mounting bands, seen from the front at the same scale | `--height 9 --prop pole` |
+| `stop-sign` | `prop` | a Japanese stop sign plate on its own, without its pole or bracket: an inverted equilateral triangle, red, with a narrow white border, the word 止まれ written across it in bold white Japanese characters. Write 止まれ on it; leave nothing else blank | `--width 0.8 --prop card --glow` |
+| `petals-ground` | `ground` | fallen cherry blossom petals: a loose drift of about thirty single pale pink petals lying flat, each a rounded petal with a small notch at its tip, scattered unevenly with a few small overlapping clumps, thinning out toward the edges, each petal about a twentieth of the image wide | `--width 2.2 --prop decal` |
+
 ## Vehicles
 
-The parked kei cars, kei trucks and vans are painted too, each from one image: a reference sheet
+The parked kei cars, kei trucks, vans, scooters and bicycles are painted too, each from one image: a reference sheet
 of four views of the vehicle at one scale, in a two by two grid. `npm run art:vehicle` splits the
 sheet at the empty bands between the views and measures each view's outline. It packs the four
 into one texture, `public/art/vehicles/<id>.webp`, and puts the outlines in the manifest's
@@ -246,10 +286,24 @@ front; the game turns it a quarter turn. `--length` is then its front end to end
 depth. Asked for its front only as "its long side", the model drew the long side in every view.
 In dev, `?obstacle=<kind>` makes every obstacle that kind.
 
-A kind with painted vehicles (`kei-car`, `kei-truck`, `van`) shows one of them, picked per spot.
-A kind with none keeps its code model (`src/world/vehicles.tsx`). The scooter and the bicycle stay
-code models: a bicycle is mostly holes, which outlines can't shape. In dev, `?vehicle=<id>` parks
-that vehicle on both sides of every block.
+A kind with painted vehicles shows one of them, picked per spot. A kind with none keeps its code
+model (`src/world/vehicles.tsx`). In dev, `?vehicle` parks a car on both sides of every block and
+a bike outside every building, and `?vehicle=<id>` makes every car (or every bike) that one.
+
+The scooter and the bicycle (`--kind scooter` or `bicycle`) are open: a bicycle is mostly holes,
+which outlines can't shape, so its texture keeps them. The importer cuts away every pixel near the
+background's color, not only what its flood reaches, as the gaps between spokes are too small or
+too shaded for it, and inks what's left half blended into the background at the cut, so no pink
+fringe lines a spoke. It keeps the views' own outlines, their mirrors and handlebars, and doesn't
+stretch them. In the game they lean on their stands and cast shadows cut out like their frames.
+
+The shape is still one slab per slice and height, and an open vehicle steps up and down along its
+length (a saddle, a basket, handlebars). Every step faces an end: painted from that end's view,
+each showed a second basket. So a step takes the end's view only where nothing of the vehicle
+stands between it and that end, and otherwise the side view, carried across. Left: where the
+handlebars make the slab wide, its sides carry the side view out to the grips, a second basket
+beside the first from close by. From behind, at a distance, the ink pass outlines every spoke
+and basket wire, and a bicycle reads as a dense tangle.
 
 The sheet's prompt (append the subject):
 
@@ -279,6 +333,8 @@ width without its mirrors: 1.48 m for any kei vehicle, the legal limit.
 | `kei-truck-white` | a Japanese kei truck, 3.4 m long, 1.48 m wide and 1.8 m tall, white, a flat-nosed cab over the front wheels with a tall windscreen, an open flat bed behind the cab with low drop sides and a guard frame behind the cab, the bed empty, round headlamps, small black door mirrors, yellow number plates | `--kind kei-truck --length 3.4 --width 1.48` |
 | `van-white` | a Japanese cab-over delivery van, 4.7 m long, 1.7 m wide and 1.98 m tall, white, a flat upright front with the windscreen right above the front wheels and almost no bonnet, a tall boxy body with plain flat sides and no windows behind the front doors, dark teal glass, grey bumpers, small black door mirrors, white number plates | `--kind van --length 4.7 --width 1.69` |
 | `bags-white` | a pile of three tied Japanese household rubbish bags left out for collection, semi-transparent white and pale blue plastic with crumpled paper showing through, each knotted at the top, in a row along its front, about 1.2 m long, 0.8 m from front to back and 0.55 m tall | `--kind bags --length 1.2 --width 0.45` |
+| `scooter-mint` | a small Japanese 50cc step-through scooter standing upright on its stand: rounded pastel mint green body panels, a black seat, a round headlight on the handlebars, two small round mirrors, small wheels, a small rear rack carrying a plain white top box | `--kind scooter --length 1.8` |
+| `bicycle-cream` | a Japanese mamachari city bicycle standing upright on its stand: a low step-through frame in pale cream, a wire basket over the front wheel, mudguards over both wheels, a chain guard, a small rear rack, a saddle, swept-back handlebars, thin spokes. The front and rear views are narrow, the side view long | `--kind bicycle --length 1.85` |
 | `boxes-brown` | a stack of three brown cardboard boxes with packing tape: a big box on the ground, a smaller box on top of it set a little back, and a small box on the ground beside them, about 1.1 m long, 0.9 m from front to back and 0.72 m tall | `--kind boxes --length 1.1 --width 0.6` |
 
 The two obstacles took the sheet's prompt with "vehicle" changed to "object" and its views named
