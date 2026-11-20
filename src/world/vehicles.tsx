@@ -1,9 +1,10 @@
 import { CYL, RBOX, RING } from '../look/geom'
 import { AdSlot } from '../ads/AdSlot'
-import { art, paintedDepth } from '../art/art'
+import { art, paintedDepth, paintedMat } from '../art/art'
 import type { VehicleArt } from '../art/art'
 import { M } from './parts'
 import { edgesAt, solidGeometry, solidMat } from './paintedSolid'
+import { reliefGeometry } from './relief'
 import type { VehicleSpot } from './streetGen'
 
 // Parked vehicles and bikes. Chunky rounded toon shapes, inked by the post pass like
@@ -319,9 +320,10 @@ export function Vehicle({ spot, slot }: { spot: VehicleSpot; slot: string }) {
   const { kind, s, u, r, flip, curb, side } = spot
   const painted = paintedFor(kind, r)
   const body = painted && twoWheeled(painted.kind) ? (
-    // leaning on its stand, as the code ones do; its shadow cut out like its frame
+    // in reliefs of its views (relief.ts), leaning on its stand as the code ones do, its shadow
+    // cut out like its frame
     <group rotation={[0, 0, painted.kind === 'bicycle' ? 0.12 : 0.1]}>
-      <M g={solidGeometry(painted)} m={solidMat(painted.atlas)} d={paintedDepth(painted.atlas)} p={[0, 0, 0]} s={[1, 1, 1]} />
+      <M g={reliefGeometry(painted)} m={paintedMat(painted.atlas)} d={paintedDepth(painted.atlas)} p={[0, 0, 0]} s={[1, 1, 1]} />
     </group>
   ) : painted ? (
     <>

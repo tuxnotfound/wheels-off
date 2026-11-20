@@ -294,16 +294,31 @@ The scooter and the bicycle (`--kind scooter` or `bicycle`) are open: a bicycle 
 which outlines can't shape, so its texture keeps them. The importer cuts away every pixel near the
 background's color, not only what its flood reaches, as the gaps between spokes are too small or
 too shaded for it, and inks what's left half blended into the background at the cut, so no pink
-fringe lines a spoke. It keeps the views' own outlines, their mirrors and handlebars, and doesn't
-stretch them. In the game they lean on their stands and cast shadows cut out like their frames.
+fringe lines a spoke. It keeps the views' own outlines, their mirrors and handlebars, and stretches
+none across. It does scale the front and the rear whole to the side's height, and the top to the
+side's length: the first sheets drew the rear 6 to 8% short. Not the top across: its handlebar
+and mirrors came 35% wider than the front's, but its top box no wider than the rear's, so no one
+factor fits. In the game they lean on their stands and cast shadows cut out like their frames.
 
-The shape is still one slab per slice and height, and an open vehicle steps up and down along its
-length (a saddle, a basket, handlebars). Every step faces an end: painted from that end's view,
-each showed a second basket. So a step takes the end's view only where nothing of the vehicle
-stands between it and that end, and otherwise the side view, carried across. Left: where the
-handlebars make the slab wide, its sides carry the side view out to the grips, a second basket
-beside the first from close by. From behind, at a distance, the ink pass outlines every spoke
-and basket wire, and a bicycle reads as a dense tangle.
+An open vehicle isn't the car's box (`src/world/relief.ts`). As a box, the handlebars, the basket
+and the top box each made a slab their own width through their whole slice, painted on every
+face, and through the gaps in one face another showed: a second basket, a second top box, a smear
+across each step. Each view is a sheet facing its own way instead (the left and the right from
+the side view, the front, the rear, the top), cut in 3 cm squares, each square set back to where
+that view first meets the car's shape: the handlebars stand at the handlebars and the basket's
+side out at its side. Only the sheets facing the camera are drawn, so no view shows through
+another, and through the frame and the spokes shows the street. A sheet bends between squares
+less than 3 cm apart and tears where they're further, at an edge; a torn-off patch smaller than 8
+squares joins what it touches, as each torn edge is a sliver of street the ink pass outlines. The
+top takes its height from the outlines themselves, as the shape's top over the handlebars is the
+mirrors', and is left out where the two disagree by more than 4 cm. The sheets have one set of
+UVs, so a block's bake merges them with its other painted parts.
+
+Left: the top view and the side view still don't quite agree. From behind, the bicycle's saddle
+shows its top and its back a few centimeters apart, and seen level, a sliver of the scooter's top
+box lid floats over it. Draw the bicycle simply: drawn with thin spokes, a wire basket and its
+cables, every wire was a cut-out the ink pass outlined, and from the street it read as a dark
+tangle.
 
 The sheet's prompt (append the subject):
 
@@ -334,7 +349,7 @@ width without its mirrors: 1.48 m for any kei vehicle, the legal limit.
 | `van-white` | a Japanese cab-over delivery van, 4.7 m long, 1.7 m wide and 1.98 m tall, white, a flat upright front with the windscreen right above the front wheels and almost no bonnet, a tall boxy body with plain flat sides and no windows behind the front doors, dark teal glass, grey bumpers, small black door mirrors, white number plates | `--kind van --length 4.7 --width 1.69` |
 | `bags-white` | a pile of three tied Japanese household rubbish bags left out for collection, semi-transparent white and pale blue plastic with crumpled paper showing through, each knotted at the top, in a row along its front, about 1.2 m long, 0.8 m from front to back and 0.55 m tall | `--kind bags --length 1.2 --width 0.45` |
 | `scooter-mint` | a small Japanese 50cc step-through scooter standing upright on its stand: rounded pastel mint green body panels, a black seat, a round headlight on the handlebars, two small round mirrors, small wheels, a small rear rack carrying a plain white top box | `--kind scooter --length 1.8` |
-| `bicycle-cream` | a Japanese mamachari city bicycle standing upright on its stand: a low step-through frame in pale cream, a wire basket over the front wheel, mudguards over both wheels, a chain guard, a small rear rack, a saddle, swept-back handlebars, thin spokes. The front and rear views are narrow, the side view long | `--kind bicycle --length 1.85` |
+| `bicycle-cream` | a Japanese mamachari city bicycle standing upright on its stand, drawn simply with bold clean shapes so it reads from far away: a low step-through frame of thick pale cream tubes, a deep front basket of solid pale cream plastic over the front wheel, wide cream mudguards over both wheels, a big cream chain guard, a small rear rack, a brown saddle, swept-back handlebars with brown grips. Each wheel a thick dark grey tire around a plain pale hub with only six thick spokes. No cables. The front and rear views are narrow, the side view long, and the handlebar exactly as wide in the top view as in the front view | `--kind bicycle --length 1.85` |
 | `boxes-brown` | a stack of three brown cardboard boxes with packing tape: a big box on the ground, a smaller box on top of it set a little back, and a small box on the ground beside them, about 1.1 m long, 0.9 m from front to back and 0.72 m tall | `--kind boxes --length 1.1 --width 0.6` |
 
 The two obstacles took the sheet's prompt with "vehicle" changed to "object" and its views named

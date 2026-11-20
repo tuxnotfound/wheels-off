@@ -215,7 +215,14 @@ try {
       const unstretched = see && !width
       const kf = unstretched ? 1 : body / across(open(fe.map((e) => -e[0]), 17).map((v) => -v), open(fe.map((e) => e[1]), 17))
       const kr = unstretched ? 1 : body / across(open(re.map((e) => -e[0]), 17).map((v) => -v), open(re.map((e) => e[1]), 17))
-      const frontEdges = fe.map((e, j) => [Math.min(e[0] * kf, re[j][0] * kr), Math.max(e[1] * kf, re[j][1] * kr)])
+      // nor are its views drawn at one scale (on the first sheets the rear 6 to 8% short): the front
+      // and the rear are scaled whole to the side's height, the top to the side's length. Not the
+      // top across: its handlebar and mirrors came 35% wider than the front's, but its top box no
+      // wider than the rear's
+      const hf = unstretched ? side.h / front.h : 1
+      const hr = unstretched ? side.h / rear.h : 1
+      const kl = unstretched ? side.w / top.w : 1
+      const frontEdges = fe.map((e, j) => [Math.min(e[0] * kf * hf, re[j][0] * kr * hr), Math.max(e[1] * kf * hf, re[j][1] * kr * hr)])
       const topEdges = tLo.map((lo, i) => [lo * kt, tHi[i] * kt])
 
       // the texture: side and top down the left, front and rear on the right, ink around and
@@ -301,15 +308,15 @@ try {
       }
       const views = {
         side: place(side, PAD, PAD),
-        top: place(top, PAD, 2 * PAD + side.h, 1, kt),
-        front: place(front, 2 * PAD + Math.max(side.w, top.w), PAD, kf),
-        rear: place(rear, 3 * PAD + Math.max(side.w, top.w) + front.w, PAD, kr),
+        top: place(top, PAD, 2 * PAD + side.h, kl, kt),
+        front: place(front, 2 * PAD + Math.max(side.w, top.w), PAD, kf * hf, hf),
+        rear: place(rear, 3 * PAD + Math.max(side.w, top.w) + front.w, PAD, kr * hr, hr),
       }
       return {
         webp: a.toDataURL('image/webp', 0.9),
         size: [AW, AH],
         ppm,
-        stretch: [kf, kr, kt],
+        stretch: [kf * hf, kr * hr, kt],
         bg: med,
         views,
         dark: [Math.round((PAD / 2 / AW) * 1e5) / 1e5, Math.round((1 - PAD / 2 / AH) * 1e5) / 1e5],

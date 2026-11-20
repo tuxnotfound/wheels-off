@@ -4,6 +4,7 @@ import { characterUrl, loadManifest, loadTextures, propImages } from './art/art'
 import { loadAds } from './ads/ads'
 import { loadRig } from './player/VrmRider'
 import { useWebGL } from './game/webgl'
+import { reliefGeometry } from './world/relief'
 
 // The boot splash. The town (painted art, ads, the character) downloads behind a title and
 // a progress bar instead of a white page; index.html carries the same splash statically for
@@ -23,7 +24,10 @@ async function run() {
   const m = await loadManifest()
   const url = characterUrl()
   await Promise.all([
-    loadTextures([...m.buildings.map((b) => b.front), ...m.props.flatMap(propImages), ...[...(m.vehicles ?? []), ...(m.obstacles ?? [])].map((v) => v.atlas)]),
+    loadTextures([...m.buildings.map((b) => b.front), ...m.props.flatMap(propImages), ...[...(m.vehicles ?? []), ...(m.obstacles ?? [])].map((v) => v.atlas)]).then(() => {
+      // an open vehicle's reliefs take a tenth of a second or more to carve: here, not mid-ride
+      for (const v of m.vehicles ?? []) if (v.kind === 'scooter' || v.kind === 'bicycle') reliefGeometry(v)
+    }),
     loadAds(),
     // the character is most of the bytes, so its download alone drives the bar
     url

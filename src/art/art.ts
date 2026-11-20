@@ -91,6 +91,17 @@ export async function loadTextures(paths: string[], loader = new THREE.TextureLo
   )
 }
 
+/** A loaded image's pixels, read afresh each call (an open vehicle's reliefs are carved from where they're opaque). */
+export function artPixels(path: string): ImageData {
+  const img = textures.get(path)!.image as HTMLImageElement
+  const c = document.createElement('canvas')
+  c.width = img.width
+  c.height = img.height
+  const g = c.getContext('2d', { willReadFrequently: true })!
+  g.drawImage(img, 0, 0)
+  return g.getImageData(0, 0, c.width, c.height)
+}
+
 /** Fetch the manifest alone: cheap, and everything else (textures, the character) lists itself in it. */
 export async function loadManifest(base = asset('art/')): Promise<ArtManifest> {
   const m = (await (await fetch(`${base}manifest.json`)).json()) as ArtManifest
