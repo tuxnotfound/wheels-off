@@ -1,12 +1,14 @@
 // Paints new art with gpt-image-2 in the town's style (ART.md, Generating with an image model): a
-// facade, a prop, or a vehicle's or an obstacle's four-view sheet. Sends the kind's style prompt
+// facade, a prop, a vehicle's or an obstacle's four-view sheet, a pole's sheet of its views in a
+// row, or something lying flat seen from above (ground). Sends the kind's style prompt
 // with the subject appended and saves the image under art-gen/, ready for art:import or
 // art:vehicle. One image a run, quality high, about a minute and 5,500 to 7,000 output tokens.
 //
-// Usage: OPENAI_API_KEY=... npm run art:gen -- <facade|prop|vehicle|obstacle> "<subject>"
+// Usage: OPENAI_API_KEY=... npm run art:gen -- <facade|prop|vehicle|obstacle|pole|ground> "<subject>"
 //          [--shape square|wide|tall] [--out <file.png>]
 //  --shape  the image's frame: square 1024x1024, wide 1536x1024, tall 1024x1536 (default: square
-//           for a facade or a prop, wide for a sheet; tall for a tall prop or a tower)
+//           for a facade, a prop or the ground, wide for a sheet, tall for a pole; tall for a tall
+//           prop or a tower)
 //  --out    where to save it (default: art-gen/<kind>-<subject's first words>-<time>.png)
 //
 // Through curl, not fetch: Node's fetch gives up after five minutes without an answer, and on a
@@ -57,19 +59,38 @@ const STYLE = {
     ' three-quarter angle, the front and top views the same length and lined up, the end views ' +
     'the same height as the front view. No labels, no text, no arrows, no ground and no cast ' +
     'shadow, isolated on a solid flat magenta background',
+  pole:
+    'anime background art, flat cel shading, clean dark teal ink outlines of even weight, muted ' +
+    'pastel palette, painted blue shadow shapes, Japanese small town street furniture, neutral ' +
+    'daylight colors with no sunset light. An orthographic reference sheet of one tall street ' +
+    'fixture: separate pieces at exactly the same scale, standing side by side in one row on the ' +
+    'same level baseline, with wide empty gaps between them so no piece touches another. Left: ' +
+    'the fixture seen from the front. Next to it: the same fixture seen from its side, exactly ' +
+    'the same height. Every view perfectly straight-on with no perspective, no vanishing point ' +
+    'and no three-quarter angle, each piece whole with a margin around it. No wires or cables, no' +
+    ' labels, no text, no arrows, no ground and no cast shadow, any lettering left blank, ' +
+    'isolated on a solid flat magenta background',
+  ground:
+    'anime background art, flat cel shading, clean dark teal ink outlines of even weight, muted ' +
+    'pastel palette, painted blue shadow shapes, neutral daylight colors with no sunset light, ' +
+    'seen from directly above, looking straight down at things lying flat, a top-down view with ' +
+    'no perspective, the whole group visible and centered with a margin around it, no ground ' +
+    'surface drawn and no cast shadow, isolated on a solid flat magenta background',
 }
 const SHAPE = { square: '1024x1024', wide: '1536x1024', tall: '1024x1536' }
-const DEFAULT_SHAPE = { facade: 'square', prop: 'square', vehicle: 'wide', obstacle: 'wide' }
+const DEFAULT_SHAPE = { facade: 'square', prop: 'square', vehicle: 'wide', obstacle: 'wide', pole: 'tall', ground: 'square' }
 const NEXT = {
   facade: 'npm run art:import -- <file> --id <id> --width <m> [--body <m>] [--roof-shape pitched] [--awning <m>,<m>]',
   prop: 'npm run art:import -- <file> --id <id> --width <m> --prop card|cross|box|wall [--depth <m>]',
-  vehicle: 'npm run art:vehicle -- <file> --id <id> --kind kei-car|kei-truck|van --length <m> --width <m>',
+  vehicle: 'npm run art:vehicle -- <file> --id <id> --kind kei-car|kei-truck|van|scooter|bicycle --length <m> [--width <m>]',
   obstacle: 'npm run art:vehicle -- <file> --id <id> --kind bags|boxes --length <m> --width <m>',
+  pole: 'npm run art:import -- <file> --id <id> --height <m> --prop pole',
+  ground: 'npm run art:import -- <file> --id <id> --width <m> --prop decal',
 }
 
 const { values: o, positionals } = parseArgs({ allowPositionals: true, options: { shape: { type: 'string' }, out: { type: 'string' } } })
 const [kind, subject] = positionals
-if (!STYLE[kind] || !subject?.trim()) throw new Error('usage: npm run art:gen -- <facade|prop|vehicle|obstacle> "<subject>" [--shape square|wide|tall] [--out <file.png>]')
+if (!STYLE[kind] || !subject?.trim()) throw new Error(`usage: npm run art:gen -- <${Object.keys(STYLE).join('|')}> "<subject>" [--shape square|wide|tall] [--out <file.png>]`)
 const shape = o.shape ?? DEFAULT_SHAPE[kind]
 if (!SHAPE[shape]) throw new Error('--shape is square, wide or tall')
 const key = process.env.OPENAI_API_KEY

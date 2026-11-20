@@ -8,9 +8,14 @@
 // Usage: npm run art:import -- <image> --id <id> --width <m> [--body <m>] [--depth <m>]
 //          [--roof-shape flat|gable|pitched] [--awning <m>,<m>] [--roof <#hex>] [--side <#hex>]
 //          [--tolerance <0-255>]
-//        npm run art:import -- <image> --id <id> --width <m> --prop card|cross|box|wall
+//        npm run art:import -- <image> --id <id> --width <m> --prop card|cross|box|wall|decal
 //          [--depth <m>] [--color <#hex>] [--base <m>] [--glow] [--tolerance <0-255>]
-//  --prop   a prop instead of a facade, shown as that mode (ART.md, Props and obstacles)
+//        npm run art:import -- <sheet> --id <id> --height <m> --prop pole [--wires <x,y;x,y>]
+//  --prop   a prop instead of a facade, shown as that mode (ART.md, Props and obstacles); a decal
+//           lies flat (art:gen ground); a pole is a sheet of its front, its side and maybe a
+//           transformer (art:gen pole, scripts/import-pole.mjs)
+//  --height a pole's height, which scales the sheet
+//  --wires  a pole's wire anchors in meters on its front view, if the ones found are wrong
 //  --depth  a facade's body, back from the street (default 8); a box prop's depth; a wall's thickness
 //  --color  a box's or a wall's color, on its sides and top (default: the commonest at its edges)
 //  --glow   keeps its painted color in shade (foliage)
@@ -30,6 +35,7 @@ import { parseArgs } from 'node:util'
 import { chromium } from 'playwright-core'
 import { cutBackground } from './cut-background.mjs'
 import { readManifest, writeManifest } from './manifest.mjs'
+import { importPole } from './import-pole.mjs'
 
 const { values: o, positionals } = parseArgs({
   allowPositionals: true,
@@ -47,16 +53,31 @@ const { values: o, positionals } = parseArgs({
     roof: { type: 'string' },
     side: { type: 'string' },
     tolerance: { type: 'string', default: '28' },
+    height: { type: 'string' },
+    wires: { type: 'string' },
   },
 })
 const [src] = positionals
+if (o.prop === 'pole') {
+  const height = Number(o.height)
+  if (!src || !o.id || !/^[a-z0-9-]+$/.test(o.id) || !(height > 0)) throw new Error('usage: npm run art:import -- <sheet> --id <lowercase-id> --height <meters> --prop pole')
+  const wires = o.wires?.split(';').map((p) => p.split(',').map(Number))
+  const entry = await importPole({ src, id: o.id, height, tol: Number(o.tolerance), wires })
+  const manifest = readManifest()
+  const at = manifest.props.findIndex((b) => b.id === o.id)
+  if (at >= 0) manifest.props[at] = entry
+  else manifest.props.push(entry)
+  writeManifest(manifest)
+  console.log(`${at >= 0 ? 'updated' : 'added'} in the manifest:`, JSON.stringify(entry))
+  process.exit(0)
+}
 const width = Number(o.width)
 if (!src || !o.id || !/^[a-z0-9-]+$/.test(o.id) || !(width > 0)) {
   throw new Error('usage: npm run art:import -- <image> --id <lowercase-id> --width <meters> [options]')
 }
 if (!['flat', 'gable', 'pitched'].includes(o['roof-shape'])) throw new Error('--roof-shape is flat, gable or pitched')
 const prop = o.prop
-if (prop && !['card', 'cross', 'box', 'wall'].includes(prop)) throw new Error('--prop is card, cross, box or wall')
+if (prop && !['card', 'cross', 'box', 'wall', 'decal'].includes(prop)) throw new Error('--prop is card, cross, box, wall, decal or pole')
 const awning = o.awning?.split(',').map(Number)
 if (awning && !(awning.length === 2 && awning[0] >= 0 && awning[1] > awning[0])) throw new Error('--awning is <lower edge>,<top> in meters, as 2.45,3.68')
 const PX_PER_M = prop ? 400 : 100
