@@ -213,7 +213,9 @@ show their names only. Upright, the chase camera sits closer and lower (`CHASE_T
   nobori flags, van sides) are filled from `public/art/ads.json`, and impressions are
   counted and dispatched as `wheelsoff:ad-impression` events. **See [ADS.md](ADS.md).**
 - **`src/world/vehicles.tsx`**: parked kei trucks, kei cars, delivery vans (with ad sides),
-  scooters and bicycles. Rounded toon bodies, detailed down to yellow kei plates.
+  scooters and bicycles. Rounded toon bodies, detailed down to yellow kei plates; the cars are
+  painted when the manifest has art for them, and the scooter and the bicycle are in
+  `src/world/bikes.tsx`.
 - **`src/world/Tree3D.tsx`**: 3D sakura (and green) trees, with toon-shaded branches under
   a canopy of camera-facing, sun-lit blossom clusters. Three shared shapes, so any number of
   trees costs three geometries.

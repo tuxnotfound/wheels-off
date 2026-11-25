@@ -63,9 +63,7 @@ export type SolidArt = {
   dark: [number, number] // an ink texel, for the underside
   profile: { side: [number, number][]; front: [number, number][]; top: [number, number][] }
 }
-// a scooter or a bicycle is open: its texture keeps the background cut away, so what's behind
-// shows through its frame and its spokes
-export type VehicleArt = SolidArt & { kind: 'kei-car' | 'kei-truck' | 'van' | 'scooter' | 'bicycle' }
+export type VehicleArt = SolidArt & { kind: 'kei-car' | 'kei-truck' | 'van' }
 export type ObstacleArt = SolidArt & { kind: 'bags' | 'boxes' }
 export type ArtManifest = {
   character: string | null
@@ -89,17 +87,6 @@ export async function loadTextures(paths: string[], loader = new THREE.TextureLo
       textures.set(p, t)
     }),
   )
-}
-
-/** A loaded image's pixels, read afresh each call (an open vehicle's reliefs are carved from where they're opaque). */
-export function artPixels(path: string): ImageData {
-  const img = textures.get(path)!.image as HTMLImageElement
-  const c = document.createElement('canvas')
-  c.width = img.width
-  c.height = img.height
-  const g = c.getContext('2d', { willReadFrequently: true })!
-  g.drawImage(img, 0, 0)
-  return g.getImageData(0, 0, c.width, c.height)
 }
 
 /** Fetch the manifest alone: cheap, and everything else (textures, the character) lists itself in it. */

@@ -34,15 +34,6 @@ export function edgesAt(v: SolidArt, y: number, z: number): [number, number] {
   return lo <= hi ? [lo, hi] : [(lo + hi) / 2, (lo + hi) / 2]
 }
 
-/** Whether a point is in its shape: within the side outline's slice there, and between its edges. */
-export function inside(v: SolidArt, x: number, y: number, z: number): boolean {
-  if (Math.abs(z) > v.views.side.w / 2) return false
-  const [y0, y1] = at(v.profile.side, z / v.views.side.w + 0.5)
-  if (y < y0 || y > y1) return false
-  const [x0, x1] = edgesAt(v, y, z)
-  return x >= x0 && x <= x1
-}
-
 const geos = new Map<string, THREE.BufferGeometry>()
 
 /**
