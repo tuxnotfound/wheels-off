@@ -82,7 +82,7 @@ const DEFAULT_SHAPE = { facade: 'square', prop: 'square', vehicle: 'wide', obsta
 const NEXT = {
   facade: 'npm run art:import -- <file> --id <id> --width <m> [--body <m>] [--roof-shape pitched] [--awning <m>,<m>]',
   prop: 'npm run art:import -- <file> --id <id> --width <m> --prop card|cross|box|wall [--depth <m>]',
-  vehicle: 'npm run art:vehicle -- <file> --id <id> --kind kei-car|kei-truck|van|scooter|bicycle --length <m> [--width <m>]',
+  vehicle: 'npm run art:vehicle -- <file> --id <id> --kind kei-car|kei-truck|van --length <m> --width <m>',
   obstacle: 'npm run art:vehicle -- <file> --id <id> --kind bags|boxes --length <m> --width <m>',
   pole: 'npm run art:import -- <file> --id <id> --height <m> --prop pole',
   ground: 'npm run art:import -- <file> --id <id> --width <m> --prop decal',

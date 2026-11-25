@@ -8,11 +8,9 @@
 // outlines. The game shapes it from where the outlines overlap and paints each surface from the
 // view it faces (src/world/paintedVehicle.ts).
 //
-// Usage: npm run art:vehicle -- <sheet> --id <id> --kind kei-car|kei-truck|van|scooter|bicycle|bags|boxes
+// Usage: npm run art:vehicle -- <sheet> --id <id> --kind kei-car|kei-truck|van|bags|boxes
 //          --length <m> [--width <m>] [--tolerance <0-255>]
-//  --kind    a vehicle's, or an obstacle's (bags, boxes). A scooter or a bicycle is open: what's
-//            behind shows through its frame and its spokes, so its views keep their background
-//            cut away, their own outlines, and every mirror and handlebar end. An obstacle's sheet shows its long front
+//  --kind    a vehicle's, or an obstacle's (bags, boxes). An obstacle's sheet shows its long front
 //            where a vehicle's shows its left side, and its ends where a vehicle's shows its front
 //            and rear: the game turns it a quarter turn, so that front faces oncoming riders
 //  --length  nose to tail in meters (an obstacle's front, end to end): sets the scale of all four views
@@ -40,10 +38,9 @@ const { values: o, positionals } = parseArgs({
 })
 const [src] = positionals
 const length = Number(o.length)
-const LIST = { 'kei-car': 'vehicles', 'kei-truck': 'vehicles', van: 'vehicles', scooter: 'vehicles', bicycle: 'vehicles', bags: 'obstacles', boxes: 'obstacles' }
-const open = o.kind === 'scooter' || o.kind === 'bicycle'
+const LIST = { 'kei-car': 'vehicles', 'kei-truck': 'vehicles', van: 'vehicles', bags: 'obstacles', boxes: 'obstacles' }
 if (!src || !o.id || !/^[a-z0-9-]+$/.test(o.id) || !(length > 0) || !LIST[o.kind]) {
-  throw new Error(`usage: npm run art:vehicle -- <sheet> --id <lowercase-id> --kind ${Object.keys(LIST).join('|')} --length <meters>`)
+  throw new Error('usage: npm run art:vehicle -- <sheet> --id <lowercase-id> --kind kei-car|kei-truck|van|bags|boxes --length <meters>')
 }
 const types = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' }
 const type = types[extname(src).toLowerCase()]
@@ -57,7 +54,7 @@ try {
   const page = await browser.newPage()
   await page.addScriptTag({ content: `window.cutBackground = ${cutBackground}` })
   out = await page.evaluate(
-    async ({ dataUrl, tol, length, width, see }) => {
+    async ({ dataUrl, tol, length, width }) => {
       const N = 96 // samples along the length
       const M = 64 // samples up the height
       const INK = [43, 54, 52] // #2b3634, what fills the views around their outlines
@@ -75,22 +72,6 @@ try {
       const px = data.data
       const { bg, med } = window.cutBackground(px, W, H, tol)
       const solid = (x, y) => !bg[y * W + x]
-      if (see) {
-        // an open vehicle's background shows between its spokes and through its basket in
-        // pockets too small, or too shaded, for the cut to reach: nothing on it is the
-        // background's color, so all of that goes. What's left at its edges, ink or paint blended
-        // into the background, is inked, so no pink fringe lines a spoke
-        const off = (i) => Math.abs(px[i * 4] - med[0]) + Math.abs(px[i * 4 + 1] - med[1]) + Math.abs(px[i * 4 + 2] - med[2])
-        for (let i = 0; i < W * H; i++) if (off(i) <= tol * 3) bg[i] = 1
-        for (let i = 0; i < W * H; i++) {
-          if (bg[i] || off(i) >= 160) continue
-          const x = i % W
-          const y = (i / W) | 0
-          let edge = false
-          for (let dy = -2; dy <= 2 && !edge; dy++) for (let dx = -2; dx <= 2 && !edge; dx++) edge = x + dx >= 0 && x + dx < W && y + dy >= 0 && y + dy < H && bg[i + dy * W + dx] === 1
-          if (edge) [px[i * 4], px[i * 4 + 1], px[i * 4 + 2]] = INK
-        }
-      }
 
       // the empty bands between the views: the longest run of empty columns (and rows) that
       // touches neither edge of the sheet
@@ -137,10 +118,8 @@ try {
       const ppm = side.w / length // pixels per meter, the same in every view
       const r3 = (v) => Math.round(v * 1000) / 1000
 
-      // a morphological opening over k samples: drops anything narrower, like door mirrors or an aerial.
-      // Not on an open vehicle, whose handlebar and mirrors are where it's narrow
+      // a morphological opening over k samples: drops anything narrower, like door mirrors or an aerial
       const open = (a, k) => {
-        if (see) return a
         const h = k >> 1
         const ero = a.map((_, i) => Math.min(...a.slice(Math.max(0, i - h), i + h + 1)))
         return ero.map((_, i) => Math.max(...ero.slice(Math.max(0, i - h), i + h + 1)))
@@ -211,18 +190,9 @@ try {
       const across = (lo, hi) => Math.max(...hi) - Math.min(...lo)
       const body = width ?? across(tLo, tHi)
       const kt = body / across(tLo, tHi)
-      // an open vehicle's views are only stretched to a --width given: no part of it is the body's
-      const unstretched = see && !width
-      const kf = unstretched ? 1 : body / across(open(fe.map((e) => -e[0]), 17).map((v) => -v), open(fe.map((e) => e[1]), 17))
-      const kr = unstretched ? 1 : body / across(open(re.map((e) => -e[0]), 17).map((v) => -v), open(re.map((e) => e[1]), 17))
-      // nor are its views drawn at one scale (on the first sheets the rear 6 to 8% short): the front
-      // and the rear are scaled whole to the side's height, the top to the side's length. Not the
-      // top across: its handlebar and mirrors came 35% wider than the front's, but its top box no
-      // wider than the rear's
-      const hf = unstretched ? side.h / front.h : 1
-      const hr = unstretched ? side.h / rear.h : 1
-      const kl = unstretched ? side.w / top.w : 1
-      const frontEdges = fe.map((e, j) => [Math.min(e[0] * kf * hf, re[j][0] * kr * hr), Math.max(e[1] * kf * hf, re[j][1] * kr * hr)])
+      const kf = body / across(open(fe.map((e) => -e[0]), 17).map((v) => -v), open(fe.map((e) => e[1]), 17))
+      const kr = body / across(open(re.map((e) => -e[0]), 17).map((v) => -v), open(re.map((e) => e[1]), 17))
+      const frontEdges = fe.map((e, j) => [Math.min(e[0] * kf, re[j][0] * kr), Math.max(e[1] * kf, re[j][1] * kr)])
       const topEdges = tLo.map((lo, i) => [lo * kt, tHi[i] * kt])
 
       // the texture: side and top down the left, front and rear on the right, ink around and
@@ -259,9 +229,7 @@ try {
       // any color inside, a tire's too
       const ink = (i) => luma(i) < 100 && Math.max(px[i * 4], px[i * 4 + 1], px[i * 4 + 2]) - Math.min(px[i * 4], px[i * 4 + 1], px[i * 4 + 2]) < 50
       const fixed = new Uint8Array(W * H)
-      // an open vehicle keeps its outlines: its flat sides never turn a corner, and its cut-away
-      // background leaves the outline at the silhouette's edge
-      for (let d = see ? 0 : EDGE; d >= 1; d--) {
+      for (let d = EDGE; d >= 1; d--) {
         for (let i = 0; i < W * H; i++) {
           const halo = toBg(i) < 160
           if (depth[i] !== d || (!halo && !ink(i))) continue
@@ -289,18 +257,15 @@ try {
         }
       }
       for (let i = 0; i < W * H; i++) {
-        // an open vehicle's background stays see-through, its colors bled under it
-        px[i * 4 + 3] = see && bg[i] ? 0 : 255
-        if (color[i] || see) continue
+        px[i * 4 + 3] = 255
+        if (color[i]) continue
         px[i * 4] = INK[0]
         px[i * 4 + 1] = INK[1]
         px[i * 4 + 2] = INK[2]
       }
       g.putImageData(data, 0, 0)
       ag.fillStyle = `rgb(${INK.join(',')})`
-      // an open vehicle's texture is see-through around its views too, but for the underside's ink
-      if (see) ag.fillRect(0, 0, PAD, PAD)
-      else ag.fillRect(0, 0, AW, AH)
+      ag.fillRect(0, 0, AW, AH)
       const place = (v, x, y, kw = 1, kh = 1) => {
         ag.drawImage(c, v.x0, v.y0, v.w, v.h, x, y, v.w, v.h)
         // as UVs, v up from the bottom; its size in meters, stretched by kw and kh
@@ -308,15 +273,15 @@ try {
       }
       const views = {
         side: place(side, PAD, PAD),
-        top: place(top, PAD, 2 * PAD + side.h, kl, kt),
-        front: place(front, 2 * PAD + Math.max(side.w, top.w), PAD, kf * hf, hf),
-        rear: place(rear, 3 * PAD + Math.max(side.w, top.w) + front.w, PAD, kr * hr, hr),
+        top: place(top, PAD, 2 * PAD + side.h, 1, kt),
+        front: place(front, 2 * PAD + Math.max(side.w, top.w), PAD, kf),
+        rear: place(rear, 3 * PAD + Math.max(side.w, top.w) + front.w, PAD, kr),
       }
       return {
         webp: a.toDataURL('image/webp', 0.9),
         size: [AW, AH],
         ppm,
-        stretch: [kf * hf, kr * hr, kt],
+        stretch: [kf, kr, kt],
         bg: med,
         views,
         dark: [Math.round((PAD / 2 / AW) * 1e5) / 1e5, Math.round((1 - PAD / 2 / AH) * 1e5) / 1e5],
@@ -328,7 +293,7 @@ try {
         dims: { width: r3(body), height: r3(Math.max(...hiOpen)) },
       }
     },
-    { dataUrl: `data:${type};base64,${readFileSync(src).toString('base64')}`, tol: Number(o.tolerance), length, width: o.width ? Number(o.width) : null, see: open },
+    { dataUrl: `data:${type};base64,${readFileSync(src).toString('base64')}`, tol: Number(o.tolerance), length, width: o.width ? Number(o.width) : null },
   )
 } finally {
   await browser.close()
