@@ -123,6 +123,11 @@ function addHeadwear(vrm: VRM) {
   const rimY = eyeY + (hi.y - eyeY) * 0.3
   const ry = (hi.y - rimY) * 1.12
   const tilt = -0.28 // rim above the bangs in front, low over the nape behind
+  tuckUnder(vrm, new THREE.Matrix4().compose(
+    v3().set((lo.x + hi.x) / 2, rimY, (lo.z + hi.z) / 2),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(tilt, 0, 0)),
+    v3().set(rx, ry, rz),
+  ))
 
   const beanie = new THREE.Group()
   const dome = new THREE.Mesh(new THREE.SphereGeometry(1, 36, 14, 0, Math.PI * 2, 0, Math.PI / 2), riderMat(BEANIE))
@@ -145,14 +150,55 @@ function addHeadwear(vrm: VRM) {
   return rimY + ry * 1.06
 }
 
-/** Long strands (4+ joints) squashed along their length below the first joint, so they keep their width. */
-function cutHair(scene: THREE.Object3D) {
-  scene.traverse((o) => {
+const TUCK = 0.95 // what is under the beanie is pulled in to this much of its size
+
+/**
+ * Everything under the beanie pulled inside it: a full crown, spiky hair, or the scalp that
+ * VRoid's body skin carries under short hair would poke through. Above the rim it moves
+ * toward the dome's center, under the cuff toward its axis. `frame` maps the unit half
+ * sphere (rim on y = 0) to the beanie at rest, in world space. Run at rest.
+ */
+function tuckUnder(vrm: VRM, frame: THREE.Matrix4) {
+  const toUnit = frame.clone().invert()
+  const p = v3()
+  vrm.scene.traverse((o) => {
+    const m = o as THREE.Mesh
+    if (!m.isMesh) return
+    const toMesh = m.matrixWorld.clone().invert().multiply(frame)
+    const toBeanie = toUnit.clone().multiply(m.matrixWorld)
+    const pos = m.geometry.attributes.position
+    for (let i = 0; i < pos.count; i++) {
+      p.fromBufferAttribute(pos, i).applyMatrix4(toBeanie)
+      if (p.y < -0.08) continue // below the cuff
+      const r = p.y > 0 ? p.length() : Math.hypot(p.x, p.z)
+      if (r <= TUCK) continue
+      if (p.y > 0) p.multiplyScalar(TUCK / r)
+      else p.set((p.x * TUCK) / r, p.y, (p.z * TUCK) / r)
+      p.applyMatrix4(toMesh)
+      pos.setXYZ(i, p.x, p.y, p.z)
+    }
+    pos.needsUpdate = true
+  })
+}
+
+/**
+ * Long strands (4+ joints) that hang past the shoulder blades squashed along their length
+ * below the first joint, so they keep their width. Hair that already ends higher, a bob,
+ * stays as it was made. Run at rest, before the body is rescaled.
+ */
+function cutHair(vrm: VRM) {
+  const back = vrm.humanoid.getRawBoneNode('upperChest') ?? vrm.humanoid.getRawBoneNode('chest')
+  const blades = back ? back.getWorldPosition(v3()).y : -Infinity
+  vrm.scene.traverse((o) => {
     const m = /^J_Sec_Hair2_(\d+)$/.exec(o.name)
     if (!m || !o.parent) return
     let depth = 0
-    for (let c: THREE.Object3D | undefined = o; c; c = c.children.find((k) => /Hair/.test(k.name))) depth++
-    if (depth >= 4) o.scale.set(1, 1 - HAIR_CUT, 1)
+    let tip: THREE.Object3D = o
+    for (let c: THREE.Object3D | undefined = o; c; c = c.children.find((k) => /Hair/.test(k.name))) {
+      depth++
+      tip = c
+    }
+    if (depth >= 4 && tip.getWorldPosition(v3()).y < blades) o.scale.set(1, 1 - HAIR_CUT, 1)
   })
 }
 
@@ -708,9 +754,9 @@ function buildRig(vrm: VRM): Rig {
     }
   })
 
+  cutHair(vrm)
   raw('hips')?.scale.setScalar(BODY_SCALE)
   raw('head')?.scale.setScalar(HEAD_SCALE / BODY_SCALE)
-  cutHair(vrm.scene)
   vrm.scene.updateMatrixWorld(true)
   fitSprings(vrm)
 
