@@ -1662,6 +1662,18 @@ kbd {
 /* the narrowest screens (a 320px phone, a portal's 298px frame): the two HUD panels split the
    width, a long record holder's name cut short, and the cards over the ride fit inside it */
 @media (max-width: 340px) {
+  .landing__chips {
+    top: 10px;
+    right: 10px;
+    gap: 6px;
+  }
+
+  .chip {
+    padding: 3px 7px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
   .hud-score,
   .hud-speed {
     top: 10px;
