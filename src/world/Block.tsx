@@ -1,14 +1,16 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import type { ReactNode } from 'react'
 import * as THREE from 'three'
-import { BOX, CYL, FLAT, PANEL } from '../look/geom'
-import { decalMat, lineMat, paintMat, wornMat } from '../look/materials'
-import { roadTextTex, signTex } from '../look/textures'
+import { BOX, FLAT } from '../look/geom'
+import { decalMat, inkMat, paintMat, wornMat } from '../look/materials'
+import { poleArt } from '../art/art'
+import { roadTextTex } from '../look/textures'
 import { M, StopSign, UtilityPole } from './parts'
 import { Vehicle } from './vehicles'
 import { Nobori, RooftopBillboard, StreetBanner, WallPoster } from '../ads/fixtures'
 import { LitterView, PaintedLot, PropView, StreetTree } from './painted'
 import { BlockObstacles } from './ObstacleView'
+import { Footbridge } from './Footbridge'
 import { blockPlan, h, POLE_U } from './streetGen'
 import type { BlockPlan } from './streetGen'
 import { BLOCK, CURB, SIDEWALK } from './worldConfig'
@@ -34,35 +36,54 @@ const PAINT = '#f1f1ea'
 const WORN = '#7b8a90' // the tire tracks, a shade darker than the road
 const TRACK = 0.55 // their width
 const WHEELS = 0.8 // each track's distance from the middle of its lane
-const WIRE_Y = [7.45, 7.45, 6.9]
-const WIRE_S = [-0.72, 0.72, 0]
+// where the code pole's wires meet it: across from its middle, and up from the road
+const CODE_WIRES: [number, number][] = [
+  [-0.72, 7.45],
+  [0.72, 7.45],
+  [0, 6.9],
+]
+const WIRE_W = 0.03 // drawn about as thick as an ink line nearby, thinning to a hairline far off
 
-/** Sagging wires between consecutive poles on the pole side, as one draw call. */
-function useWires(plan: BlockPlan, half: number): THREE.LineSegments {
-  const lines = useMemo(() => {
+/**
+ * Sagging wires between consecutive poles on the pole side, as one draw call: from the painted
+ * pole's insulators, each a ribbon crossed with another, so it has a width seen from below or
+ * from the side.
+ */
+function useWires(plan: BlockPlan, half: number): THREE.Mesh {
+  const mesh = useMemo(() => {
+    const pole = poleArt()
+    const anchors = pole?.wires?.map(([x, y]) => [x, y + CURB]) ?? CODE_WIRES
     const pts: number[] = []
     const s0 = plan.poleSide * (half + 0.4)
     const spans: [number, number][] = [
       [POLE_U[0], POLE_U[1]],
       [POLE_U[1], BLOCK + POLE_U[0]],
     ]
+    const N = 12
     for (const [a, b] of spans) {
-      for (let w = 0; w < 3; w++) {
-        const N = 10
+      anchors.forEach(([x, y], w) => {
+        const sag = 0.5 + 0.09 * (w % 3) // not all hung alike
+        const p = (t: number) => [s0 + x, y - Math.sin(t * Math.PI) * sag, -(a + (b - a) * t)]
         for (let i = 0; i < N; i++) {
-          for (const j of [i, i + 1]) {
-            const t = j / N
-            pts.push(s0 + WIRE_S[w], WIRE_Y[w] - Math.sin(t * Math.PI) * 0.6, -(a + (b - a) * t))
+          const q = p(i / N)
+          const r = p((i + 1) / N)
+          // one quad up and down, one side to side
+          for (const [dx, dy] of [
+            [0, WIRE_W / 2],
+            [WIRE_W / 2, 0],
+          ]) {
+            pts.push(q[0] - dx, q[1] - dy, q[2], r[0] - dx, r[1] - dy, r[2], r[0] + dx, r[1] + dy, r[2])
+            pts.push(q[0] - dx, q[1] - dy, q[2], r[0] + dx, r[1] + dy, r[2], q[0] + dx, q[1] + dy, q[2])
           }
         }
-      }
+      })
     }
     const g = new THREE.BufferGeometry()
     g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3))
-    return new THREE.LineSegments(g, lineMat('#2b3634'))
+    return new THREE.Mesh(g, inkMat('#2b3634'))
   }, [plan, half])
-  useEffect(() => () => lines.geometry.dispose(), [lines])
-  return lines
+  useEffect(() => () => mesh.geometry.dispose(), [mesh])
+  return mesh
 }
 
 function Block({ seed, k, ix, iz, dir, width, u0 }: Omit<BlockDesc, 'key'>) {
@@ -144,28 +165,7 @@ function Block({ seed, k, ix, iz, dir, width, u0 }: Omit<BlockDesc, 'key'>) {
   plan.nobori.forEach((n, i) => els.push(<Nobori key={`nobori${i}`} {...n} slot={`${id}:nobori${i}`} />))
   plan.posters.forEach((p, i) => els.push(<WallPoster key={`poster${i}`} {...p} slot={`${id}:poster${i}`} />))
 
-  if (plan.overpass) {
-    const uc = 16
-    const span = width + 2 * SIDEWALK + 2
-    const ss = -plan.poleSide * (half + SIDEWALK / 2 + 0.2)
-    els.push(
-      <group key="overpass">
-        <M c="#8fd0bd" p={[0, 5.4, -uc]} s={[span, 0.45, 2.4]} />
-        <M c="#a6dccb" p={[0, 6.1, -(uc - 1.15)]} s={[span, 1.0, 0.1]} />
-        <M c="#a6dccb" p={[0, 6.1, -(uc + 1.15)]} s={[span, 1.0, 0.1]} />
-        {[-1, 1].map((sd) => (
-          <M key={sd} g={CYL} c="#7fc1ad" p={[sd * (half + SIDEWALK - 0.4), 2.7, -uc]} s={[0.45, 5.4, 0.45]} />
-        ))}
-        <M g={BOX} c="#8fd0bd" p={[ss, 2.7, -(uc - 1.2 - 4.5)]} s={[1.4, 0.3, 10.5]} r={[0.54, 0, 0]} />
-        <M
-          g={PANEL}
-          m={decalMat('sign-h:歩道橋', signTex('歩道橋', '#e9f3ee', false))}
-          p={[0, 5.45, -(uc - 1.23)]}
-          s={[3.2, 0.8, 1]}
-        />
-      </group>,
-    )
-  }
+  if (plan.overpass) els.push(<Footbridge key="overpass" half={half} poleSide={plan.poleSide} />)
 
   els.push(<BlockObstacles key="obstacles" seed={seed} k={k} width={width} />)
 

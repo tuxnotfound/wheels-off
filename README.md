@@ -213,7 +213,9 @@ show their names only. Upright, the chase camera sits closer and lower (`CHASE_T
   nobori flags, van sides) are filled from `public/art/ads.json`, and impressions are
   counted and dispatched as `wheelsoff:ad-impression` events. **See [ADS.md](ADS.md).**
 - **`src/world/vehicles.tsx`**: parked kei trucks, kei cars, delivery vans (with ad sides),
-  scooters and bicycles. Rounded toon bodies, detailed down to yellow kei plates.
+  scooters and bicycles. Rounded toon bodies, detailed down to yellow kei plates; the cars are
+  painted when the manifest has art for them, and the scooter and the bicycle are in
+  `src/world/bikes.tsx`.
 - **`src/world/Tree3D.tsx`**: 3D sakura (and green) trees, with toon-shaded branches under
   a canopy of camera-facing, sun-lit blossom clusters. Three shared shapes, so any number of
   trees costs three geometries.
@@ -404,6 +406,11 @@ a phone held upright, in `art-shots/<label>/` (`scripts/art-shots.mjs`, about 30
 virtual from the page's first script and `Math.random` is seeded, so nothing depends on how fast
 the page loads. Shoot `before` first; any other label then also writes `art-shots/compare-<label>/`,
 before over after. A second argument goes on the game's address, such as `'?vrm=<file>'`.
+
+`npm run art:import -- <image> --id <id> --width <m>` brings a facade from an image model into
+the town (`scripts/import-art.mjs`; ART.md, Generating with an image model). `?facade=<id>`, in
+dev only, stands it on about half the lots it fits, and `npm run shots -- <label> '?facade=<id>'`
+shoots the same ride with it.
 
 ### Later: accounts and billboard sales
 

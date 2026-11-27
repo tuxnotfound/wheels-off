@@ -5,9 +5,11 @@ listed in `public/art/manifest.json` with its real-world size in meters. The str
 generator lays lots out from whatever the manifest contains, so adding a facade just
 means adding an entry.
 
-The files in `public/art/buildings/` and `public/art/props/` are generated placeholders
-(`node scripts/make-placeholders.mjs`). Replace them one at a time: drop in a PNG with
-the same framing, point the manifest entry at it, and reload.
+Every facade in `public/art/buildings/`, every sidewalk prop, the block wall, the utility pole,
+the stop sign and the fallen petals in `public/art/props/` are painted, by gpt-image-2 (the tables
+at the end of Generating with an image model). No generated placeholder is left. The placeholder
+script (`node scripts/make-placeholders.mjs`) rewrites the whole manifest, so don't run it again;
+new art goes in with `npm run art:import`.
 
 ## Style target
 
@@ -41,9 +43,18 @@ Anime background art, the look of the reference shots:
   "depth": 9,            // meters back from the street
   "side": "#efe9d8",     // side wall color (seen at corners)
   "roof": "#6e7a78",     // roof color
-  "roofShape": "flat"    // or "gable" when the painted front shows a gable end
+  "roofShape": "flat",   // "gable" when the painted front shows a gable end, "pitched" below
+  "awning": [2.45, 3.68] // optional: its lower edge and where it meets the wall, in meters
 }
 ```
+
+The 3D body behind the front is a box to `bodyHeight`. Its side walls, seen at corners and
+down the gaps between lots, are drawn in code from the `side` color (a window a storey, a drain
+pipe, an AC unit, inked edges; `src/look/buildingTex.ts`), all in one texture. Two parts of a
+painted front stand out in 3D, so it doesn't read as a picture glued to a box:
+- **`"pitched"` roof:** a tiled roof with its ridge along the street, overhanging the walls. The
+  painted roof is cut off at `bodyHeight`, which is where the eaves meet the wall.
+- **`awning`:** that band of the image leans out from the wall, its lower edge 0.9 m out.
 
 Widths between 5 and 10 m work best (a block's frontage is about 20 to 28 m).
 
@@ -57,15 +68,20 @@ dims in shade instead of turning purple.
 
 ## Props and obstacles
 
-Same rules: transparent PNG, drawn straight-on, ground line at the bottom.
+Same rules: transparent PNG, drawn straight-on, ground line at the bottom. Props are seen up
+close on the sidewalk, so they go in at 400 px per meter, four times a facade's density.
 
 | mode    | use for                               | how it's shown                     |
 |---------|---------------------------------------|------------------------------------|
-| `card`  | plant pots, anything viewed mostly face-on | one upright plane facing the street |
-| `cross` | trees, post box                        | two crossed planes (reads from any angle) |
-| `box`   | vending machines                      | solid box with the image on the front (`depth`, `color`) |
-| `wall`  | the block-wall tile (3.2 m)           | repeated along empty frontage       |
+| `card`  | anything seen mostly face-on          | one upright plane facing the street |
+| `cross` | plant pots (`pot-*`)                  | two crossed planes (reads from any angle) |
+| `box`   | vending machines, post box            | solid box with the image on the front (`depth`, `color`; `base` stands it on a post) |
+| `wall`  | the block-wall tile (`wall-block`), the footbridge's span (`bridge-span`) | repeated along empty frontage (or across the footbridge's faces), the end tiles cut short, the wall `depth` thick in its `color` |
 | `decal` | fallen petals (`petals-ground`)       | flat on the pavement or road, seen from above |
+| `pole`  | the utility pole (`pole`)             | its front and its side as two crossed planes, wires hung from it (Street fixtures, below) |
+
+A `plants` spot on the sidewalk is two to four different `pot-*` props side by side. One card
+of a whole row of pots turned into a sliver seen down the street.
 
 Trees are not painted cards: flat cards looked like cut-outs and turned into a line
 edge-on. They are 3D (`src/world/Tree3D.tsx`): a toon-shaded trunk and branches under a
@@ -75,34 +91,255 @@ shade. Sakura and green palettes, three shapes, and they are rare on purpose: an
 occasional tree at the back of a sidewalk, and some gardens behind block walls.
 
 Obstacles are **not** painted cards. They get jumped over and knocked flying, and flat
-cards looked like cardboard cut-outs tumbling. They are solid toon-shaded 3D shapes with
-hand-drawn textures, built in `src/world/ObstacleView.tsx` (cone, cone row, barricade,
-cardboard boxes, bin bags). Their sizes match the hitboxes in `src/world/streetGen.ts`
-(`OBST_SIZE`).
+cards looked like cardboard cut-outs tumbling. The bin bags and the cardboard boxes are painted
+solids, shaped from four views like the vehicles (Vehicles, below). The cone, the cone row and the
+barricade are toon-shaded 3D shapes with hand-drawn textures in `src/world/ObstacleView.tsx`: a
+cone's views would shape a square cone, and the barricade's A-frame legs would fill in solid. Their
+sizes match the hitboxes in `src/world/streetGen.ts` (`OBST_SIZE`).
 
 Cards seen edge-on from the street turn into thin scribbles (a bicycle card looked like a
-spider). Anything that stands along the street and is thin from the side needs a `box`
-or a real model instead.
+spider). Anything that stands along the street and is thin from the side needs a `box`, crossed
+views or a painted solid instead.
 
 ## Generating with an image model
 
-The style prompt for every piece (append the subject):
+`npm run art:gen` paints one image with gpt-image-2 (quality high, about a minute) and saves it
+under `art-gen/` (gitignored). It holds the style prompt for each kind: `facade`, `prop`, the
+four-view sheets of a `vehicle` or an `obstacle` (Vehicles, below), a `pole`'s sheet of its
+views in a row and something lying flat seen from above, `ground` (Street fixtures, below). Give it the kind and the
+subject; the tables below hold every subject so far. It needs `OPENAI_API_KEY` in the
+environment, and prints the import command to run next:
 
-> anime background art, flat cel shading, clean dark teal ink outlines, muted pastel
-> palette (cream, sage, teal, dusty pink), painted blue shadow shapes, Japanese small town,
-> straight-on orthographic front elevation, no perspective, isolated on a plain white
-> background, full object visible
+```bash
+OPENAI_API_KEY=... npm run art:gen -- facade "a small ramen shop, striped awning, noren curtain in the doorway, blank sign board"
+OPENAI_API_KEY=... npm run art:gen -- vehicle "a tall boxy Japanese kei hatchback, ..." --shape wide
+```
 
-Subjects that fit the manifest: *"three-storey apartment block with solid balcony
-parapets, AC units and a drain pipe"*, *"two-storey wooden house with a gable roof
-facing the viewer"*, *"small ramen shop with a striped awning and a red sign reading
-ラーメン"*, *"convenience store front with a blue and yellow stripe band"*, *"blue drink
-vending machine"*, *"orange traffic cone"*.
+`--shape` picks the frame: `square` (the default for a facade or a prop), `wide` (a sheet's
+default) or `tall` (a vending machine, a tower). Run one at a time: on a slow day, requests sent
+together hung for 17 minutes, and one alone took one to four.
 
-Then remove the background (to transparency), crop to the object, and measure its
-real-world width for the manifest. Generated text on signs is usually garbled, so paint
-over it or keep signs blank.
+The style prompt for every facade (append the subject):
 
+> anime background art, flat cel shading, clean dark teal ink outlines of even weight,
+> muted pastel palette (cream, sage, teal, dusty pink), painted blue shadow shapes, Japanese
+> small town, neutral daylight colors with no sunset light, straight-on orthographic front
+> elevation, no perspective and no vanishing point, the whole building visible and centered
+> with a margin around it, its base a straight level line, no ground and no cast shadow on
+> the ground, sign boards left blank, isolated on a solid flat magenta background
+
+Why each part matters:
+- **Orthographic, no perspective:** the image is mapped onto a flat front. Any perspective
+  bends the street. Reject an image with a visible side wall or a vanishing point.
+- **Ink outline and a solid magenta background:** the importer cuts the background away by
+  flooding it from the image's borders, and the outline is where the flood stops. Magenta
+  is in no building, so a white wall stays.
+- **Neutral daylight:** the game lights every facade itself (Lighting on painted art, above).
+  A painted sunset would be lit twice.
+- **Blank signs:** generated lettering is usually garbled. The town's own signs carry the
+  Japanese.
+
+Then bring it in:
+
+```bash
+npm run art:import -- ~/Downloads/ramen.png --id shop-ramen-2 --width 6.4 --body 5.75 --roof-shape pitched --awning 2.45,3.68
+npm run art:import -- ~/Downloads/house.png --id house-blue --width 7.2 --roof-shape gable --roof '#5e6f8a'
+```
+
+The importer (`scripts/import-art.mjs`) cuts the background, trims to the building, scales
+to 100 px per meter and saves `public/art/buildings/<id>.webp`. Then it adds the manifest
+entry, its height taken from the image. Check `bodyHeight` when a flat roof carries a tank or
+a sign: pass `--body` with the wall's height. Reusing an existing id replaces that building
+everywhere. A painted tiled roof wants `--roof-shape pitched` and `--body` at the eaves; an
+awning wants `--awning` with its lower edge and its top. Read both off the image at 100 px per
+meter, from the bottom. Look at it in the town with `npm run dev` and `?facade=<id>`, which stands it on
+about half the lots it fits. `npm run shots -- <label> '?facade=<id>'` shoots the same ride
+with it.
+
+The thirteen, by gpt-image-2 (quality high, one image each), picked over Gemini 3 Pro Image,
+which drew four of ten at an angle or with a side wall showing. Each subject followed the style
+prompt above; the import flags are the ones it went in with:
+
+| id | subject | import flags |
+|---|---|---|
+| `shop-ramen-2` | a small ramen shop, striped awning, noren curtain in the doorway, blank sign board | `--width 6.4 --body 5.75 --roof-shape pitched --awning 2.45,3.68` |
+| `house-sage-2` | a two-storey wooden house about 7 m wide, sage green siding, its gable end facing the viewer, a small porch light, a sliding front door | `--width 7.2 --body 6.0 --roof-shape gable --roof '#5d7480'` |
+| `house-cream-2` | a two-storey house about 7 m wide, cream rendered walls, a grey tiled roof with its eaves facing the viewer, a small balcony with laundry hanging, a front door with a little canopy | `--width 7.2 --body 6.2 --roof-shape pitched` |
+| `apt-cream-3f-2` | a three-storey apartment block about 10 m wide with a flat roof, cream walls, solid balcony parapets on each floor, AC units, a drain pipe | `--width 9.6` |
+| `apt-teal-4f-2` | a four-storey apartment building about 10 m wide with a flat roof and a water tank on top, teal-grey tiled walls, balconies with railings, an entrance with mailboxes | `--width 8 --body 12.45` |
+| `shop-kissa-2` | an old two-storey coffee shop (kissaten) about 6.5 m wide, brick lower wall, an arched window, a hanging blank sign, a tiled roof with its eaves facing the viewer | `--width 6.4 --body 5.5 --roof-shape pitched` |
+| `konbini-2` | a one-storey convenience store front about 10 m wide with a flat roof, a blue and yellow stripe band, a glass front with shelves inside, blank sign band | `--width 10 --body 4.72` |
+| `shop-flowers-2` | a two-storey flower shop about 6.5 m wide, buckets of flowers on stands out front, a green awning, a tiled roof with its eaves facing the viewer | `--width 6.4 --body 5.2 --roof-shape pitched --awning 2.05,2.78` |
+| `shop-books-2` | a small two-storey used bookshop about 6.5 m wide, sliding glass doors, wooden shelves of books visible inside, a cart of books out front, a tiled roof with its eaves facing the viewer | `--width 6.4 --body 5.85 --roof-shape pitched --awning 2.8,3.32` |
+| `shokudo-2` | an old two-storey diner (shokudo) about 7 m wide, a wooden front, a noren curtain, a display case of plastic food samples, a tiled roof with its eaves facing the viewer | `--width 7.2 --body 6.45 --roof-shape pitched --awning 3.35,3.85` |
+| `apt-pink-4f-2` | a four-storey apartment building about 8 m wide with a flat roof, dusty pink tiled walls, balconies with railings and some laundry, AC units, a drain pipe, an entrance with a small canopy and mailboxes | `--width 8 --body 12.95` |
+| `house-grey-2` | a two-storey house about 7 m wide, light grey siding, its gable end facing the viewer, a small balcony, a front door under a little canopy, a potted plant by the door | `--width 5.4 --body 5.25 --roof-shape gable --roof '#4f6a76'` |
+| `office-5f-2` | a five-storey small office building about 8 m wide with a flat roof, concrete walls with horizontal bands of windows, blinds in some windows, a ground-floor entrance with glass doors, a vertical sign column left blank | `--width 8 --body 13.1` |
+
+The width is the facade's real width in meters (Buildings, above): pick it so a door comes out
+about 2.2 m tall. The apartment block asked for 10 m went in at 8, or it stood 16.8 m tall; the grey house asked
+for 7 m went in at 5.4, or its door stood 2.9 m. A
+lower tiled roof over the ground floor (the bookshop, the diner) goes in as the `--awning`, so it
+leans out too.
+
+### Props
+
+Props take the same prompt with the subject changed: "Japanese small town street furniture",
+"straight-on orthographic front view, no perspective and no vanishing point, no side or top
+visible, the whole object visible and centered", and "any lettering left blank". Bring one in
+with `--prop <mode>`, and for a box its `--depth` (and `--base` on a post):
+
+```bash
+npm run art:import -- ~/Downloads/vending.png --id vending-blue --width 1.0 --prop box --depth 0.8
+npm run art:import -- ~/Downloads/pot.png --id pot-1 --width 0.5 --prop cross --glow
+```
+
+The box's color, on its sides and top, is taken from the image's edges unless `--color` sets it.
+The block wall is a `wall` 3.2 m wide whose `--depth` is its thickness. Its pierced blocks show
+the dark face of the box behind them, as the shadow inside the holes.
+
+| id | subject | import flags |
+|---|---|---|
+| `vending-blue` | a Japanese drink vending machine, about 1 m wide and 1.85 m tall, a flat top, a blue body, a glass display of three rows of small drink cans and bottles with a little button under each, a coin slot and a note slot on the right, a dark pick-up flap across the bottom, a blank panel above the display | `--width 1.0 --prop box --depth 0.8` |
+| `vending-red` | the same with a red body and a blank white panel | `--width 1.0 --prop box --depth 0.8` |
+| `postbox` | a modern Japanese red post box, a rectangular pillar about 0.5 m wide and 1.35 m tall on a short dark stand, a flat top, two letter slots side by side with small blank white plates above them, a small blank collection-times plate below | `--width 0.55 --prop box --depth 0.4 --base 0.31` |
+| `bridge-span` | a straight-on front elevation of one 4 m long section of a Japanese pedestrian footbridge span: along the bottom a steel girder about 0.8 m deep painted pale mint green with a thin darker lip and a row of bolts, above it a pedestrian railing about 1.2 m tall of slim vertical bars between a flat top rail and a bottom rail in the same mint green, both ends cut off straight and vertical at a railing post, open background showing between the bars, nothing behind it | `--width 4 --prop wall` |
+| `wall-block` | a straight section of a Japanese concrete block garden wall, 3.2 m long and 1.8 m tall, grey concrete blocks in neat courses with thin mortar lines, one row of decorative pierced breeze blocks near the top, a flat concrete cap along the top, a few faint weather stains, both ends cut off straight and vertical, nothing behind it | `--width 3.2 --prop wall --depth 0.15` |
+| `pot-1` | a single potted plant: a leafy green shrub in a terracotta pot, about 0.5 m wide and 0.8 m tall, nothing beside it | `--width 0.6 --prop cross --glow` |
+| `pot-2` | a single potted plant: a spiky striped spider plant in a round blue glazed pot, about 0.45 m wide and 0.5 m tall, nothing beside it | `--width 0.65 --prop cross --glow` |
+| `pot-3` | a single potted plant: a leafy bush with a few white flowers in a tall blue glazed pot, about 0.5 m wide and 0.9 m tall, nothing beside it | `--width 0.6 --prop cross --glow` |
+| `pot-4` | a single potted plant: yellow flowers over round leaves in a small terracotta pot, about 0.4 m wide and 0.45 m tall, nothing beside it | `--width 0.45 --prop cross --glow` |
+
+A pot's width is picked so the pot itself comes out 30 to 38 cm across; the plant spreads wider.
+
+The footbridge (`src/world/Footbridge.tsx`) wears `bridge-span` on both faces of its deck, centered
+and cut short at each end, its bars cut out so they cast striped shadows. The deck box, its
+pillars and its stairs are code in the tile's `color`; the stairs are real steps. The girder came
+out 0.41 m deep, not 0.8, and the walkway (`FOOTBRIDGE.walk` in `streetGen.ts`) stands on top of
+it. In dev, `?footbridge` puts one over every block.
+
+### Street fixtures
+
+**The utility pole** comes from one tall sheet (`art:gen pole`): the pole from the front, its
+crossarms across, the same pole from its side, and, as a third piece apart from them, the
+transformer some poles carry. `art:import --prop pole --height <m>` (`scripts/import-pole.mjs`)
+cuts the pieces apart at the empty columns between them, scales all three by the front view's
+height, and centers each view on its shaft. The game stands the front across the street and the
+side along it, crossed (`PaintedPole` in `src/world/parts.tsx`), every normal facing the road, so
+both planes take the light as one surface. Lit each as itself, one plane fell in shade and the
+other didn't. The transformer hangs on the road side of the shaft on two poles in five, the same
+can crossed with itself.
+
+Every pole in the town is the one painted pole, so the wires line up. The importer finds the
+wires' anchors on the front view: a crossarm is a band of rows with one run far wider than the
+shaft, and each short run standing on it is an insulator. A run going on up for more than half a
+meter is the shaft, past a lower crossarm. `--wires x,y;x,y` gives them by hand if the ones found
+are wrong. The wires (`useWires` in `src/world/Block.tsx`) are ink ribbons 3 cm wide, one
+upright and one flat, crossed, so a wire has a width from below and from the side; the 1 px lines
+before them all but vanished on a supersampled screen. Each hangs a little lower than the last.
+
+The pole was drawn chunkier than a real one: at 9 m tall its shaft is 41 cm across, and the
+transformer 1.4 m wide with its brackets. Left as drawn, to the same scale as the pole.
+
+**The stop sign** is a painted `card` plate (`stop-sign`, `--glow` so it stays readable in shade)
+on a code post, its back the plate's shape in plain metal grey (`silhouetteMat`). The prop prompt
+says "any lettering left blank"; asked in the subject to write 止まれ, the model did.
+
+**Fallen petals** are a `decal` (`petals-ground`) from `art:gen ground`: the style prompt seen from
+directly above, things lying flat, no ground drawn. The petals are drawn about ten times life size,
+as the placeholder's were, or a drift on the road is a few pink pixels.
+
+| id | kind | subject | import flags |
+|---|---|---|---|
+| `pole` | `pole` | a Japanese concrete utility pole about ten meters tall, pale grey, round and slightly tapering toward the top, a long steel crossarm near the top and a shorter one below it, white insulators standing on both crossarms, step bolts up its upper half, a yellow and black diagonally striped guard sleeve around its foot, a small blank sign plate at eye level. As a third separate piece, to the right of the side view and not attached to anything: the grey cylindrical pole transformer that hangs on such a pole, with its two mounting bands, seen from the front at the same scale | `--height 9 --prop pole` |
+| `stop-sign` | `prop` | a Japanese stop sign plate on its own, without its pole or bracket: an inverted equilateral triangle, red, with a narrow white border, the word 止まれ written across it in bold white Japanese characters. Write 止まれ on it; leave nothing else blank | `--width 0.8 --prop card --glow` |
+| `petals-ground` | `ground` | fallen cherry blossom petals: a loose drift of about thirty single pale pink petals lying flat, each a rounded petal with a small notch at its tip, scattered unevenly with a few small overlapping clumps, thinning out toward the edges, each petal about a twentieth of the image wide | `--width 2.2 --prop decal` |
+
+## Vehicles
+
+The parked kei cars, kei trucks and vans are painted too, each from one image: a reference sheet
+of four views of the vehicle at one scale, in a two by two grid. `npm run art:vehicle` splits the
+sheet at the empty bands between the views and measures each view's outline. It packs the four
+into one texture, `public/art/vehicles/<id>.webp`, and puts the outlines in the manifest's
+`vehicles` list.
+
+The game shapes the vehicle from where the side, front and top outlines overlap
+(`src/world/paintedSolid.ts`). It is a box cut in slices nose to tail, each slice as tall as
+the side view there and as wide as the narrower of the front and top views at each height. Each
+point is painted from the three views it can be seen in (the side, the end it faces, the top),
+mixed by how squarely it faces each, so a rounded corner fades from one view into the next; the
+underside is ink. Chosen per triangle instead, the views flipped back and forth over a corner: a
+tail lamp painted twice, a pillar in teeth. A vehicle's last 20 cm of each side, at the nose and
+the tail, takes the end view too, carried round the corner: the model draws a wraparound lamp on
+the side and on the rear differently, and two lamps met at the corner, a dark strip between. The importer also paints over each view's outer ink
+outline from the color inside it, as the game's ink pass draws the shape's silhouette: where the
+body curves away, a view lands at a grazing angle and its outline stretched into a stripe across
+a door or a fender. Door mirrors and an aerial
+are too thin to shape, so the importer drops them from the outlines and they stay painted on the
+views. The model draws the front, rear and top up to 25% wider or narrower than each other, so
+the importer stretches each across to the body's real width, `--width`.
+
+The bin bags and the cardboard boxes (`--kind bags` or `boxes`) come the same way, into the
+manifest's `obstacles`. An obstacle's long front faces the rider, so its sheet asks for that front
+top left, where a vehicle's left side goes, its two ends on the right and the top view under the
+front; the game turns it a quarter turn. `--length` is then its front end to end, and `--width` its
+depth. Asked for its front only as "its long side", the model drew the long side in every view.
+In dev, `?obstacle=<kind>` makes every obstacle that kind.
+
+A kind with painted vehicles shows one of them, picked per spot. A kind with none keeps its code
+model (`src/world/vehicles.tsx`). In dev, `?vehicle` parks a car on both sides of every block and
+a bike outside every building, and `?vehicle=<id>` makes every car that one.
+
+The scooter and the bicycle are modeled, not painted (`src/world/bikes.tsx`), each upright on its
+center stand. A bicycle is mostly holes and thin parts at different depths, and two tries at
+painting them failed from where the chase camera sees a parked bike, a little off its axis. As a
+car's box, each step (the basket, the top box) was a slab painted on every face, and through one
+face another showed: a second basket. As sheets, one per view, each set back to where that view
+meets the shape, the views never agreed on a thin part's depth: two handlebars, mirrors on a bar
+floating above them, and under the ink pass every spoke and cable outlined, a dark tangle from the
+street. The models follow the two sheets gpt-image-2 drew for them on 2026-11-20 (in git at
+`97a48fc`, `public/art/vehicles/scooter-mint.webp` and `bicycle-cream.webp`), part by part off
+their side views, in their sampled colors: a mint step-through with a white leg shield and a white
+top box, and a cream mamachari with a solid basket, six thick spokes and brown saddle and grips.
+Other paint colors are picked per spot.
+
+The sheet's prompt (append the subject):
+
+> anime background art, flat cel shading, clean dark teal ink outlines of even weight, muted
+> pastel palette, painted blue shadow shapes, neutral daylight colors with no sunset light. An
+> orthographic vehicle reference sheet of one vehicle: four separate views of the same vehicle
+> at exactly the same scale, laid out in a two by two grid with wide empty gaps between them so
+> no view touches another. Top left: its left side, nose pointing left. Top right: its front.
+> Bottom left: seen from directly above, nose pointing left. Bottom right: its rear. Every view
+> perfectly straight-on with no perspective, no vanishing point and no three-quarter angle, the
+> side and top views the same length and lined up, the front and rear views the same height as
+> the side view. No labels, no text, no arrows, no ground and no cast shadow, number plates
+> blank, isolated on a solid flat magenta background
+
+```bash
+npm run art:vehicle -- ~/Downloads/kei.png --id kei-car-mint --kind kei-car --length 3.4 --width 1.48
+```
+
+`--length` is nose to tail in meters and sets the scale of all four views. `--width` is the body's
+width without its mirrors: 1.48 m for any kei vehicle, the legal limit.
+
+| id | subject | import flags |
+|---|---|---|
+| `kei-car-mint` | a tall boxy Japanese kei hatchback, 3.4 m long, 1.48 m wide and 1.7 m tall, a short sloping bonnet, a tall glasshouse with dark teal glass, pale mint green paint with a white roof, round headlamps, small black door mirrors, yellow number plates | `--kind kei-car --length 3.4 --width 1.48` |
+| `kei-car-cream` | a boxy Japanese kei wagon, 3.4 m long, 1.48 m wide and 1.7 m tall, a flat upright front with square headlamps, a tall upright glasshouse with dark teal glass, cream paint, black bumpers, small black door mirrors, yellow number plates | `--kind kei-car --length 3.4 --width 1.48` |
+| `kei-car-blue` | a rounded Japanese kei hatchback, 3.4 m long, 1.48 m wide and 1.55 m tall, dusty blue paint, a short rounded bonnet, oval headlamps, dark teal glass, small door mirrors in the body color, yellow number plates | `--kind kei-car --length 3.4 --width 1.48` |
+| `kei-truck-white` | a Japanese kei truck, 3.4 m long, 1.48 m wide and 1.8 m tall, white, a flat-nosed cab over the front wheels with a tall windscreen, an open flat bed behind the cab with low drop sides and a guard frame behind the cab, the bed empty, round headlamps, small black door mirrors, yellow number plates | `--kind kei-truck --length 3.4 --width 1.48` |
+| `van-white` | a Japanese cab-over delivery van, 4.7 m long, 1.7 m wide and 1.98 m tall, white, a flat upright front with the windscreen right above the front wheels and almost no bonnet, a tall boxy body with plain flat sides and no windows behind the front doors, dark teal glass, grey bumpers, small black door mirrors, white number plates | `--kind van --length 4.7 --width 1.69` |
+| `bags-white` | a pile of three tied Japanese household rubbish bags left out for collection, semi-transparent white and pale blue plastic with crumpled paper showing through, each knotted at the top, in a row along its front, about 1.2 m long, 0.8 m from front to back and 0.55 m tall | `--kind bags --length 1.2 --width 0.45` |
+| `boxes-brown` | a stack of three brown cardboard boxes with packing tape: a big box on the ground, a smaller box on top of it set a little back, and a small box on the ground beside them, about 1.1 m long, 0.9 m from front to back and 0.72 m tall | `--kind boxes --length 1.1 --width 0.6` |
+
+The two obstacles took the sheet's prompt with "vehicle" changed to "object" and its views named
+as above (`art:gen obstacle`). The bags came out 0.3 m deep and went in at 0.45; stretched to their hitbox's 0.8 they
+would bloat.
+
+The truck's open bed comes out filled to its rails, its painted floor on top: from the riding
+height it reads as a bed. A van carries its two ad slots on its flat sides, as the code van did.
+Ask for a cab-over van in words: asked for a delivery van, the model drew a long-nosed European one.
 ## Character: VRM
 
 The default `public/art/character.vrm` is pixiv's VRM sample model

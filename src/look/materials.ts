@@ -136,11 +136,12 @@ export function riderMat(color: string, doubleSided = false): THREE.MeshToonMate
   })
 }
 
-export function lineMat(color: string): THREE.LineBasicMaterial {
-  return cached(`line:${color}`, () => {
-    const m = new THREE.LineBasicMaterial({ color })
+/** Unlit, in one color, both sides: drawn lines with a width, like the wires. */
+export function inkMat(color: string): THREE.MeshBasicMaterial {
+  return cached(`ink:${color}`, () => {
+    const m = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide })
     m.onBeforeCompile = patchCurve
-    m.customProgramCacheKey = () => 'basic-curve'
+    m.customProgramCacheKey = () => 'basic-mesh-curve'
     return m
   })
 }

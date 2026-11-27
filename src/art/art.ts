@@ -12,11 +12,14 @@ export type BuildingArt = {
   front: string // front elevation image, transparent around the silhouette
   width: number // meters, along the street
   height: number // meters, full image height (roof, tank, sign included)
-  bodyHeight: number // meters, the wall the 3D body is built to
+  bodyHeight: number // meters, the wall the 3D body is built to (the eaves, under a pitched roof)
   depth: number // meters, how far the body extends back
   side: string // side wall color
   roof: string // roof color
-  roofShape?: 'flat' | 'gable'
+  // flat: the box's top; gable: a painted gable end faces the street, the ridge runs back;
+  // pitched: a tiled 3D roof, its ridge along the street, and the painted roof cut off at the eaves
+  roofShape?: 'flat' | 'gable' | 'pitched'
+  awning?: [number, number] // meters from the ground, its lower edge and where it meets the wall: leans out in 3D
 }
 export type PropArt = {
   id: string
@@ -25,16 +28,49 @@ export type PropArt = {
   height: number
   // card: one upright plane facing the street; cross: two crossed planes (reads
   // from any angle); box: a solid box with the image on the front; wall: a tile
-  // decal: flat on the ground
-  mode: 'card' | 'cross' | 'box' | 'wall' | 'decal'
+  // decal: flat on the ground; pole: its front and its side as crossed planes, wires on it
+  mode: 'card' | 'cross' | 'box' | 'wall' | 'decal' | 'pole'
   glow?: boolean // keep its painted color in shade (foliage, signs)
-  depth?: number
-  color?: string
+  depth?: number // a box's depth, a wall's thickness
+  color?: string // a box's or a wall's sides and top
+  base?: number // a box on a post: where the box starts, in meters from the ground
+  // a pole's (scripts/import-pole.mjs): its side view, its shaft's width, where each wire meets
+  // its front view (meters from its foot, +x to the view's right), and the transformer some carry,
+  // with where its foot hangs
+  side?: { image: string; width: number; height: number }
+  shaft?: number
+  wires?: [number, number][]
+  transformer?: { image: string; width: number; height: number; y: number }
 }
+/** Every image a prop needs loaded. */
+export const propImages = (p: PropArt): string[] => [p.image, ...(p.side ? [p.side.image] : []), ...(p.transformer ? [p.transformer.image] : [])]
+/** One of a solid's four views in its texture: where (UVs, v up) and its size in meters. */
+export type SolidView = { rect: [number, number, number, number]; w: number; h: number }
+/**
+ * A vehicle or an obstacle from four painted views (scripts/import-vehicle.mjs). Its outlines,
+ * in meters: `side`, the lowest and highest point of each slice nose to tail; `front`, the left
+ * and right edge of each slice up the height; `top`, the same of each slice nose to tail (+x to
+ * its right).
+ */
+export type SolidArt = {
+  id: string
+  kind: string
+  atlas: string
+  length: number
+  width: number
+  height: number
+  views: { side: SolidView; front: SolidView; rear: SolidView; top: SolidView }
+  dark: [number, number] // an ink texel, for the underside
+  profile: { side: [number, number][]; front: [number, number][]; top: [number, number][] }
+}
+export type VehicleArt = SolidArt & { kind: 'kei-car' | 'kei-truck' | 'van' }
+export type ObstacleArt = SolidArt & { kind: 'bags' | 'boxes' }
 export type ArtManifest = {
   character: string | null
   buildings: BuildingArt[]
   props: PropArt[]
+  vehicles?: VehicleArt[]
+  obstacles?: ObstacleArt[]
 }
 
 export let art: ArtManifest = { character: null, buildings: [], props: [] }
@@ -71,6 +107,11 @@ export function characterUrl(): string | null {
 
 export function propArt(id: string): PropArt | undefined {
   return props.get(id)
+}
+
+/** The town's utility pole, when the manifest has a painted one: every pole is it, so the wires line up. */
+export function poleArt(): PropArt | undefined {
+  return art.props.find((p) => p.mode === 'pole' && p.side)
 }
 
 const mats = new Map<string, THREE.Material>()
@@ -116,6 +157,22 @@ export function decalPaintMat(path: string): THREE.MeshToonMaterial {
     m.polygonOffsetUnits = -6
     m.onBeforeCompile = patchCurve
     m.customProgramCacheKey = () => 'toon-curve'
+    mats.set(key, m)
+  }
+  return m
+}
+
+/** One flat color in the art's cut-out shape: the plain metal back of a painted sign. */
+export function silhouetteMat(path: string, color: string): THREE.MeshToonMaterial {
+  const key = `silhouette:${path}:${color}`
+  let m = mats.get(key) as THREE.MeshToonMaterial | undefined
+  if (!m) {
+    m = new THREE.MeshToonMaterial({ color, map: textures.get(path), gradientMap: celRamp(), alphaTest: 0.5 })
+    m.onBeforeCompile = (sh) => {
+      patchCurve(sh)
+      sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', 'diffuseColor.a *= texture2D(map, vMapUv).a;')
+    }
+    m.customProgramCacheKey = () => 'toon-curve-silhouette'
     mats.set(key, m)
   }
   return m

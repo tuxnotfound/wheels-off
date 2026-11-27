@@ -1,10 +1,14 @@
-import { CYL, RBOX, RING } from '../look/geom'
+import { CYL, RBOX } from '../look/geom'
 import { AdSlot } from '../ads/AdSlot'
+import { art } from '../art/art'
+import type { VehicleArt } from '../art/art'
 import { M } from './parts'
+import { edgesAt, solidGeometry, solidMat } from './paintedSolid'
+import { Bicycle, Scooter } from './bikes'
 import type { VehicleSpot } from './streetGen'
 
 // Parked vehicles and bikes. Chunky rounded toon shapes, inked by the post pass like
-// everything else. Nothing here collides: road vehicles park half up on the curb,
+// everything else; the scooter and the bicycle are in bikes.tsx. Nothing here collides: road vehicles park half up on the curb,
 // clear of the rider's lane, and bikes stand on the sidewalk.
 // Local frame: nose toward -Z, +X to the vehicle's right, ground at y = 0.
 
@@ -33,12 +37,10 @@ export const VEHICLE_LEN: Record<VehicleKind, number> = {
   bicycle: 1.8,
 }
 
-const PAINT: Record<VehicleKind, string[]> = {
+const PAINT: Record<Exclude<VehicleKind, 'scooter' | 'bicycle'>, string[]> = {
   'kei-truck': ['#eef0ea', '#dfe3d8', '#cbd6cf', '#9fb8c9'],
   'kei-car': ['#f1e6cf', '#b9d6cc', '#e3b9b0', '#dfe3e6', '#f2d7a0', '#8fb0c8'],
   van: ['#f3f1e6', '#cfd8d6', '#e8d9bd'],
-  scooter: ['#d9533f', '#4b6f8a', '#f1e6cf', '#6cc7b5'],
-  bicycle: ['#e9ece6', '#d9533f', '#5aa6a0', '#e8b64a'],
 }
 const pick = (list: string[], r: number) => list[Math.floor(r * list.length) % list.length]
 
@@ -226,67 +228,43 @@ function Van({ r, slot }: { r: number; slot: string }) {
   )
 }
 
-/** A step-through scooter on its side stand, with a delivery box. */
-function Scooter({ r }: { r: number }) {
-  const paint = pick(PAINT.scooter, r)
-  return (
-    <group rotation={[0, 0, 0.1]}>
-      <M g={RBOX} c={paint} p={[0, 0.55, 0.3]} s={[0.34, 0.36, 0.85]} />
-      <M g={RBOX} c="#2f3634" p={[0, 0.34, -0.05]} s={[0.3, 0.1, 1.1]} />
-      <M g={RBOX} c={paint} p={[0, 0.72, -0.5]} s={[0.36, 0.72, 0.2]} r={[-0.25, 0, 0]} />
-      <M g={RBOX} c="#2b3634" p={[0, 0.8, 0.3]} s={[0.34, 0.1, 0.62]} />
-      <M c={TRIM} p={[0, 1.12, -0.62]} s={[0.66, 0.04, 0.04]} />
-      <M g={RBOX} c={paint} p={[0, 1.08, -0.64]} s={[0.26, 0.16, 0.14]} />
-      <M c={LAMP} p={[0, 1.08, -0.72]} s={[0.12, 0.08, 0.02]} />
-      <M g={RBOX} c={GLASS} p={[0, 1.3, -0.66]} s={[0.32, 0.24, 0.03]} r={[-0.35, 0, 0]} />
-      <M g={RBOX} c="#e8b64a" p={[0, 1.08, 0.62]} s={[0.46, 0.4, 0.42]} />
-      <M c={KEI_PLATE} p={[0, 0.6, 0.84]} s={[0.16, 0.1, 0.01]} />
-      <M c={TAIL} p={[0, 0.78, 0.76]} s={[0.12, 0.06, 0.02]} />
-      <Wheel x={0} z={-0.62} r={0.22} w={0.1} />
-      <Wheel x={0} z={0.62} r={0.22} w={0.1} />
-      <M g={CYL} c={TRIM} p={[-0.14, 0.18, 0.1]} s={[0.035, 0.38, 0.035]} r={[0, 0, 0.35]} />
-    </group>
-  )
+// dev only: ?vehicle=<id> parks that painted vehicle in every car's, truck's and van's place
+const SHOWN = import.meta.env.DEV && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('vehicle') : null
+
+/** A painted vehicle of this kind, picked by r, when the manifest has one (ART.md, Vehicles). Bikes are modeled, never painted. */
+function paintedFor(kind: VehicleKind, r: number): VehicleArt | undefined {
+  if (kind === 'scooter' || kind === 'bicycle') return undefined
+  const list = art.vehicles ?? []
+  const shown = SHOWN ? list.find((v) => v.id === SHOWN) : undefined
+  if (shown) return shown
+  const mine = list.filter((v) => v.kind === kind)
+  return mine.length ? mine[Math.floor(r * mine.length) % mine.length] : undefined
 }
 
-/** Mamachari: step-through city bike with a front basket, on its kickstand. */
-function Bicycle({ r }: { r: number }) {
-  const paint = pick(PAINT.bicycle, r)
-  const R = 0.33
-  const tube = (a: V3, b: V3, t = 0.04, c = paint) => {
-    const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2]
-    const len = Math.hypot(dx, dy, dz)
-    return <M g={CYL} c={c} p={[(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2]} s={[t, len, t]} r={[Math.atan2(dz, dy), 0, 0]} />
-  }
+/** A painted van's ad slots, on its flat sides behind the cab, about two thirds up. */
+function VanAds({ v, r, slot }: { v: VehicleArt; r: number; slot: string }) {
+  const z = v.length * 0.13
+  const y = v.height * 0.65
+  const [x0, x1] = edgesAt(v, y, z)
   return (
-    <group rotation={[0, 0, 0.12]}>
-      {[-0.55, 0.55].map((z) => (
-        <group key={z} position={[0, R, z]} rotation={[0, Math.PI / 2, 0]}>
-          <M g={RING} c={TIRE} p={[0, 0, 0]} s={[R * 2, R * 2, 1.2]} />
-          <M g={CYL} c={CHROME} p={[0, 0, 0]} s={[0.06, 0.06, 0.06]} r={[Math.PI / 2, 0, 0]} />
-        </group>
+    <>
+      {[-1, 1].map((sx) => (
+        <AdSlot key={sx} format="van" r={r} slot={`${slot}:${sx}`} p={[sx > 0 ? x1 + 0.012 : x0 - 0.012, y, z]} rot={[0, (sx * Math.PI) / 2, 0]} />
       ))}
-      {tube([0, R, 0.55], [0, 0.78, 0.15])}
-      {tube([0, 0.78, 0.15], [0, 0.42, -0.1])}
-      {tube([0, 0.42, -0.1], [0, 0.95, -0.42])}
-      {tube([0, 0.95, -0.42], [0, R, -0.55], 0.035)}
-      {tube([0, R, 0.55], [0, 0.42, -0.1], 0.03)}
-      {tube([0, 0.95, -0.42], [0, 1.08, -0.4], 0.035, TRIM)}
-      <M c={TRIM} p={[0, 1.08, -0.38]} s={[0.56, 0.03, 0.03]} />
-      <M g={RBOX} c="#2b3634" p={[0, 0.93, 0.18]} s={[0.14, 0.06, 0.24]} />
-      <M c={CHROME} p={[0, 0.84, -0.66]} s={[0.36, 0.24, 0.3]} />
-      <M c="#dfe3e0" p={[0, 0.9, -0.66]} s={[0.32, 0.14, 0.26]} />
-      <M c={TRIM} p={[0, 0.66, 0.6]} s={[0.24, 0.04, 0.3]} />
-      <M c={LAMP} p={[0, 0.72, -0.84]} s={[0.08, 0.08, 0.04]} />
-    </group>
+    </>
   )
 }
 
 /** A parked vehicle or bike. Curb-parked ones sit half up on the sidewalk, tilted onto it. */
 export function Vehicle({ spot, slot }: { spot: VehicleSpot; slot: string }) {
   const { kind, s, u, r, flip, curb, side } = spot
-  const body =
-    kind === 'kei-truck' ? (
+  const painted = paintedFor(kind, r)
+  const body = painted ? (
+    <>
+      <M g={solidGeometry(painted)} m={solidMat(painted.atlas)} p={[0, 0, 0]} s={[1, 1, 1]} />
+      {painted.kind === 'van' && <VanAds v={painted} r={r} slot={slot} />}
+    </>
+  ) : kind === 'kei-truck' ? (
       <KeiTruck r={r} />
     ) : kind === 'kei-car' ? (
       <KeiCar r={r} />

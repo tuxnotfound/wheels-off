@@ -12,6 +12,9 @@ import { obstaclesFor } from './streetGen'
 import type { Obstacle } from './streetGen'
 import { BLOCK } from './worldConfig'
 import { LIVE, bakeStatic } from './bake'
+import { art } from '../art/art'
+import type { ObstacleArt } from '../art/art'
+import { solidGeometry, solidMat } from './paintedSolid'
 
 const INK_DARK = '#2f3332'
 const WHITE = '#f1f1ea'
@@ -28,8 +31,20 @@ function Cone({ x = 0 }: { x?: number }) {
   )
 }
 
+/** A painted pile for this obstacle when the manifest has one of its kind (ART.md, Vehicles). */
+function paintedFor(ob: Obstacle): ObstacleArt | undefined {
+  const list = (art.obstacles ?? []).filter((o) => o.kind === ob.kind)
+  let n = 0
+  for (const ch of ob.id) n = (n * 31 + ch.charCodeAt(0)) % 9973
+  return list.length ? list[n % list.length] : undefined
+}
+
 /** Solid, toon-shaded obstacles: they get jumped over and knocked flying, so they need volume. */
 function Body({ ob }: { ob: Obstacle }) {
+  const painted = paintedFor(ob)
+  // a quarter turn: its length across the road, and the sheet's front (the solid's left side)
+  // toward oncoming riders, who come from +z
+  if (painted) return <M g={solidGeometry(painted)} m={solidMat(painted.atlas)} p={[0, 0, 0]} s={[1, 1, 1]} r={[0, Math.PI / 2, 0]} />
   const hazard = decalMat('hazard', hazardTex())
   const cardboard = decalMat('cardboard', cardboardTex())
   switch (ob.kind) {

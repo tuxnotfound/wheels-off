@@ -113,6 +113,9 @@ export function laneLimit(width: number): number {
   return width / 2 - 0.9
 }
 
+// dev only: ?obstacle=<kind> makes every obstacle that kind, to judge its art in the town
+const OBST_ONLY = import.meta.env.DEV && typeof location !== 'undefined' ? (new URLSearchParams(location.search).get('obstacle') as ObstacleKind | null) : null
+
 const obstCache = new Map<string, Obstacle[]>()
 export function blockObstacles(seed: number, k: number, width: number): Obstacle[] {
   const key = `${seed}:${k}`
@@ -124,7 +127,7 @@ export function blockObstacles(seed: number, k: number, width: number): Obstacle
     const n = Math.floor(h(seed, k, 401) * 3.2) // 0..3
     const span = OBST_MAX - OBST_MIN
     for (let i = 0; i < n; i++) {
-      const kind = pick(OBST_KINDS, h(seed, k, 410 + i))
+      const kind = OBST_ONLY && OBST_SIZE[OBST_ONLY] ? OBST_ONLY : pick(OBST_KINDS, h(seed, k, 410 + i))
       const [w, d, hh] = OBST_SIZE[kind]
       const u = k * BLOCK + OBST_MIN + (span * (i + 0.2 + 0.6 * h(seed, k, 420 + i))) / n
       const lim = Math.max(0, laneLimit(width) - w / 2 + 0.3)
@@ -228,12 +231,35 @@ function billboardFootprint(side: number) {
 
 export const POLE_U = [5, 21] // utility poles along the pole side of every block
 // (a flat bicycle card reads as a spider edge-on, so it isn't placed until it has real depth)
+// 'plants' is a cluster of the manifest's pot-* props, which each stand alone as crossed cards: a
+// row of pots on one card turned into a sliver seen down the street
 const SIDEWALK_PROPS = ['vending-blue', 'vending-red', 'postbox', 'plants']
+
+// dev only: ?facade=<id> stands that building on about half the lots it fits, among the others,
+// to judge new art in the town (scripts/import-art.mjs)
+const FACADE = import.meta.env.DEV && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('facade') : null
+// and ?prop=<id> puts that prop (or 'plants') on every sidewalk spot
+const PROP = import.meta.env.DEV && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('prop') : null
+// and ?vehicle=<id> parks a car on both sides of every block and a bike outside every building
+// (vehicles.tsx paints them all as it, the cars or the bikes)
+const PARK = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('vehicle')
+// and ?footbridge puts a footbridge over every block
+const BRIDGES = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('footbridge')
+
+/**
+ * A footbridge's layout (Footbridge.tsx draws it): its middle along the block, its deck from face
+ * to face, the clearance under its girder, its walkway's height, and its stairs, which run from
+ * the deck's near face back down the sidewalk on the side without poles.
+ */
+export const FOOTBRIDGE = { u: 16, deck: 2.3, under: 4.7, walk: 5.1, steps: 28, run: 0.28 }
+const STAIR_FOOT = FOOTBRIDGE.u - FOOTBRIDGE.deck / 2 - FOOTBRIDGE.steps * FOOTBRIDGE.run
 
 /** A building whose art fits in the room left, starting from a hashed pick. */
 function fitBuilding(r: number, room: number): BuildingArt | null {
   const list = art.buildings
   if (!list.length) return null
+  const shown = FACADE ? list.find((b) => b.id === FACADE) : undefined
+  if (shown && shown.width <= room && r < 0.5) return shown
   const i0 = Math.floor(r * list.length)
   for (let i = 0; i < list.length; i++) {
     const b = list[(i0 + i) % list.length]
@@ -268,14 +294,15 @@ function makePlan(seed: number, k: number, width: number, u0: number, course: bo
   const billboardSpots: BlockPlan['billboards'] = [] // roofs that could carry one
   const nobori: BlockPlan['nobori'] = []
   const posters: BlockPlan['posters'] = []
-  const propIds = SIDEWALK_PROPS.filter((id) => propArt(id))
+  const pots = art.props.filter((p) => p.id.startsWith('pot-')).map((p) => p.id)
+  const propIds = SIDEWALK_PROPS.filter((id) => (id === 'plants' ? pots.length : propArt(id)))
   const half = width / 2
   const front = half + SIDEWALK + 0.3 // where facades stand
 
   const aheadL = open(k + 1, -1) ? widthForSeed(childSeed(seed, k + 1, -1)) / 2 : 0
   const aheadR = open(k + 1, 1) ? widthForSeed(childSeed(seed, k + 1, 1)) / 2 : 0
   const cross = Math.max(aheadL, aheadR)
-  const overpass = width >= 6 && h(seed, k, 603) > 0.86
+  const overpass = (width >= 6 && h(seed, k, 603) > 0.86) || BRIDGES
 
   // what already stands on each sidewalk, as [from, to] spans along u, so nothing overlaps
   const taken: Record<number, [number, number][]> = { [-1]: [], [1]: [] }
@@ -283,7 +310,11 @@ function makePlan(seed: number, k: number, width: number, u0: number, course: bo
   const take = (side: number, a: number, b: number) => taken[side].push([a, b])
   for (const p of POLE_U) take(poleSide, p - 0.7, p + 0.7)
   if (cross) take(-1, BLOCK - cross - 4, BLOCK)
-  if (overpass) take(-poleSide, 9.5, 18.5)
+  if (overpass) {
+    // the stairs, and a pillar on each side
+    take(-poleSide, STAIR_FOOT - 0.5, FOOTBRIDGE.u + 0.8)
+    take(poleSide, FOOTBRIDGE.u - 0.8, FOOTBRIDGE.u + 0.8)
+  }
 
   // a banner strung over the street now and then (never under the footbridge)
   let banner: BlockPlan['banner'] = null
@@ -315,8 +346,8 @@ function makePlan(seed: number, k: number, width: number, u0: number, course: bo
       }
     }
     // parked cars, half up on the curb on the side without poles
-    if (side === -poleSide && width >= 6) {
-      const n = width >= 7 ? Math.floor(h(seed, k, side + 810) * 2.6) : h(seed, k, side + 810) > 0.65 ? 1 : 0
+    if ((side === -poleSide && width >= 6) || PARK) {
+      const n = PARK ? 1 : width >= 7 ? Math.floor(h(seed, k, side + 810) * 2.6) : h(seed, k, side + 810) > 0.65 ? 1 : 0
       for (let i = 0; i < n; i++) {
         const kind = weighted(ROAD_VEHICLES, h(seed, k * 5 + i, side + 811))
         const len = VEHICLE_LEN[kind]
@@ -329,8 +360,13 @@ function makePlan(seed: number, k: number, width: number, u0: number, course: bo
         vehicles.push({ kind, side, s: side * (half + 0.35), u: vu, r: h(seed, k * 5 + i, side + 813), flip: h(seed, k * 5 + i, side + 814) > 0.6, curb: true })
       }
     }
-    // buildings keep clear of the corner sidewalks
-    const la = start + (roadFrom > 0 || gs > 0 ? SIDEWALK + 0.4 : 0.2)
+    // buildings keep clear of the corner sidewalks. A side street's own first block also leaves
+    // its corners to the parent street's corner buildings, which stand as deep as the deepest
+    // building: there their side walls face this street. Lots started at the parent's facade
+    // line once, and two buildings filled each corner, each one's side wall and roof showing
+    // through the other's front.
+    const corner = roadFrom > 0 ? Math.max(8, ...art.buildings.map((b) => b.depth)) + 0.1 : 0
+    const la = start + (roadFrom > 0 || gs > 0 ? SIDEWALK + 0.4 : 0.2) + corner
     const lb = BLOCK - (ge > 0 ? ge + SIDEWALK + 0.4 : 0.2)
     let u = la
     let i = 0
@@ -347,7 +383,7 @@ function makePlan(seed: number, k: number, width: number, u0: number, course: bo
         // It faces oncoming riders, so its width runs across the lot (from the facade toward
         // the back), turned toward the road. Size and place it from its turned footprint so
         // all of it (face, legs, braces, catwalk) stands on this roof.
-        if (b.roofShape !== 'gable' && b.bodyHeight <= 9.5 && len >= 6.4) {
+        if ((b.roofShape ?? 'flat') === 'flat' && b.bodyHeight <= 9.5 && len >= 6.4) {
           const f = billboardFootprint(side)
           const scale = Math.min(1, (len - 0.6) / (f.uMax - f.uMin), (b.depth - 0.8) / (f.latMax - f.latMin))
           const back = 0.4 - f.latMin * scale // nearest point 0.4 m behind the facade line
@@ -363,8 +399,8 @@ function makePlan(seed: number, k: number, width: number, u0: number, course: bo
             nobori.push({ s: side * (half + 0.35), u: nu, side, r: h(seed, k * 31 + i * 3 + j, side + 830) })
           }
         }
-        // a scooter or a bicycle left outside
-        if (r(524) > 0.7) {
+        // a scooter or a bicycle left outside (outside every building with ?vehicle)
+        if (r(524) > 0.7 || PARK) {
           const bu = u + len - 1.3
           if (free(side, bu - 1, bu + 1)) {
             take(side, bu - 1, bu + 1)
@@ -387,10 +423,22 @@ function makePlan(seed: number, k: number, width: number, u0: number, course: bo
       }
       // something on the sidewalk in front
       if (propIds.length && r(505) > 0.55 && len > 2) {
-        const pu = u + 0.8 + r(506) * (len - 1.6)
-        if (free(side, pu - 0.7, pu + 0.7)) {
-          take(side, pu - 0.7, pu + 0.7)
-          props.push({ id: pick(propIds, r(507)), side, u: pu })
+        const id = PROP && (propArt(PROP) || (PROP === 'plants' && pots.length)) ? PROP : pick(propIds, r(507))
+        // plant pots stand two to four together, each one different, close enough to overlap a little
+        const p0 = Math.floor(r(511) * pots.length)
+        const group = id === 'plants' ? Array.from({ length: Math.min(pots.length, 2 + Math.floor(r(510) * 3)) }, (_, j) => pots[(p0 + j) % pots.length]) : [id]
+        const widths = group.map((g) => propArt(g)!.width * (group.length > 1 ? 0.85 : 1))
+        const run = widths.reduce((x, y) => x + y, 0)
+        // the room it takes along the sidewalk: 0.7 m each way, more for a long cluster
+        const reach = Math.max(0.7, run / 2 + 0.2)
+        const pu = u + reach + 0.1 + r(506) * (len - 2 * reach - 0.2)
+        if (len > 2 * reach + 0.2 && free(side, pu - reach, pu + reach)) {
+          take(side, pu - reach, pu + reach)
+          let gu = pu - run / 2
+          group.forEach((g, j) => {
+            props.push({ id: g, side, u: gu + widths[j] / 2 })
+            gu += widths[j]
+          })
         }
       }
       u += len + 0.25 + r(508) * 0.6
