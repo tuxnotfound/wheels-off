@@ -102,10 +102,11 @@ const landingButton = (act: () => void): ButtonHTMLAttributes<HTMLButtonElement>
 const TAP_GUARD_MS = 500 // a card's buttons ignore taps this long after it opens
 
 /**
- * The buttons that stand in for a card's keys (Enter, Esc, P, R): on a touch screen on every
- * card, and on the name cards everywhere, since in fullscreen the browser keeps Esc to leave it
- * (CrazyGames' guidelines name it a key to avoid); Esc still skips in a window. A card can open
- * under a thumb that is still tapping ollies, so for its first moment the row takes no tap.
+ * The buttons that stand in for a card's keys (Enter, P, R): on a touch screen on every card, and
+ * on the name cards everywhere, where skip has no key. The game binds nothing to Esc: in
+ * fullscreen the browser keeps it to leave, and CrazyGames' guidelines name it a key to avoid. A
+ * card can open under a thumb that is still tapping ollies, so for its first moment the row takes
+ * no tap.
  */
 function TapRow({ children }: { children: ReactNode }) {
   const opened = useRef(performance.now())
@@ -608,11 +609,6 @@ function NameEntry({ run }: { run: PendingRun }) {
               setName(typedName(e.target.value))
               setRefused(false)
             }}
-            onKeyDown={(e) => {
-              if (e.key !== 'Escape') return
-              e.preventDefault()
-              skipRun()
-            }}
           />
         </label>
         {SHARE_LINKS && <Share line={shareLine(run)} />}
@@ -682,10 +678,10 @@ function TrialResult({ run }: { run: TrialRun }) {
   }, [])
   useEffect(() => {
     if (places) return
-    // no name to type: Enter, Esc or T goes again
+    // no name to type: Enter or T goes again
     const onKey = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase()
-      if (e.repeat || !(k === 'enter' || k === 'escape' || k === 't')) return
+      if (e.repeat || !(k === 'enter' || k === 't')) return
       e.preventDefault()
       closeResult(null)
     }
@@ -734,11 +730,6 @@ function TrialResult({ run }: { run: TrialRun }) {
                 setName(typedName(e.target.value))
                 setRefused(false)
               }}
-              onKeyDown={(e) => {
-                if (e.key !== 'Escape') return
-                e.preventDefault()
-                closeResult(null)
-              }}
             />
           </label>
         )}
@@ -781,7 +772,6 @@ export function Arcade() {
       if (k === 'p' && useHud.getState().started) togglePause()
       else if (k === 'r') toggleRecords()
       else if (k === 'g') toggleGhost() // the time trial's ghost, off and on, from anywhere
-      else if (k === 'escape') resume()
       else if (k === 'f') {
         // only on the landing page, which rolls off in free roam, or the pause screen, which
         // rolls on in the other mode: a stray F mid-ride never ends a run
