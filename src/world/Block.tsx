@@ -2,7 +2,7 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import type { ReactNode } from 'react'
 import * as THREE from 'three'
 import { BOX, FLAT } from '../look/geom'
-import { decalMat, inkMat, paintMat } from '../look/materials'
+import { decalMat, inkMat, paintMat, wornMat } from '../look/materials'
 import { poleArt } from '../art/art'
 import { roadTextTex } from '../look/textures'
 import { M, StopSign, UtilityPole } from './parts'
@@ -17,6 +17,7 @@ import { BLOCK, CURB, SIDEWALK } from './worldConfig'
 import { useMode } from '../game/mode'
 import { input } from '../player/input'
 import { bakeStatic } from './bake'
+import { GUTTER, GUTTER_COLOR, RoadMarkView, roadMarks } from './roadMarks'
 
 export type BlockDesc = {
   key: string
@@ -32,6 +33,9 @@ export type BlockDesc = {
 const ROAD = '#86959a'
 const WALK = '#c3cbc4'
 const PAINT = '#f1f1ea'
+const WORN = '#7b8a90' // the tire tracks, a shade darker than the road
+const TRACK = 0.55 // their width
+const WHEELS = 0.8 // each track's distance from the middle of its lane
 // where the code pole's wires meet it: across from its middle, and up from the road
 const CODE_WIRES: [number, number][] = [
   [-0.72, 7.45],
@@ -86,6 +90,7 @@ function Block({ seed, k, ix, iz, dir, width, u0 }: Omit<BlockDesc, 'key'>) {
   // on the time trial's course, the side streets it doesn't take are built over
   const course = useMode((s) => s.mode === 'trial') && input.started
   const plan = useMemo(() => blockPlan(seed, k, width, u0, course), [seed, k, width, u0, course])
+  const marks = useMemo(() => roadMarks(seed, k, width, plan), [seed, k, width, plan])
   // once mounted, the block's static parts are merged into a few meshes (bake.ts)
   const root = useRef<THREE.Group>(null!)
   useLayoutEffect(() => bakeStatic(root.current), [plan])
@@ -101,12 +106,21 @@ function Block({ seed, k, ix, iz, dir, width, u0 }: Omit<BlockDesc, 'key'>) {
     els.push(
       <M key={`walk${side}`} g={BOX} c={WALK} p={[side * (half + SIDEWALK / 2), CURB / 2, -(walk.a + walk.b) / 2]} s={[SIDEWALK, CURB, walk.b - walk.a]} />,
     )
+    // the concrete gutter along the curb
+    els.push(<M key={`gutter${side}`} g={FLAT} m={paintMat(GUTTER_COLOR)} p={[side * (half - GUTTER / 2), 0, -(walk.a + walk.b) / 2]} s={[GUTTER, 1, walk.b - walk.a]} />)
     // solid edge line, broken where a side-street opens
     const a = Math.max(plan.roadFrom, gapStart) + 0.4
     const b = BLOCK - gapEnd - 0.4
     if (b > a) els.push(<M key={`edge${side}`} g={FLAT} m={paintMat(PAINT)} p={[side * (half - 0.35), 0, -(a + b) / 2]} s={[0.14, 1, b - a]} />)
   }
   const endPaint = plan.crosswalk ? BLOCK - plan.crosswalk - 3.2 : BLOCK
+  // tire tracks worn darker down each lane (one lane on a narrow street, two on a wide one)
+  const lanes = width >= 7 ? [-half / 2, half / 2] : [0]
+  for (const lane of lanes) {
+    for (const d of [-WHEELS, WHEELS]) {
+      els.push(<M key={`worn${lane + d}`} g={FLAT} m={wornMat(WORN)} p={[lane + d, 0, -(plan.roadFrom + endPaint) / 2]} s={[TRACK, 1, endPaint - plan.roadFrom]} />)
+    }
+  }
   if (width >= 7) {
     for (let u = plan.roadFrom + 2; u + 2.4 < endPaint; u += 5) {
       els.push(<M key={`dash${u}`} g={FLAT} m={paintMat(PAINT)} p={[0, 0, -(u + 1.2)]} s={[0.14, 1, 2.4]} />)
@@ -125,6 +139,9 @@ function Block({ seed, k, ix, iz, dir, width, u0 }: Omit<BlockDesc, 'key'>) {
     }
     els.push(<StopSign key="stop" s={-(half + 0.7)} u={BLOCK - plan.crosswalk - 3.2} />)
   }
+
+  // manholes, patches, cracks and drain grates (roadMarks.tsx)
+  marks.forEach((m, i) => els.push(<RoadMarkView key={`mark${i}`} m={m} />))
 
   // painted buildings, walls, trees, and what stands on the sidewalk
   plan.lots.forEach((lot, i) => els.push(<PaintedLot key={`lot${i}`} lot={lot} half={half} />))

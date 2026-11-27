@@ -76,6 +76,22 @@ export function bakedMat(side: THREE.Side, offset: [number, number] | null): THR
   })
 }
 
+/**
+ * What lies flat on the road under its paint (the worn tire tracks): pulled toward the camera,
+ * less than paint, so the paint and the marks draw over it.
+ */
+export function wornMat(color: string): THREE.MeshToonMaterial {
+  return cached(`worn:${color}`, () => {
+    const m = toonMat(color).clone()
+    m.polygonOffset = true
+    m.polygonOffsetFactor = -0.5
+    m.polygonOffsetUnits = -2
+    m.onBeforeCompile = patchCurve
+    m.customProgramCacheKey = () => 'toon-curve'
+    return m
+  })
+}
+
 /** Flat paint on the road (lines, zebra stripes): pulled toward the camera so it never z-fights. */
 export function paintMat(color: string): THREE.MeshToonMaterial {
   return cached(`paint:${color}`, () => {

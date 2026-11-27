@@ -5,6 +5,9 @@ import { create } from 'zustand'
 import { GRADE } from './timeOfDay'
 import { skater } from '../player/Skater'
 import { touchDevice } from '../player/touch'
+import { input } from '../player/input'
+import { sim } from '../game/sim'
+import { isPaused } from '../game/arcadeStore'
 
 // The scene renders into a half-float target, then one full-screen pass over it:
 //  - fisheye (barrel) lens, the wide-angle look of the reference shots
@@ -28,7 +31,31 @@ const frag = /* glsl */ `
   uniform vec3 uInk, uGradeShadow, uGradeHigh;
   uniform float uGrade;
   uniform vec4 uRider; // the rider's box in the scene image: min xy, max xy
+  uniform float uLines, uTime; // speed lines: strength (0 off), and the sim's clock
   varying vec2 vUv;
+
+  float hash(float n) { return fract(sin(n) * 43758.5453); }
+
+  // Anime speed lines: thin wedges reaching in from the edges of the frame, each lit for a
+  // moment, a few at a time. q is the output uv; 0 in the middle third of the frame.
+  float speedLines(vec2 q, float aspect) {
+    vec2 c = vec2((q.x - 0.5) * aspect, q.y - 0.5);
+    float r = length(c) / length(vec2(0.5 * aspect, 0.5)); // 0 at the middle, 1 in a corner
+    float a = atan(c.y, c.x) / 6.2831853 + 0.5;
+    float n = 150.0;
+    float id = floor(a * n);
+    float h1 = hash(id * 12.9898);
+    float h2 = hash(id * 78.233);
+    float slot = floor(uTime * (4.0 + 5.0 * h1) + h2 * 10.0);
+    float lit = step(0.78, hash(id * 4.1414 + slot * 31.7));
+    float f = abs(fract(a * n) - 0.5) * 2.0; // 0 on the line's axis, 1 between lines
+    float width = mix(0.18, 0.42, h2);
+    float line = 1.0 - smoothstep(width * 0.6, width, f);
+    float start = mix(0.5, 0.72, h1);
+    // on a tall screen (a phone held upright) none cross the touch pad along the bottom
+    float pad = aspect < 1.0 ? smoothstep(0.17, 0.3, q.y) : 1.0;
+    return lit * line * smoothstep(start, start + 0.32, r) * pad;
+  }
 
   float invZ(vec2 uv) {
     float d = texture2D(tDepth, uv).x;
@@ -97,6 +124,8 @@ const frag = /* glsl */ `
     float L = lum(col);
     vec3 tint = mix(uGradeShadow, uGradeHigh, smoothstep(0.05, 0.6, L));
     col = mix(col, col * tint * 1.15, uGrade);
+
+    if (uLines > 0.0) col = mix(col, vec3(1.0, 0.96, 0.9), speedLines(vUv, aspect) * uLines);
 
     vec2 v = vUv - 0.5;
     col *= 1.0 - dot(v, v) * 0.45;
@@ -177,6 +206,11 @@ function followRatio() {
 }
 followRatio()
 
+// speed lines: their strength at top speed, and the speeds (m/s) they fade in between
+const LINES = 0.4
+const LINES_FROM = 12
+const LINES_FULL = 16.5
+
 const SS_MAX = 1.75 // at most 1.75x the drawing buffer per axis
 const SS_BUDGET = 7.5e6 // pixels rendered per frame at best
 const SLOW = 0.021 // seconds: frames averaging slower than this run under about 48 a second
@@ -213,6 +247,8 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
         uGradeHigh: { value: new THREE.Color(GRADE.highlight) },
         uGrade: { value: GRADE.strength },
         uRider: { value: new THREE.Vector4(0, 0, 1, 1) },
+        uLines: { value: 0 },
+        uTime: { value: 0 },
       },
     })
     const fxaaMat = new THREE.ShaderMaterial({
@@ -296,6 +332,10 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
     const u = mat.uniforms
     quality.grow.set(2, 2).multiplyScalar(u.uThick.value).divide(u.uOut.value)
     riderBox(pc, quality.grow, u.uRider.value)
+    // speed lines once the ride is the player's, fading in toward top speed; never on the landing
+    const lines = input.started && !isPaused() ? LINES * THREE.MathUtils.smoothstep(sim.speed, LINES_FROM, LINES_FULL) : 0
+    u.uLines.value += (lines - u.uLines.value) * Math.min(1, t * 3)
+    u.uTime.value = sim.time
     gl.setRenderTarget(target)
     gl.render(scene, camera)
     gl.setRenderTarget(mid)
