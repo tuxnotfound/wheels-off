@@ -342,31 +342,38 @@ height it reads as a bed. A van carries its two ad slots on its flat sides, as t
 Ask for a cab-over van in words: asked for a delivery van, the model drew a long-nosed European one.
 ## Character: VRM
 
-The default `public/art/character.vrm` is pixiv's VRM sample model
-(`VRM1_Constraint_Twist_Sample`, © pixiv Inc.). Its embedded licence is the VRM Public
-License 1.0 with redistribution, modification and corporate commercial use allowed and
-no credit required. It is a stand-in until the game has its own kid:
+`public/art/character.vrm` is the game's kid, made in [VRoid Studio](https://vroid.com/en/studio)
+(free) on 2026-11-26: a brown bob, a dark green tee (`#2f6b5a`), straight navy pants (`#34405e`)
+and white sneakers. Its metadata names tuxnotfound as author and keeps the model to its author:
+no one else may perform with it, change it or pass it on. The manifest points at it
+(`"character": "character.vrm"`).
 
-1. Make the kid in [VRoid Studio](https://vroid.com/en/studio) (free): short black bob,
-   white shirt, wide black culottes, teal sneakers, and a red messenger bag if you can
-   add accessories.
-2. Export as **VRM** (0.x or 1.0 both work) to `public/art/character.vrm`.
-3. Set `"character": "character.vrm"` in the manifest.
+To change the kid:
 
-To try a model without editing the manifest, put it under `public/art/` and open
-`/?vrm=<file>.vrm`. The loader scales any model to the kid's height and drives its
-humanoid bones with the skate animation. Hair and cloth spring bones swing on their own.
-It also restyles every model the same way (constants at the top of
-`src/player/VrmRider.tsx`): chibi proportions (head 1.9x, body 0.8x, chubbier arms and
-legs), long hair strands shortened to the shoulder blades, a knit beanie with
-headphones fitted over the hair's crown, relaxed straight navy pants built from the leg
-skin in place of shorts (a straight tube round each leg bone below the seat, over dark
-socks; a model without a `Bottoms` material keeps what it wears), and the top as an
-oversized dark green tee: hung from the pelvis and cut straight at the hips, with roomy
-straight sleeves to the elbows built from the arm skin.
-The face is reshaped for a calm look: smaller near-black almond eyes under heavy lids,
-a bolder lash line, warmer skin and a rounder jaw. So a VRoid export can keep normal
-proportions, long hair and its own face.
+1. Edit it in VRoid Studio. Pick each garment's color on its base layer (Outfit, Edit
+   Texture). The game shows a garment flat in the picked color and drops its texture (below),
+   so plain garments work best. Leave out a hat and headphones: the game adds them.
+2. Export as **VRM** (0.x or 1.0 both work).
+3. `npm run art:vrm -- <export.vrm> public/art/character.vrm --author tuxnotfound`. It drops the
+   face blendshapes no expression uses (43 of VRoid's 57) and resamples the 2048px thumbnail:
+   the first export went from 11.3 MB to 5.8 MB. It is the largest file the game loads, so keep
+   it near that.
+
+To try another model without touching the manifest, put it in `public/art/_dev/` and open
+`/?vrm=_dev/<file>.vrm`. Whatever the model, the game (`src/player/VrmRider.tsx`):
+
+- scales it to the kid's height (1.45 m with the beanie) and drives its humanoid bones with the
+  skate animation. Hair and cloth spring bones swing on their own, a little heavier and damped;
+- makes it chibi: head 1.9x, body 0.8x, chubbier arms and legs;
+- fits a knit beanie over the hair's crown, with over-ear headphones. Whatever sits under the
+  beanie, hair or the scalp VRoid puts under short hair, is pulled inside it;
+- shortens hair strands that hang past the shoulder blades to them. A bob stays as made;
+- shows each garment with a picked color flat in it, a third darker in shade. VRoid multiplies
+  the color with the garment's texture, which has its own grey and baked shading, so a picked
+  green comes out near black. A garment left white (the sneakers) keeps its texture;
+- keeps the eyes open, looking 8 degrees down, with a blink every few seconds;
+- bends it with the world's curve, like everything else drawn.
+
 If the file is missing or broken, the game falls back to the procedural kid and logs a
 warning.
 
