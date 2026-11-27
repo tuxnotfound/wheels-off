@@ -16,6 +16,7 @@
     "art:import": "node scripts/import-art.mjs",
     "art:vehicle": "node scripts/import-vehicle.mjs",
     "art:gen": "node scripts/art-gen.mjs",
+    "art:vrm": "node scripts/shrink-vrm.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "api": "wrangler dev --port 8788",
