@@ -989,7 +989,11 @@ kbd {
   color: var(--accent);
 }
 
+/* in one piece: on a narrow card it moves under the value, not half of it */
 .entry__pr {
+  display: inline-block;
+  white-space: nowrap;
+  line-height: 1.4;
   margin-left: 10px;
   padding: 3px 6px;
   border-radius: 6px;
@@ -1693,6 +1697,12 @@ kbd {
     font-size: 24px;
   }
 
+  /* the speed panel lines up its rows on the right, so a record line sized to its whole
+     content would push the crown out past the panel's left edge: capped, its name shrinks */
+  .hud-pr {
+    max-width: 100%;
+  }
+
   .overlay {
     grid-template-columns: minmax(0, 1fr);
     padding: 10px;
@@ -1700,6 +1710,13 @@ kbd {
 
   .title-card {
     padding: 18px 14px 14px;
+  }
+
+  /* NEW PR doesn't fit beside the value: on its own line, centered, clear of the rank under it */
+  .entry__pr {
+    display: block;
+    width: fit-content;
+    margin: 0 auto 8px;
   }
 }
 
