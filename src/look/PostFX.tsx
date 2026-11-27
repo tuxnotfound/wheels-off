@@ -214,9 +214,14 @@ const LINES_FULL = 16.5
 const SS_MAX = 1.75 // at most 1.75x the drawing buffer per axis
 const SS_BUDGET = 7.5e6 // pixels rendered per frame at best
 const SLOW = 0.021 // seconds: frames averaging slower than this run under about 48 a second
-const SUSTAIN = 60 // frames that slow, one after another, before quality steps down
+const AIM = 1 / 55 // seconds: the frame time a step down aims for
+// The evidence is a second of frames, not a count of them: counted in frames, the slower the
+// machine the longer it took to react, and a weak GPU at a few frames a second never stepped down
+const SUSTAIN = 1 // seconds of frames whose median frame time decides a step down
+const LONG = 0.25 // seconds: a longer frame (a pause, a hidden tab) counts as this long
 const SETTLE = 2 // seconds of frames before any counts: shaders compile, the art uploads
-const STEP = 0.8 // each step keeps this much of the supersampling budget, then of the resolution
+const STEP = 0.8 // the least a step cuts: it keeps at most this much of the pixels drawn
+const MAX_CUT = 0.3 // the most a step cuts: it keeps at least this much
 
 export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; thickness?: number }) {
   const gl = useThree((s) => s.gl)
@@ -268,13 +273,16 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
   }, [barrel, thickness])
 
   // Render the scene above screen resolution (supersampling) within a pixel budget, and step
-  // quality down on a machine that can't hold the frame rate (frames averaging slower than
-  // SLOW, SUSTAIN of them in a row): first the supersampling, a fifth of its budget at a time,
-  // down to the screen's own resolution; then the resolution itself (the canvas DPR), a fifth at
-  // a time, down to 1x on a high-DPI screen and 0.75x on a 1x one. It never steps back up.
+  // quality down on a machine that can't hold the frame rate (the median frame over the last
+  // SUSTAIN seconds slower than SLOW): first the supersampling, down to the screen's own
+  // resolution; then the resolution itself (the canvas DPR), down to 1x on a high-DPI screen and
+  // 0.75x on a 1x one. A step cuts the pixels drawn by how far that median is from AIM, as frame
+  // time follows the pixels when the GPU is the limit: by STEP at least and to MAX_CUT at most, so
+  // a weak GPU gets there in two or three steps. The median, so one long frame can't start a
+  // step. It never steps back up.
   const quality = useMemo(
     // a phone's GPU starts at the screen's own resolution: no supersampling to step down from
-    () => ({ budget: SS_BUDGET, ss: !touchDevice, avg: 1 / 60, slow: 0, age: 0, v: new THREE.Vector2(), grow: new THREE.Vector2() }),
+    () => ({ budget: SS_BUDGET, ss: !touchDevice, frames: [] as number[], sum: 0, median: 0, age: 0, v: new THREE.Vector2(), grow: new THREE.Vector2() }),
     [],
   )
   const resize = useCallback(() => {
@@ -288,18 +296,20 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
   }, [gl, dpr, target, mid, mat, fxaaMat, thickness, quality])
   useEffect(resize, [resize, size])
 
-  const stepDown = () => {
+  /** One step down, keeping `keep` of the pixels drawn (STEP to MAX_CUT). */
+  const stepDown = (keep = STEP) => {
     const v = gl.getDrawingBufferSize(quality.v)
     const pixels = v.x * v.y
     const floor = Math.max(0.75, Math.min(useResolution.getState().ratio, 2) / 2)
     if (quality.ss && quality.budget > pixels) {
       // from the budget in use: on a small screen the cap holds it below the full budget
-      quality.budget = Math.max(pixels, Math.min(quality.budget, SS_MAX * SS_MAX * pixels) * STEP)
+      quality.budget = Math.max(pixels, Math.min(quality.budget, SS_MAX * SS_MAX * pixels) * keep)
       quality.ss = quality.budget > pixels
       resize()
     } else if (dpr > floor) {
       quality.ss = false // off for good: a smaller canvas would take it back up
-      useResolution.setState({ cap: Math.max(floor, dpr * STEP) }) // the canvas resizes, then resize() runs
+      // the DPR scales both sides, so the pixels by its square
+      useResolution.setState({ cap: Math.max(floor, dpr * Math.sqrt(keep)) }) // the canvas resizes, then resize() runs
     }
   }
   // dev-only handle for test scripts: the quality state, and a step down on demand
@@ -315,15 +325,23 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
 
   // priority 1: this callback owns rendering (r3f stops auto-rendering)
   useFrame(({ scene, camera }, dt) => {
-    // a pause or a hidden tab shows up as one long frame: capped, it can't count as many
-    const t = Math.min(dt, 0.1)
+    // a pause or a hidden tab shows up as one long frame: capped, it's one sample among many
+    const t = Math.min(dt, LONG)
     quality.age += t
-    quality.avg += (t - quality.avg) * 0.05
-    quality.slow = quality.age > SETTLE && quality.avg > SLOW ? quality.slow + 1 : 0
-    if (quality.slow > SUSTAIN) {
-      quality.slow = 0
-      quality.avg = 1 / 60 // the next step waits for a second of fresh evidence
-      stepDown()
+    if (quality.age > SETTLE) {
+      // the frames of the last SUSTAIN seconds, oldest first
+      const frames = quality.frames
+      frames.push(t)
+      quality.sum += t
+      while (quality.sum - frames[0] >= SUSTAIN) quality.sum -= frames.shift()!
+      if (quality.sum >= SUSTAIN) {
+        quality.median = [...frames].sort((a, b) => a - b)[frames.length >> 1]
+        if (quality.median > SLOW) {
+          frames.length = 0 // the next step waits for a second of fresh evidence
+          quality.sum = 0
+          stepDown(THREE.MathUtils.clamp(AIM / quality.median, MAX_CUT, STEP))
+        }
+      }
     }
     const pc = camera as THREE.PerspectiveCamera
     mat.uniforms.uNear.value = pc.near
