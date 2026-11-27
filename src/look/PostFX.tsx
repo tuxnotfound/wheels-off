@@ -213,6 +213,10 @@ const LINES_FULL = 16.5
 
 const SS_MAX = 1.75 // at most 1.75x the drawing buffer per axis
 const SS_BUDGET = 7.5e6 // pixels rendered per frame at best
+// A high-DPI screen (a Retina Mac) gets no supersampling: its own pixels already draw a clean
+// edge, and supersampling drew 1.45x of them up to 120 times a second, the likely cause of a
+// MacBook's fan spinning up
+const SS_BELOW_DPR = 1.5
 const SLOW = 0.021 // seconds: frames averaging slower than this run under about 48 a second
 const AIM = 1 / 55 // seconds: the frame time a step down aims for
 // The evidence is a second of frames, not a count of them: counted in frames, the slower the
@@ -272,11 +276,11 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
     return { target, mid, quad, fxaa, cam, mat, fxaaMat }
   }, [barrel, thickness])
 
-  // Render the scene above screen resolution (supersampling) within a pixel budget, and step
-  // quality down on a machine that can't hold the frame rate (the median frame over the last
-  // SUSTAIN seconds slower than SLOW): first the supersampling, down to the screen's own
-  // resolution; then the resolution itself (the canvas DPR), down to 1x on a high-DPI screen and
-  // 0.75x on a 1x one. A step cuts the pixels drawn by how far that median is from AIM, as frame
+  // Render the scene above screen resolution (supersampling, on a screen under SS_BELOW_DPR)
+  // within a pixel budget, and step quality down on a machine that can't hold the frame rate
+  // (the median frame over the last SUSTAIN seconds slower than SLOW): first the supersampling,
+  // down to the screen's own resolution; then the resolution itself (the canvas DPR), down to 1x
+  // on a high-DPI screen and 0.75x on a 1x one. A step cuts the pixels drawn by how far that median is from AIM, as frame
   // time follows the pixels when the GPU is the limit: by STEP at least and to MAX_CUT at most, so
   // a weak GPU gets there in two or three steps. The median, so one long frame can't start a
   // step. It never steps back up.
@@ -285,15 +289,16 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
     () => ({ budget: SS_BUDGET, ss: !touchDevice, frames: [] as number[], sum: 0, median: 0, age: 0, v: new THREE.Vector2(), grow: new THREE.Vector2() }),
     [],
   )
+  const supersampled = quality.ss && dpr < SS_BELOW_DPR
   const resize = useCallback(() => {
     const v = gl.getDrawingBufferSize(quality.v)
-    const ss = quality.ss ? THREE.MathUtils.clamp(Math.sqrt(quality.budget / (v.x * v.y)), 1, SS_MAX) : 1
+    const ss = supersampled ? THREE.MathUtils.clamp(Math.sqrt(quality.budget / (v.x * v.y)), 1, SS_MAX) : 1
     target.setSize(Math.round(v.x * ss), Math.round(v.y * ss))
     mid.setSize(v.x, v.y)
     mat.uniforms.uOut.value.copy(v)
     mat.uniforms.uThick.value = thickness * Math.max(1, dpr)
     fxaaMat.uniforms.uRcp.value.set(1 / v.x, 1 / v.y)
-  }, [gl, dpr, target, mid, mat, fxaaMat, thickness, quality])
+  }, [gl, dpr, supersampled, target, mid, mat, fxaaMat, thickness, quality])
   useEffect(resize, [resize, size])
 
   /** One step down, keeping `keep` of the pixels drawn (STEP to MAX_CUT). */
@@ -301,7 +306,7 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
     const v = gl.getDrawingBufferSize(quality.v)
     const pixels = v.x * v.y
     const floor = Math.max(0.75, Math.min(useResolution.getState().ratio, 2) / 2)
-    if (quality.ss && quality.budget > pixels) {
+    if (supersampled && quality.budget > pixels) {
       // from the budget in use: on a small screen the cap holds it below the full budget
       quality.budget = Math.max(pixels, Math.min(quality.budget, SS_MAX * SS_MAX * pixels) * keep)
       quality.ss = quality.budget > pixels
@@ -312,8 +317,9 @@ export function PostFX({ barrel = 0.22, thickness = 2.1 }: { barrel?: number; th
       useResolution.setState({ cap: Math.max(floor, dpr * Math.sqrt(keep)) }) // the canvas resizes, then resize() runs
     }
   }
-  // dev-only handle for test scripts: the quality state, and a step down on demand
-  if (import.meta.env.DEV) Object.assign(window, { __quality: { state: quality, dpr, stepDown } })
+  // dev-only handle for test scripts: the quality state, whether it supersamples, the scene's
+  // render target (its size is the pixels drawn), and a step down on demand
+  if (import.meta.env.DEV) Object.assign(window, { __quality: { state: quality, dpr, supersampled, target, stepDown } })
 
   useEffect(
     () => () => {
