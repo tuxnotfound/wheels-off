@@ -3,8 +3,8 @@
 A Three.js + react-three-fiber skateboarding game in an anime look: a kid skates through
 an endless small Japanese town, carving down streets, taking corners and ollieing over
 road junk. The town is painted 2D art (facades, props, obstacles) mapped onto simple 3D
-shapes, and the character is a VRM model (VRoid Studio). The art in the repo is generated
-placeholder art. **See [ART.md](ART.md) for how to replace it and add a character.**
+shapes, and the character is a VRM model made in VRoid Studio. **See [ART.md](ART.md) for how
+the art and the character are made and replaced.**
 
 ## Landing page
 
@@ -411,6 +411,10 @@ before over after. A second argument goes on the game's address, such as `'?vrm=
 the town (`scripts/import-art.mjs`; ART.md, Generating with an image model). `?facade=<id>`, in
 dev only, stands it on about half the lots it fits, and `npm run shots -- <label> '?facade=<id>'`
 shoots the same ride with it.
+
+`npm run art:vrm -- <export.vrm> public/art/character.vrm --author tuxnotfound` slims a VRoid
+export into the game's kid (`scripts/shrink-vrm.mjs`; ART.md, Character). `?vrm=_dev/<file>.vrm`
+rides a model kept in the gitignored `public/art/_dev/`.
 
 ### Later: accounts and billboard sales
 

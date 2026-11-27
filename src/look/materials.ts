@@ -125,6 +125,30 @@ export function markRider(m: THREE.Material) {
   m.customProgramCacheKey = () => `${prevKey.call(m)}|rider`
 }
 
+const MTOON_OUTLINE = 'gl_Position = projectionMatrix * modelViewMatrix * vec4( outlineOffset + transformed, 1.0 );'
+
+/**
+ * Bends a VRM's MToon material with the world, its outline pass too, so the model stays
+ * where its board and headwear are drawn. Chains onto the material's own shader hooks.
+ */
+export function curveMToon(m: THREE.Material) {
+  if (m.userData.curved) return
+  m.userData.curved = true
+  const prevCompile = m.onBeforeCompile
+  const prevKey = m.customProgramCacheKey
+  m.onBeforeCompile = (shader, renderer) => {
+    prevCompile.call(m, shader, renderer)
+    patchCurve(shader)
+    shader.vertexShader = shader.vertexShader.replace(
+      MTOON_OUTLINE,
+      `vec4 _ow = modelMatrix * vec4( outlineOffset + transformed, 1.0 );
+    _ow.y -= (_ow.x * _ow.x + _ow.z * _ow.z) * uCurve;
+    gl_Position = projectionMatrix * viewMatrix * _ow;`,
+    )
+  }
+  m.customProgramCacheKey = () => `${prevKey.call(m)}|curve`
+}
+
 /** Curved toon material for the rider's own parts (board, headwear). */
 export function riderMat(color: string, doubleSided = false): THREE.MeshToonMaterial {
   return cached(`rider:${color}:${doubleSided}`, () => {
