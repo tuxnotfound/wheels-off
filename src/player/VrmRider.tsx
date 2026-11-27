@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm'
 import type { MToonMaterial, VRM, VRMHumanBoneName } from '@pixiv/three-vrm'
 import { curveMToon, curvedDepth, markRider, riderMat } from '../look/materials'
-import { BEANIE, BEANIE_CUFF, BEANIE_TAG, PANTS, PANTS_SHADE, PHONES, PHONES_CAP, ProceduralRider } from './ProceduralRider'
+import { BEANIE, BEANIE_CUFF, BEANIE_TAG, PHONES, PHONES_CAP, ProceduralRider } from './ProceduralRider'
 import { DECK_TOP, footFlat, riderLeg, solveLeg, toBody } from './pose'
 import type { Foot, LegAngles, Pose } from './pose'
 import type { RiderProps } from './Skater'
@@ -19,33 +19,7 @@ const HAIR_CUT = 0.8 // long strands keep their width, lose this much length bel
 const LEG_PUFF = 1.25 // limbs thickened around their bones, not lengthened
 const ARM_PUFF = 1.15
 
-// An oversized dark green tee.
-const TEE = '#2f6b5a'
-const TEE_SHADE = '#1e4a3f'
-const TEE_LOOSE = 0.012 // the body pushed out this far from the top it is made from
-const SLEEVE_ROOM = 0.02 // the sleeves stand this far off the arm, straight to the elbows,
-const SLEEVE_SQUEEZE = 0.7 // and the top's own sleeves are drawn in to match
-const TEE_HEM = 0.02 // the hem's height below the leg joints
-// Relaxed straight pants: below the seat each leg is a tube round its bone, this wide
-// (radius, meters, at rest) at the seat and at the hem
-const PANTS_SEAT = 0.095
-const PANTS_CUFF = 0.085
-const PANTS_HEEL = 0.03 // the hem drops this much at the back, over the shoe's low heel
-const SOCKS = '#24242c'
-
-// Her face, a calm look: small dark almond eyes under heavy lids, looking a little
-// down, a darker lash line, warmer skin and a round jaw in place of the pointed chin.
-const EYE_SIZE = 0.85 // the eyes shrunk about their own centers,
-const EYE_SQUASH = 0.85 // and flattened into almonds
-const LASH_SIZE = 0.95 // the lash lines shrink less, so they stay bold and flick past the eyes
-const IRIS = '#1e1412' // multiplies the iris texture nearly black
-const LASHES = '#404040' // multiplies the lash line darker
-const SKIN = '#f0e8d4' // multiplies the skin from pink toward peach,
-const SKIN_SHADE = '#ecc4a8' // and its shade, warm instead of VRoid's pink
-const LIDS = 0.42 // how far closed the eyes rest
-const GAZE_DOWN = 8 // degrees
-const JAW_ROUND = 0.32 // the lower face widened toward the chin, as a fraction
-const CHIN_LIFT = 0.012 // meters
+const GAZE_DOWN = 8 // degrees: the kid looks a little down the road
 
 type Rig = {
   vrm: VRM
@@ -272,428 +246,34 @@ function puffLimbs(vrm: VRM) {
   })
 }
 
-/** Height range of a skinned mesh's vertices in bind space. */
-function bindRangeY(m: THREE.SkinnedMesh): [number, number] {
-  const pos = m.geometry.attributes.position
-  const p = v3()
-  let lo = Infinity
-  let hi = -Infinity
-  for (let i = 0; i < pos.count; i++) {
-    const y = p.fromBufferAttribute(pos, i).applyMatrix4(m.bindMatrix).y
-    lo = Math.min(lo, y)
-    hi = Math.max(hi, y)
-  }
-  return [lo, hi]
-}
+const CLOTH_SHADE = 0.66 // a garment's shade is its color this much darker
 
-/** A model's skinned meshes, found by material name. */
-function meshFinder(vrm: VRM) {
-  const meshes: THREE.SkinnedMesh[] = []
+/**
+ * Each garment in the color picked for it. VRoid multiplies that color with the garment's
+ * texture, which carries its own grey and baked shading, so a picked green or navy comes
+ * out near black. A garment left white keeps its texture: its colors are in it.
+ */
+function dressAsPicked(vrm: VRM) {
+  const c = new THREE.Color()
   vrm.scene.traverse((o) => {
-    if ((o as THREE.SkinnedMesh).isSkinnedMesh) meshes.push(o as THREE.SkinnedMesh)
+    if (!(o as THREE.Mesh).isMesh) return
+    for (const m of ([] as THREE.Material[]).concat((o as THREE.Mesh).material)) {
+      const mt = m as MToonMaterial
+      if (!mt.isMToonMaterial || mt.isOutline || !/cloth/i.test(mt.name)) continue
+      const { r, g, b } = mt.color.getRGB(c, THREE.SRGBColorSpace)
+      if (Math.min(r, g, b) > 0.95) continue
+      mt.map = null
+      mt.shadeMultiplyTexture = null
+      mt.shadingShiftTexture = null
+      mt.rimMultiplyTexture = null
+      mt.matcapTexture = null
+      mt.normalMap = null
+      mt.emissiveMap = null
+      mt.emissive.set(0x000000)
+      mt.shadeColorFactor.setRGB(r * CLOTH_SHADE, g * CLOTH_SHADE, b * CLOTH_SHADE, THREE.SRGBColorSpace)
+      mt.needsUpdate = true
+    }
   })
-  return (re: RegExp) => meshes.find((m) => ([] as THREE.Material[]).concat(m.material).some((x) => re.test(x.name)))
-}
-
-/** The mesh's own MToon material, not its outline. */
-function mtoonOf(m: THREE.Mesh): MToonMaterial | undefined {
-  return ([] as THREE.Material[]).concat(m.material).find((x) => (x as MToonMaterial).isMToonMaterial && !(x as MToonMaterial).isOutline) as MToonMaterial | undefined
-}
-
-/** An MToon material in flat colors: its textures dropped, lit and shade colors set. */
-function flatten(m: MToonMaterial, color: string, shade: string) {
-  m.map = null
-  m.shadeMultiplyTexture = null
-  m.shadingShiftTexture = null
-  m.rimMultiplyTexture = null
-  m.matcapTexture = null
-  m.normalMap = null
-  m.emissiveMap = null
-  m.emissive.set(0x000000) // its map may have masked it to highlights
-  m.uvAnimationMaskTexture = null
-  m.color.set(color)
-  m.shadeColorFactor.set(shade)
-  m.needsUpdate = true
-  return m
-}
-
-/** A cloth material for a shell open at its ends, from the clothes' own MToon if there is one. */
-function clothMat(src: MToonMaterial | undefined, color: string, shade: string) {
-  if (!src) return riderMat(color, true)
-  const m = flatten(src.clone(), color, shade)
-  m.side = THREE.DoubleSide
-  m.userData = {}
-  return m
-}
-
-/**
- * Normals in bind space, one per position: corners split at UV seams share it, so pushing
- * along it can't open cracks along the seams.
- */
-function weldedNormals(m: THREE.SkinnedMesh, verts: Iterable<number>) {
-  const pos = m.geometry.attributes.position
-  const nrm = m.geometry.attributes.normal
-  const p = v3()
-  const key = (i: number) => p.fromBufferAttribute(pos, i).applyMatrix4(m.bindMatrix).toArray().map((c) => Math.round(c * 1e5)).join()
-  const sums = new Map<string, THREE.Vector3>()
-  for (const i of verts) {
-    const k = key(i)
-    sums.set(k, (sums.get(k) ?? v3()).add(v3().fromBufferAttribute(nrm, i).transformDirection(m.bindMatrix)))
-  }
-  for (const n of sums.values()) n.normalize()
-  return (i: number) => sums.get(key(i))!
-}
-
-/** Pushes a skinned mesh out along its normals, by `push` of each vertex in bind space. */
-function inflate(m: THREE.SkinnedMesh, push: (p: THREE.Vector3) => number) {
-  const pos = m.geometry.attributes.position
-  const normal = weldedNormals(m, Array.from({ length: pos.count }, (_, i) => i))
-  const p = v3()
-  for (let i = 0; i < pos.count; i++) {
-    const n = normal(i)
-    p.fromBufferAttribute(pos, i).applyMatrix4(m.bindMatrix)
-    p.addScaledVector(n, push(p)).applyMatrix4(m.bindMatrixInverse)
-    pos.setXYZ(i, p.x, p.y, p.z)
-  }
-  pos.needsUpdate = true
-  m.geometry.computeBoundingSphere()
-}
-
-/**
- * Cuts a skinned mesh level at `y` (bind space): triangles wholly below it go, and the
- * corners of those crossing it come up onto it, so the edge is straight.
- */
-function trimBelow(m: THREE.SkinnedMesh, y: number) {
-  const g = m.geometry
-  const index = g.index
-  if (!index) return
-  const pos = g.attributes.position
-  const p = v3()
-  const at = (i: number) => p.fromBufferAttribute(pos, i).applyMatrix4(m.bindMatrix)
-  const tris: number[] = []
-  const groups = g.groups.length ? [...g.groups] : [{ start: 0, count: index.count, materialIndex: 0 }]
-  g.clearGroups()
-  for (const gr of groups) {
-    const start = tris.length
-    for (let k = gr.start; k < gr.start + gr.count; k += 3) {
-      const abc = [index.getX(k), index.getX(k + 1), index.getX(k + 2)]
-      if (abc.some((i) => at(i).y >= y)) tris.push(...abc)
-    }
-    g.addGroup(start, tris.length - start, gr.materialIndex)
-  }
-  g.setIndex(tris)
-  for (let i = 0; i < pos.count; i++) {
-    if (at(i).y >= y) continue
-    p.y = y
-    p.applyMatrix4(m.bindMatrixInverse)
-    pos.setXYZ(i, p.x, p.y, p.z)
-  }
-  pos.needsUpdate = true
-}
-
-/**
- * Hands a skinned mesh's vertices below `y` (bind space) wholly to `bone`, easing in over
- * `blend` above it.
- */
-function weightTo(m: THREE.SkinnedMesh, bone: THREE.Bone, y: number, blend: number) {
-  const k = m.skeleton.bones.indexOf(bone)
-  if (k < 0) return
-  const pos = m.geometry.attributes.position
-  const si = m.geometry.attributes.skinIndex
-  const sw = m.geometry.attributes.skinWeight
-  const p = v3()
-  for (let i = 0; i < pos.count; i++) {
-    const t = 1 - THREE.MathUtils.smoothstep(p.fromBufferAttribute(pos, i).applyMatrix4(m.bindMatrix).y, y, y + blend)
-    if (t === 0) continue
-    // the old weights scale down by 1 - t; the bone takes t, in its own slot or the lightest
-    let slot = -1
-    for (let c = 0; c < 4; c++) if (si.getComponent(i, c) === k && sw.getComponent(i, c) > 0) slot = c
-    if (slot < 0) {
-      slot = 0
-      for (let c = 1; c < 4; c++) if (sw.getComponent(i, c) < sw.getComponent(i, slot)) slot = c
-      si.setComponent(i, slot, k)
-      sw.setComponent(i, slot, 0)
-    }
-    let sum = 0
-    for (let c = 0; c < 4; c++) {
-      const w = sw.getComponent(i, c) * (1 - t) + (c === slot ? t : 0)
-      sw.setComponent(i, c, w)
-      sum += w
-    }
-    for (let c = 0; c < 4; c++) sw.setComponent(i, c, sw.getComponent(i, c) / sum)
-  }
-  si.needsUpdate = true
-  sw.needsUpdate = true
-}
-
-/**
- * A cloth shell over part of the skin: the triangles whose corners all pass `keep`, copied
- * into a new mesh on the same skeleton and pushed out along their normals by what `push`
- * returns (both get the corner in bind space; `push` may instead move the corner itself
- * and return nothing). It bends exactly with the skin under it.
- */
-function skinShell(
-  skin: THREE.SkinnedMesh,
-  keep: (p: THREE.Vector3) => boolean,
-  push: (p: THREE.Vector3, n: THREE.Vector3) => number | void,
-  mat: THREE.Material,
-  name: string,
-) {
-  const g = skin.geometry
-  const index = g.index!
-  const group = g.groups.find((x) => x.materialIndex === 0) ?? { start: 0, count: index.count }
-  const pos = g.attributes.position
-  const p = v3()
-  const at = (i: number) => p.fromBufferAttribute(pos, i).applyMatrix4(skin.bindMatrix)
-  const remap = new Map<number, number>()
-  const tris: number[] = []
-  for (let k = group.start; k < group.start + group.count; k += 3) {
-    const abc = [index.getX(k), index.getX(k + 1), index.getX(k + 2)]
-    if (!abc.every((i) => keep(at(i)))) continue
-    for (const i of abc) {
-      if (!remap.has(i)) remap.set(i, remap.size)
-      tris.push(remap.get(i)!)
-    }
-  }
-  if (!tris.length) return
-
-  const out = new THREE.BufferGeometry()
-  for (const attr of ['position', 'normal', 'uv', 'skinIndex', 'skinWeight']) {
-    const src = g.attributes[attr] as THREE.BufferAttribute | undefined
-    if (!src) continue
-    const Arr = src.array.constructor as new (n: number) => THREE.TypedArray
-    const dst = new THREE.BufferAttribute(new Arr(remap.size * src.itemSize), src.itemSize, src.normalized)
-    for (const [from, to] of remap) for (let c = 0; c < src.itemSize; c++) dst.setComponent(to, c, src.getComponent(from, c))
-    out.setAttribute(attr, dst)
-  }
-  out.setIndex(tris)
-  const normal = weldedNormals(skin, remap.keys())
-  const op = out.attributes.position
-  for (const [from, to] of remap) {
-    const n = normal(from)
-    at(from)
-    const d = push(p, n)
-    if (typeof d === 'number') p.addScaledVector(n, d)
-    p.applyMatrix4(skin.bindMatrixInverse)
-    op.setXYZ(to, p.x, p.y, p.z)
-  }
-
-  const shell = new THREE.SkinnedMesh(out, mat)
-  shell.name = name
-  shell.position.copy(skin.position)
-  shell.quaternion.copy(skin.quaternion)
-  shell.scale.copy(skin.scale)
-  skin.parent!.add(shell)
-  shell.bind(skin.skeleton, skin.bindMatrix)
-}
-
-/**
- * Relaxed straight pants in place of the shorts: a shell over the skin from the waist to
- * just over the shoes. Close at the waist; below the seat each leg becomes a straight tube
- * round its bone, a little narrower at the hem, so the cloth hangs past the knee and calf
- * instead of copying them. The shorts go.
- */
-function addPants(vrm: VRM) {
-  const named = meshFinder(vrm)
-  const skin = named(/^body.*skin/i)
-  const shorts = named(/bottoms/i)
-  const shoes = named(/shoe/i)
-  if (!skin || !shorts) return
-  const waist = bindRangeY(shorts)[1] + 0.005
-  const hem = shoes ? bindRangeY(shoes)[1] - 0.02 : bindRangeY(skin)[0] + 0.1
-  // each leg's hip, knee and ankle at rest; the legs hang straight down in the bind pose
-  const joint = (name: VRMHumanBoneName) => {
-    const k = skin.skeleton.bones.indexOf(vrm.humanoid.getRawBoneNode(name) as THREE.Bone)
-    return k < 0 ? null : v3().setFromMatrixPosition(skin.skeleton.boneInverses[k].clone().invert())
-  }
-  const legs = (['left', 'right'] as const).map((s) => [joint(`${s}UpperLeg`), joint(`${s}LowerLeg`), joint(`${s}Foot`)])
-  const [hipL, kneeL] = legs[0]
-  const c = v3()
-  const d = v3()
-  const tube = v3()
-  /** The leg's axis at height y, set back behind the shin, where the calf is. */
-  const axis = (leg: THREE.Vector3[], y: number) => {
-    const [a, b] = y > leg[1].y ? [leg[0], leg[1]] : [leg[1], leg[2]]
-    c.lerpVectors(a, b, THREE.MathUtils.clamp((a.y - y) / (a.y - b.y), 0, 1))
-    c.z -= 0.02 * THREE.MathUtils.smoothstep(leg[1].y - y, -0.05, 0.1)
-    c.y = y
-    return c
-  }
-  const ok = legs.every((leg) => leg.every(Boolean)) && hipL && kneeL
-  const crotch = ok ? hipL!.y - (hipL!.y - kneeL!.y) * 0.25 : 0
-  const legOf = (p: THREE.Vector3) => (Math.sign(p.x) === Math.sign(hipL!.x) ? legs[0] : legs[1]) as THREE.Vector3[]
-  // lower behind the leg's axis than in front of it
-  const hemAt = (p: THREE.Vector3) => (ok ? hem - PANTS_HEEL * THREE.MathUtils.smoothstep(axis(legOf(p), p.y).z - p.z, 0, 0.06) : hem)
-  skinShell(
-    skin,
-    (p) => p.y >= hemAt(p) && p.y <= waist,
-    (p, n) => {
-      p.addScaledVector(n, 0.01) // the waist and seat: close over the skin
-      if (!ok) return
-      const leg = legOf(p)
-      axis(leg, p.y)
-      d.subVectors(p, c)
-      const r = Math.max(d.length(), 1e-5)
-      const R = THREE.MathUtils.lerp(PANTS_SEAT, PANTS_CUFF, THREE.MathUtils.clamp((crotch - p.y) / (crotch - hem), 0, 1))
-      tube.copy(c).addScaledVector(d, Math.max(R, r + 0.004) / r)
-      // the inseam stays on its own side of the middle
-      const side = Math.sign(leg[0].x)
-      if (side * tube.x < 0.004) tube.x = side * Math.min(0.004, side * p.x)
-      p.lerp(tube, 1 - THREE.MathUtils.smoothstep(p.y, crotch, hipL!.y + 0.02))
-    },
-    clothMat(mtoonOf(shorts), PANTS, PANTS_SHADE),
-    'Pants',
-  )
-  // dark socks, from inside the shoes up past the hems: the ankle the wide cuffs show
-  if (shoes) skinShell(skin, (p) => p.y >= hem - 0.02 && p.y <= hem + 0.1, () => 0.003, clothMat(mtoonOf(shorts), SOCKS, SOCKS), 'Socks')
-  shorts.visible = false
-}
-
-/**
- * An oversized tee made from the top: dark green, its body pushed out loose and its hem
- * hung from the pelvis, with roomy straight sleeves from the shoulders to the elbows. In
- * the bind T-pose the arms lie along x at shoulder height, so the sleeves are the skin out
- * past the shoulder joints and level with them (the legs reach out that far too, lower
- * down). They start under the top's own short sleeves, which lift off the arm as it lowers
- * and would show skin; those are drawn in toward the arm so the two read as one sleeve.
- */
-function addTee(vrm: VRM) {
-  const named = meshFinder(vrm)
-  const skin = named(/^body.*skin/i)
-  const top = named(/tops/i)
-  const shoulder = vrm.humanoid.getRawBoneNode('leftUpperArm')
-  const elbow = vrm.humanoid.getRawBoneNode('leftLowerArm')
-  const src = top && mtoonOf(top)
-  if (!top || !src) return
-  flatten(src, TEE, TEE_SHADE)
-  if (shoulder) {
-    // only what the arms carry: pulling the side panels in too would open the armpits
-    const arms = [shoulder, vrm.humanoid.getRawBoneNode('rightUpperArm')]
-    const onArm = top.skeleton.bones.map((b) => {
-      for (let o: THREE.Object3D | null = b; o; o = o.parent) if (arms.includes(o) || /upperarm/i.test(o.name)) return true
-      return false
-    })
-    const si = top.geometry.attributes.skinIndex
-    const sw = top.geometry.attributes.skinWeight
-    const a = shoulder.getWorldPosition(v3())
-    const pos = top.geometry.attributes.position
-    const q = v3()
-    for (let i = 0; i < pos.count; i++) {
-      q.fromBufferAttribute(pos, i).applyMatrix4(top.bindMatrix)
-      let armWeight = 0
-      for (let c = 0; c < 4; c++) if (onArm[si.getComponent(i, c)]) armWeight += sw.getComponent(i, c)
-      const f = armWeight * THREE.MathUtils.smoothstep(Math.abs(q.x), Math.abs(a.x), Math.abs(a.x) + 0.06)
-      if (f === 0 || q.y < a.y - 0.15) continue
-      const k = THREE.MathUtils.lerp(1, SLEEVE_SQUEEZE, f)
-      q.set(q.x, a.y + (q.y - a.y) * k, a.z + (q.z - a.z) * k).applyMatrix4(top.bindMatrixInverse)
-      pos.setXYZ(i, q.x, q.y, q.z)
-    }
-    pos.needsUpdate = true
-  }
-  inflate(top, () => TEE_LOOSE)
-  const hips = vrm.humanoid.getRawBoneNode('hips')
-  const thigh = vrm.humanoid.getRawBoneNode('leftUpperLeg')
-  if (hips && thigh) {
-    const legRoot = thigh.getWorldPosition(v3()).y
-    // VRoid hangs the hem from the thighs, and a wide stance tears it open: the pelvis holds it
-    weightTo(top, hips as THREE.Bone, legRoot + 0.02, 0.08)
-    trimBelow(top, legRoot - TEE_HEM) // and a straight hem in place of VRoid's ragged one
-  }
-  if (!skin || !shoulder || !elbow) return
-  const arm = shoulder.getWorldPosition(v3())
-  const start = Math.abs(arm.x)
-  const hem = Math.abs(elbow.getWorldPosition(v3()).x)
-  skinShell(
-    skin,
-    (q) => Math.abs(q.x) >= start && Math.abs(q.x) <= hem && Math.abs(q.y - arm.y) < 0.1,
-    () => SLEEVE_ROOM,
-    clothMat(src, TEE, TEE_SHADE),
-    'Sleeves',
-  )
-}
-
-/**
- * Her face: the eye parts (whites, irises, highlights, lash lines) scaled about each eye's
- * center, their morph deltas too so a blink still closes the smaller eye; the lower face
- * widened toward the chin and the chin lifted, front of the face only so the seam at the
- * neck stays shut; and the eyes, lashes and skin recolored. Works in the face meshes' own
- * space, which VRoid gives all of them (they are parts of one node). Run at rest.
- */
-function shapeFace(vrm: VRM) {
-  const parts: [THREE.Mesh, MToonMaterial][] = []
-  vrm.scene.traverse((o) => {
-    const mat = (o as THREE.Mesh).isMesh ? mtoonOf(o as THREE.Mesh) : undefined
-    if (mat) parts.push([o as THREE.Mesh, mat])
-  })
-  const named = (re: RegExp) => parts.filter(([, mat]) => re.test(mat.name)).map(([m]) => m)
-  // the face is often in shade, where MToon shows the shade color, so both are set
-  const tint = (mat: MToonMaterial, lit: string, shade: string) => {
-    mat.color.set(lit)
-    mat.shadeColorFactor.set(shade)
-  }
-  for (const [, mat] of parts) {
-    if (/iris/i.test(mat.name)) tint(mat, IRIS, IRIS)
-    else if (/eyeline/i.test(mat.name)) tint(mat, LASHES, LASHES)
-    else if (/skin/i.test(mat.name)) tint(mat, SKIN, SKIN_SHADE)
-  }
-  const white = named(/^eyewhite/i)[0]
-  const face = named(/^face.*skin/i)[0]
-  if (!white || !face) return
-
-  // each eye's center, from its white
-  const sums = new Map<number, THREE.Vector3>()
-  const counts = new Map<number, number>()
-  const wp = white.geometry.attributes.position
-  const p = v3()
-  for (let i = 0; i < wp.count; i++) {
-    p.fromBufferAttribute(wp, i)
-    const side = Math.sign(p.x) || 1
-    sums.set(side, (sums.get(side) ?? v3()).add(p))
-    counts.set(side, (counts.get(side) ?? 0) + 1)
-  }
-  const center = (x: number) => {
-    const side = Math.sign(x) || 1
-    return sums.get(side)!.clone().divideScalar(counts.get(side)!)
-  }
-  for (const m of named(/^eye|eyeline/i)) {
-    const lash = /eyeline/i.test(mtoonOf(m)!.name)
-    const sx = lash ? LASH_SIZE : EYE_SIZE
-    const sy = lash ? LASH_SIZE * EYE_SQUASH : EYE_SIZE * EYE_SQUASH
-    const pos = m.geometry.attributes.position
-    for (let i = 0; i < pos.count; i++) {
-      p.fromBufferAttribute(pos, i)
-      const c = center(p.x)
-      pos.setXY(i, c.x + (p.x - c.x) * sx, c.y + (p.y - c.y) * sy)
-    }
-    pos.needsUpdate = true
-    for (const d of m.geometry.morphAttributes.position ?? []) {
-      for (let i = 0; i < d.count; i++) d.setXY(i, d.getX(i) * sx, d.getY(i) * sy)
-      d.needsUpdate = true
-    }
-  }
-
-  // the jaw: measured from the eyes, the tip of the nose and the chin under it
-  const eyeY = (center(1).y + center(-1).y) / 2
-  const pos = face.geometry.attributes.position
-  face.geometry.computeBoundingBox()
-  const front = Math.sign(center(1).z - face.geometry.boundingBox!.getCenter(v3()).z) || 1 // which way the face looks
-  let zMax = -Infinity
-  let zMin = Infinity
-  let chin = Infinity
-  for (let i = 0; i < pos.count; i++) zMax = Math.max(zMax, pos.getZ(i) * front)
-  for (let i = 0; i < pos.count; i++) {
-    p.fromBufferAttribute(pos, i)
-    if (p.z * front > zMax - 0.04) chin = Math.min(chin, p.y)
-    if (p.y < eyeY) zMin = Math.min(zMin, p.z * front)
-  }
-  const mouth = eyeY - (eyeY - chin) * 0.45
-  for (let i = 0; i < pos.count; i++) {
-    p.fromBufferAttribute(pos, i)
-    const t = THREE.MathUtils.clamp((mouth - p.y) / (mouth - chin), 0, 1)
-    const w = THREE.MathUtils.smoothstep((p.z * front - zMin) / (zMax - zMin), 0.25, 0.75)
-    pos.setXY(i, p.x * (1 + JAW_ROUND * Math.sin((t * Math.PI) / 2) * w), p.y + CHIN_LIFT * t * t * w)
-  }
-  pos.needsUpdate = true
 }
 
 /**
@@ -736,9 +316,7 @@ function buildRig(vrm: VRM): Rig {
     soleRest = Math.min(soleRest, g.boundingBox!.min.y)
   })
   puffLimbs(vrm)
-  addPants(vrm)
-  addTee(vrm)
-  shapeFace(vrm)
+  dressAsPicked(vrm)
   if (vrm.lookAt) vrm.lookAt.pitch = -GAZE_DOWN
   const crown = addHeadwear(vrm) ?? headRestY + (headRestY - at('neck').y) * 2.2
   vrm.scene.traverse((o) => {
@@ -841,12 +419,12 @@ function applyPose(r: Rig, p: Pose, dt: number, blink: { t: number }) {
   b('leftHand')?.rotation.set(0, 0, 0.25)
   b('rightHand')?.rotation.set(0, 0, -0.25)
 
-  // heavy lids, and a blink every few seconds
+  // a blink every few seconds
   blink.t -= dt
   const em = r.vrm.expressionManager
   if (em) {
     if (blink.t < 0) blink.t = 2 + Math.random() * 3
-    em.setValue('blink', blink.t < 0.12 ? 1 : LIDS)
+    em.setValue('blink', blink.t < 0.12 ? 1 : 0)
   }
   r.vrm.update(dt)
 }
@@ -855,7 +433,7 @@ const rigs = new Map<string, Promise<Rig | null>>()
 const ready = new Map<string, Rig | null>() // settled loads, readable synchronously
 
 /**
- * Load (once) and rig a VRM. Called at boot, so the 10 MB parse never lands mid-ride;
+ * Load (once) and rig a VRM. Called at boot, so the model's parse never lands mid-ride;
  * cached, so remounts (and StrictMode's double effects) reuse the same rigged model.
  */
 export function loadRig(url: string, onProgress?: (e: ProgressEvent) => void): Promise<Rig | null> {
