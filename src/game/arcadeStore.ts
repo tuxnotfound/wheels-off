@@ -85,7 +85,7 @@ export function signName(typed: string) {
   hold(false)
 }
 
-/** Esc on the name entry: the run goes on no board. */
+/** Skip on the name entry (its button, or Esc in a window): the run goes on no board. */
 export function skipRun() {
   if (!useArcade.getState().pending) return
   useArcade.setState({ pending: null })
