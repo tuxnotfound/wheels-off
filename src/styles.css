@@ -1203,9 +1203,10 @@ kbd {
   gap: clamp(16px, 3.4vh, 30px);
 }
 
+/* WHEELS is 5.6em wide, so on a screen under 330px or so the title shrinks to fit */
 .landing__title {
   margin: 0;
-  font-size: clamp(52px, min(9.5vw, 15vh), 136px);
+  font-size: min(clamp(52px, min(9.5vw, 15vh), 136px), calc((100vw - 32px) / 5.8));
   font-weight: normal;
   line-height: 0.92;
   letter-spacing: 0.02em;
@@ -1631,14 +1632,62 @@ kbd {
 
   .landing__modes {
     gap: 10px;
+    container-type: inline-size;
   }
 
   .mode-card {
-    padding: 16px 10px 10px;
+    padding: 16px 8px 10px;
   }
 
+  /* a card is a third of the row less 22px of padding and border; ARCADE is 5.7em wide and
+     タイムトライアル 8.2em, so under 420px or so they shrink to fit it */
   .mode-card__name {
     font-size: 18px;
+    font-size: min(18px, calc(((100cqi - 20px) / 3 - 22px) / 5.7));
+  }
+
+  .mode-card__jp {
+    font-size: min(12px, calc(((100cqi - 20px) / 3 - 22px) / 8.2));
+  }
+}
+
+/* a narrow window with a mouse (a portal's phone-shaped frame on a desktop): the chips without
+   their keys, so they stay on one line; R and M still work */
+@media (max-width: 400px) {
+  .landing__chips kbd {
+    display: none;
+  }
+}
+
+/* the narrowest screens (a 320px phone, a portal's 298px frame): the two HUD panels split the
+   width, a long record holder's name cut short, and the cards over the ride fit inside it */
+@media (max-width: 340px) {
+  .hud-score,
+  .hud-speed {
+    top: 10px;
+    max-width: calc(50% - 15px);
+    padding: 3px 10px;
+  }
+
+  .hud-score {
+    left: 10px;
+  }
+
+  .hud-speed {
+    right: 10px;
+  }
+
+  .hud-score__n {
+    font-size: 24px;
+  }
+
+  .overlay {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 10px;
+  }
+
+  .title-card {
+    padding: 18px 14px 14px;
   }
 }
 
