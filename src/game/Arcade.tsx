@@ -102,8 +102,11 @@ const landingButton = (act: () => void): ButtonHTMLAttributes<HTMLButtonElement>
 const TAP_GUARD_MS = 500 // a card's buttons ignore taps this long after it opens
 
 /**
- * On a touch screen, the buttons that stand in for a card's keys (Enter, Esc, P, R). A card can
- * open under a thumb that is still tapping ollies, so for its first moment the row takes no tap.
+ * The buttons that stand in for a card's keys (Enter, P, R): on a touch screen on every card, and
+ * on the name cards everywhere, where skip has no key. The game binds nothing to Esc: in
+ * fullscreen the browser keeps it to leave, and CrazyGames' guidelines name it a key to avoid. A
+ * card can open under a thumb that is still tapping ollies, so for its first moment the row takes
+ * no tap.
  */
 function TapRow({ children }: { children: ReactNode }) {
   const opened = useRef(performance.now())
@@ -606,27 +609,21 @@ function NameEntry({ run }: { run: PendingRun }) {
               setName(typedName(e.target.value))
               setRefused(false)
             }}
-            onKeyDown={(e) => {
-              if (e.key !== 'Escape') return
-              e.preventDefault()
-              skipRun()
-            }}
           />
         </label>
         {SHARE_LINKS && <Share line={shareLine(run)} />}
         {refused ? (
           <p className="title-card__go">that name can’t go on the board · try another</p>
-        ) : touchDevice ? (
+        ) : (
           <TapRow>
             <button type="submit" className="chip">
+              {!touchDevice && <kbd>Enter</kbd>}
               sign
             </button>
             <button type="button" className="chip" onClick={skipRun}>
               skip
             </button>
           </TapRow>
-        ) : (
-          <p className="title-card__go">press esc to skip</p>
         )}
       </form>
     </div>
@@ -666,7 +663,7 @@ function trialShareLine(run: TrialRun): string {
 
 /**
  * The time trial's finish card: the time, against your best and the week's board. A time that
- * makes the board asks for a name (Enter signs, Esc skips), with the run to share; first place
+ * makes the board asks for a name (Enter signs, the skip button skips), with the run to share; first place
  * of the week gets the world record's burst. Then the next attempt lines up.
  */
 function TrialResult({ run }: { run: TrialRun }) {
@@ -681,10 +678,10 @@ function TrialResult({ run }: { run: TrialRun }) {
   }, [])
   useEffect(() => {
     if (places) return
-    // no name to type: Enter, Esc or T goes again
+    // no name to type: Enter or T goes again
     const onKey = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase()
-      if (e.repeat || !(k === 'enter' || k === 'escape' || k === 't')) return
+      if (e.repeat || !(k === 'enter' || k === 't')) return
       e.preventDefault()
       closeResult(null)
     }
@@ -733,20 +730,18 @@ function TrialResult({ run }: { run: TrialRun }) {
                 setName(typedName(e.target.value))
                 setRefused(false)
               }}
-              onKeyDown={(e) => {
-                if (e.key !== 'Escape') return
-                e.preventDefault()
-                closeResult(null)
-              }}
             />
           </label>
         )}
         {SHARE_LINKS && (places || run.newPb) && <Share line={trialShareLine(run)} link={() => challengeLink(run, cleanName(name))} />}
-        {touchDevice && !refused ? (
+        {refused ? (
+          <p className="title-card__go">that name can’t go on the board · try another</p>
+        ) : (
           <TapRow>
             {places ? (
               <>
                 <button type="submit" className="chip">
+                  {!touchDevice && <kbd>Enter</kbd>}
                   sign
                 </button>
                 <button type="button" className="chip" onClick={() => closeResult(null)}>
@@ -755,14 +750,11 @@ function TrialResult({ run }: { run: TrialRun }) {
               </>
             ) : (
               <button type="button" className="chip" onClick={() => closeResult(null)}>
+                {!touchDevice && <kbd>Enter</kbd>}
                 go again
               </button>
             )}
           </TapRow>
-        ) : (
-          <p className="title-card__go">
-            {refused ? 'that name can’t go on the board · try another' : places ? 'enter to sign · esc to skip' : 'press enter to go again'}
-          </p>
         )}
       </form>
     </div>
@@ -780,7 +772,6 @@ export function Arcade() {
       if (k === 'p' && useHud.getState().started) togglePause()
       else if (k === 'r') toggleRecords()
       else if (k === 'g') toggleGhost() // the time trial's ghost, off and on, from anywhere
-      else if (k === 'escape') resume()
       else if (k === 'f') {
         // only on the landing page, which rolls off in free roam, or the pause screen, which
         // rolls on in the other mode: a stray F mid-ride never ends a run

@@ -1712,6 +1712,12 @@ kbd {
     padding: 18px 14px 14px;
   }
 
+  /* edge to edge on the narrower card (its base rule comes later in this file) */
+  .title-card .title-card__go--tap {
+    margin: 0 -14px -14px;
+    padding: 10px 14px 14px;
+  }
+
   /* NEW PR doesn't fit beside the value: on its own line, centered, clear of the rank under it */
   .entry__pr {
     display: block;
@@ -1851,8 +1857,25 @@ kbd {
   }
 }
 
-/* a card's buttons in place of its keys, on a touch screen: pinned to the bottom of the screen
-   while a tall card scrolls under them, so they're always in reach */
+/* a phone held upright: the turn arrows sit near the middle, and one word of a long street name
+   ("YOKOCHO") is wider than the room left of them, so the card rides above their row instead,
+   with the width free */
+@media (max-width: 500px) {
+  .street-card {
+    bottom: 72px;
+    max-width: calc(100% - 48px);
+  }
+}
+
+@media (max-width: 500px) and (hover: none) and (pointer: coarse) {
+  .street-card {
+    bottom: calc(15vh + 66px);
+  }
+}
+
+/* a card's buttons in place of its keys (on a touch screen, and on the name cards everywhere):
+   pinned to the bottom of the screen while a tall card scrolls under them, so they're always in
+   reach */
 .title-card__go--tap {
   position: sticky;
   bottom: 0;

@@ -60,7 +60,7 @@ export function toggleRecords() {
   else show('records', s.menu)
 }
 
-/** Esc: back to the ride (or the landing page) from any menu. */
+/** Back to the ride (or the landing page) from any menu. */
 export function resume() {
   if (useArcade.getState().menu) show(null)
 }
@@ -85,7 +85,7 @@ export function signName(typed: string) {
   hold(false)
 }
 
-/** Esc on the name entry: the run goes on no board. */
+/** Skip on the name entry (its button): the run goes on no board. */
 export function skipRun() {
   if (!useArcade.getState().pending) return
   useArcade.setState({ pending: null })
